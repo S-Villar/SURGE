@@ -1,5 +1,13 @@
 # Core dependencies
 numpy>=1.20.0
 scikit-learn>=1.0.0
-torch>=1.9.0
 joblib>=1.0.0
+
+# Optional dependencies for enhanced models
+# PyTorch for enhanced MLP models
+torch>=1.9.0
+
+# GPflow for advanced Gaussian Process models
+# Uncomment the following lines to install GPflow support:
+# tensorflow>=2.8.0
+# gpflow>=2.5.0
