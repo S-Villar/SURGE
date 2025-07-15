@@ -16,6 +16,27 @@ except ImportError:
     GPFLOW_AVAILABLE = False
 
 
+class RandomForestModel:
+    """
+    Random Forest model wrapper compatible with SURGE API.
+    """
+    def __init__(self, **kwargs):
+        self._rf = RandomForestRegressor(**kwargs)
+
+    def fit(self, X, y):
+        return self._rf.fit(X, y)
+
+    def predict(self, X):
+        return self._rf.predict(X)
+    
+    def score(self, X, y):
+        return self._rf.score(X, y)
+    
+    @property
+    def feature_importances_(self):
+        return self._rf.feature_importances_
+
+
 class RFRModel:
     def __init__(self, **kwargs):
         self._rf = RandomForestRegressor(**kwargs)
