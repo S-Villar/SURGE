@@ -372,6 +372,19 @@ class MLTrainer:
         )
         self.models.append(model)
         self.model_types.append(1)
+        
+        # Initialize performance tracking for this model
+        performance = {
+            'model_type': 'MLPRegressor',
+            'R2_train_val': None,
+            'R2': None,
+            'MSE_train_val': None,
+            'MSE': None,
+            'training_time': None,
+            'average_inference_time_train': None,
+            'average_inference_time_test': None
+        }
+        self.model_performance.append(performance)
         print("✅ MLP Regressor (sklearn) initialized")
 
     def _init_mlp_pytorch(self):
@@ -387,6 +400,19 @@ class MLTrainer:
         )
         self.models.append(model)
         self.model_types.append(2)
+        
+        # Initialize performance tracking for this model
+        performance = {
+            'model_type': 'PyTorchMLP',
+            'R2_train_val': None,
+            'R2': None,
+            'MSE_train_val': None,
+            'MSE': None,
+            'training_time': None,
+            'average_inference_time_train': None,
+            'average_inference_time_test': None
+        }
+        self.model_performance.append(performance)
         print("✅ PyTorch MLP initialized")
 
     def _init_gpr(self):
@@ -398,6 +424,19 @@ class MLTrainer:
         # GPR implementation would go here
         self.models.append(None)  # Placeholder
         self.model_types.append(3)
+        
+        # Initialize performance tracking for this model
+        performance = {
+            'model_type': 'GPR',
+            'R2_train_val': None,
+            'R2': None,
+            'MSE_train_val': None,
+            'MSE': None,
+            'training_time': None,
+            'average_inference_time_train': None,
+            'average_inference_time_test': None
+        }
+        self.model_performance.append(performance)
 
     def train(self, model_index):
         """
@@ -486,6 +525,11 @@ class MLTrainer:
         print('\n--- Training Set Results ---')
         start_time = time.time()
         y_pred_train_val_sc = model.predict(self.x_train_val_sc)
+        
+        # Ensure 2D shape for sklearn inverse_transform (required for scalers)
+        if y_pred_train_val_sc.ndim == 1:
+            y_pred_train_val_sc = y_pred_train_val_sc.reshape(-1, 1)
+        
         self.y_pred_train_val = self.y_scaler.inverse_transform(y_pred_train_val_sc)
         t_pred_train_val = time.time() - start_time
         avg_inference_time_train = t_pred_train_val / self.x_train_val_sc.shape[0]
@@ -502,6 +546,11 @@ class MLTrainer:
         print('\n--- Testing Set Results ---')
         start_time = time.time()
         y_pred_test_sc = model.predict(self.x_test_sc)
+        
+        # Ensure 2D shape for sklearn inverse_transform (required for scalers)
+        if y_pred_test_sc.ndim == 1:
+            y_pred_test_sc = y_pred_test_sc.reshape(-1, 1)
+            
         self.y_pred_test = self.y_scaler.inverse_transform(y_pred_test_sc)
         t_pred_test = time.time() - start_time
         avg_inference_time_test = t_pred_test / self.x_test_sc.shape[0]
@@ -637,6 +686,12 @@ class MLTrainer:
             start_time = time.time()
             y_pred_sc = fold_model.predict(X_fold_val)
             inference_time = (time.time() - start_time) / len(val_idx)  # Per sample
+            
+            # Ensure 2D shapes for sklearn inverse_transform
+            if y_pred_sc.ndim == 1:
+                y_pred_sc = y_pred_sc.reshape(-1, 1)
+            if y_fold_val.ndim == 1:
+                y_fold_val = y_fold_val.reshape(-1, 1)
             
             # Rescale predictions and targets back to original scale
             y_pred_orig = self.y_scaler.inverse_transform(y_pred_sc)
