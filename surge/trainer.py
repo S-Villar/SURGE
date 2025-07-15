@@ -1101,107 +1101,99 @@ class MLTrainer:
         method : str
             Tuning method: 'random_mem_eff', 'bayesian_skopt', 'optuna_botorch', 'optuna_tpe'
         n_trials : int
-        -----------of optimization trials
-        model_index : intct, optional
-            Index of the model to tuneperparameters
-        method : str
-            Tuning method: 'random_mem_eff', 'bayesian_skopt', 'optuna_botorch', 'optuna_tpe'
-        n_trials : int
-            Number of optimization trialsarameters and history
+            Number of optimization trials
         search_space : dict, optional
             Custom search space for hyperparameters
-            rt matplotlib.pyplot as plt
+            
         Returns:
-        --------_index >= len(self.models):
-        dict : Tuning results with best parameters and historyvailable")
+        --------
+        dict : Tuning results with best parameters and history
         """ 
-        import gce = self.model_types[model_index]
         import matplotlib.pyplot as plt
-        if model_type != 0:  # Only Random Forest for now
-        if model_index >= len(self.models):r tuning currently only supports Random Forest models")
+        
+        if model_index >= len(self.models):
             raise ValueError(f"Model index {model_index} not available")
-            t(f"🔍 Hyperparameter Tuning: {method.upper()}")
-        model_type = self.model_types[model_index]als: {n_trials}")
-        print("=" * 60)
+            
+        model_type = self.model_types[model_index]
         if model_type != 0:  # Only Random Forest for now
             raise ValueError("Hyperparameter tuning currently only supports Random Forest models")
-            earch_space is None:
+            
         print(f"🔍 Hyperparameter Tuning: {method.upper()}")
         print(f"Model: RandomForestRegressor | Trials: {n_trials}")
-        print("=" * 60)estimators': [50, 100, 200, 300],
-                    'max_depth': [10, 20, 30, None],
-        # Default search space for Random Forest10],
-        if search_space is None:_leaf': [1, 2, 4],
-            if method == 'random_mem_eff':', 'log2', 1.0]
+        print("=" * 60)
+        
+        # Default search space for Random Forest
+        if search_space is None:
+            if method == 'random_mem_eff':
                 search_space = {
                     'n_estimators': [50, 100, 200, 300],
                     'max_depth': [10, 20, 30, None],
                     'min_samples_split': [2, 5, 10],
                     'min_samples_leaf': [1, 2, 4],
                     'max_features': ['sqrt', 'log2', 1.0]
-                }   'min_samples_leaf': (1, 10),
-            else:  # For Bayesian methodst', 'log2', 1.0]
+                }
+            else:  # For Bayesian methods
                 search_space = {
                     'n_estimators': (50, 300),
-                    'max_depth': (5, 50),method
+                    'max_depth': (5, 50),
                     'min_samples_split': (2, 20),
-                    'min_samples_leaf': (1, 10),cient(model_index, n_trials, search_space)
+                    'min_samples_leaf': (1, 10),
                     'max_features': ['sqrt', 'log2', 1.0]
-                }n self._tune_bayesian_skopt(model_index, n_trials, search_space)
-        elif method == 'optuna_botorch':
-        # Execute the appropriate tuning methoddel_index, n_trials, search_space)
+                }
+        
+        # Execute the appropriate tuning method
         if method == 'random_mem_eff':
             return self._tune_random_memory_efficient(model_index, n_trials, search_space)
         elif method == 'bayesian_skopt':
             return self._tune_bayesian_skopt(model_index, n_trials, search_space)
         elif method == 'optuna_botorch':
             return self._tune_optuna_botorch(model_index, n_trials, search_space)
-        elif method == 'optuna_tpe': cleanup"""
+        elif method == 'optuna_tpe':
             return self._tune_optuna_tpe(model_index, n_trials, search_space)
-        else:sklearn.ensemble import RandomForestRegressor
+        else:
             raise ValueError(f"Unknown tuning method: {method}")
-        import gc
+    
     def _tune_random_memory_efficient(self, model_index, n_trials, search_space):
         """Random search with memory cleanup"""
         import numpy as np
         from sklearn.ensemble import RandomForestRegressor
         from sklearn.metrics import r2_score
-        import gccores': [],
-            'best_r2': -np.inf,
-        # Initialize trackingne,
-        results = {arams_history': []
+        import gc
+        
+        # Initialize tracking
+        results = {
             'method': 'random_mem_eff',
             'iterations': [],
             'r2_scores': [],
-            'best_r2': -np.inf,):
-            'best_params': None,rparameters with proper types
+            'best_r2': -np.inf,
+            'best_params': None,
             'hyperparams_history': []
-        }       'n_estimators': int(np.random.choice(search_space['n_estimators'])),
-                'max_depth': search_space['max_depth'][np.random.randint(0, len(search_space['max_depth']))],
-        np.random.seed(42)es_split': int(np.random.choice(search_space['min_samples_split'])),
-        for i in range(n_trials):': int(np.random.choice(search_space['min_samples_leaf'])),
-            # Sample random hyperparameters with proper typesnp.random.randint(0, len(search_space['max_features']))],
-            params = {m_state': 42,
+        }
+        
+        np.random.seed(42)
+        for i in range(n_trials):
+            # Sample random hyperparameters with proper types
+            params = {
                 'n_estimators': int(np.random.choice(search_space['n_estimators'])),
                 'max_depth': search_space['max_depth'][np.random.randint(0, len(search_space['max_depth']))],
                 'min_samples_split': int(np.random.choice(search_space['min_samples_split'])),
                 'min_samples_leaf': int(np.random.choice(search_space['min_samples_leaf'])),
                 'max_features': search_space['max_features'][np.random.randint(0, len(search_space['max_features']))],
-                'random_state': 42,val_sc, self.y_train_val_sc)
-                'n_jobs': -1l.predict(self.x_test_sc)
-            }_pred = self.y_scaler.inverse_transform(y_pred_sc)
-            r2 = r2_score(self.y_test, y_pred)
+                'random_state': 42,
+                'n_jobs': -1
+            }
+            
             # Train and evaluate
             model = RandomForestRegressor(**params)
             model.fit(self.x_train_val_sc, self.y_train_val_sc)
             y_pred_sc = model.predict(self.x_test_sc)
-            y_pred = self.y_scaler.inverse_transform(y_pred_sc))
+            y_pred = self.y_scaler.inverse_transform(y_pred_sc)
             r2 = r2_score(self.y_test, y_pred)
-            if r2 > results['best_r2']:
-            # Track resultsst_r2'] = r2
-            results['iterations'].append(i + 1).copy()
+            
+            # Track results
+            results['iterations'].append(i + 1)
             results['r2_scores'].append(r2)
-            results['hyperparams_history'].append(params.copy())ts['best_r2']:.4f}")
+            results['hyperparams_history'].append(params.copy())
             
             if r2 > results['best_r2']:
                 results['best_r2'] = r2
@@ -1209,63 +1201,68 @@ class MLTrainer:
             
             print(f"Trial {i+1:2d}: R² = {r2:.4f} | Best: {results['best_r2']:.4f}")
             
-            # Memory cleanup(self, model_index, n_trials, search_space):
-            del modelptimization using scikit-optimize"""
+            # Memory cleanup
+            del model
             gc.collect()
-            from skopt import BayesSearchCV
-        return resultsrn.ensemble import RandomForestRegressor
-            from sklearn.metrics import r2_score
+            
+        return results
+    
     def _tune_bayesian_skopt(self, model_index, n_trials, search_space):
         """Bayesian optimization using scikit-optimize"""
-        try:raise ImportError("scikit-optimize not available. Install with: pip install scikit-optimize")
+        try:
             from skopt import BayesSearchCV
             from sklearn.ensemble import RandomForestRegressor
             from sklearn.metrics import r2_score
-            import gce in search_space.items():
-        except ImportError:features':
+            import gc
+        except ImportError:
             raise ImportError("scikit-optimize not available. Install with: pip install scikit-optimize")
-            elif isinstance(value, tuple):
-        # Convert search space for skopt  # Continuous/Integer ranges
+        
+        # Convert search space for skopt
         skopt_space = {}
-        for key, value in search_space.items():egorical
+        for key, value in search_space.items():
             if key == 'max_features':
                 skopt_space[key] = value  # Categorical
-            elif isinstance(value, tuple):(random_state=42, n_jobs=-1)
+            elif isinstance(value, tuple):
                 skopt_space[key] = value  # Continuous/Integer ranges
-            else:n search
+            else:
                 skopt_space[key] = value  # Categorical
-            estimator=base_model,
-        # Initialize base model_space,
+        
+        # Initialize base model
         base_model = RandomForestRegressor(random_state=42, n_jobs=-1)
-            scoring='r2',
+        
         # Bayesian search
-        opt = BayesSearchCV(it parallelism to save memory
+        opt = BayesSearchCV(
             estimator=base_model,
             search_spaces=skopt_space,
             n_iter=n_trials,
-            scoring='r2', Bayesian optimization with scikit-optimize...")
-            cv=3,elf.x_train_val_sc, self.y_train_val_sc)
+            scoring='r2',
+            cv=3,
             n_jobs=1,  # Limit parallelism to save memory
-            random_state=42el on test set
-        )_pred_sc = opt.predict(self.x_test_sc)
-        y_pred = self.y_scaler.inverse_transform(y_pred_sc)
+            random_state=42
+        )
+        
         print("🚀 Running Bayesian optimization with scikit-optimize...")
         opt.fit(self.x_train_val_sc, self.y_train_val_sc)
-        results = {
+        
         # Evaluate best model on test set
         y_pred_sc = opt.predict(self.x_test_sc)
-        y_pred = self.y_scaler.inverse_transform(y_pred_sc)r(opt, 'best_params_') else {},
-        test_r2 = r2_score(self.y_test, y_pred) hasattr(opt, 'best_score_') else None,
-            'optimization_results': opt.cv_results_ if hasattr(opt, 'cv_results_') else None
+        y_pred = self.y_scaler.inverse_transform(y_pred_sc)
+        test_r2 = r2_score(self.y_test, y_pred)
+        
         results = {
             'method': 'bayesian_skopt',
-            'best_r2': test_r2,re_ if hasattr(opt, 'best_score_') else "N/A"
+            'best_r2': test_r2,
             'best_params': dict(opt.best_params_) if hasattr(opt, 'best_params_') else {},
             'cv_best_score': opt.best_score_ if hasattr(opt, 'best_score_') else None,
             'optimization_results': opt.cv_results_ if hasattr(opt, 'cv_results_') else None
-        }eturn results
+        }
         
         cv_score = opt.best_score_ if hasattr(opt, 'best_score_') else "N/A"
+        print(f"✅ Best CV Score: {cv_score}, Test R²: {test_r2:.4f}")
+        
+        return results
+    
+    def _tune_optuna_botorch(self, model_index, n_trials, search_space):
         """Optuna optimization with BoTorch sampler"""
         try:
             import optuna
