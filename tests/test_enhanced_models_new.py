@@ -2,10 +2,11 @@
 Enhanced tests for SURGE package including PyTorch and GPflow models
 """
 
-import pytest
 import numpy as np
 import pandas as pd
-from surge import SurrogateTrainer, MLTrainer, PYTORCH_AVAILABLE, GPFLOW_AVAILABLE
+import pytest
+
+from surge import GPFLOW_AVAILABLE, PYTORCH_AVAILABLE, MLTrainer, SurrogateTrainer
 
 
 def test_import():
@@ -33,10 +34,10 @@ def test_pytorch_mlp_model():
     np.random.seed(42)
     X = np.random.random((30, 3))
     y = np.sum(X, axis=1) + 0.1 * np.random.randn(30)
-    
+
     df = pd.DataFrame(X, columns=['x1', 'x2', 'x3'])
     df['y'] = y
-    
+
     trainer = MLTrainer(n_features=3, n_outputs=1)
     trainer.load_df_dataset(df, ['x1', 'x2', 'x3'], ['y'])
     trainer.train_test_split(test_split=0.3)
@@ -44,7 +45,7 @@ def test_pytorch_mlp_model():
     trainer.init_model(2)  # PyTorch MLP
     trainer.train(0)
     trainer.predict_output(0)
-    
+
     assert trainer.R2 > 0.5
 
 
@@ -76,10 +77,10 @@ def test_basic_workflow():
     np.random.seed(42)
     X = np.random.random((50, 3))
     y = np.sum(X, axis=1) + 0.1 * np.random.randn(50)
-    
+
     df = pd.DataFrame(X, columns=['x1', 'x2', 'x3'])
     df['y'] = y
-    
+
     # Test Random Forest
     trainer = MLTrainer(n_features=3, n_outputs=1)
     trainer.load_df_dataset(df, ['x1', 'x2', 'x3'], ['y'])
@@ -88,7 +89,7 @@ def test_basic_workflow():
     trainer.init_model(0)  # Random Forest
     trainer.train(0)
     trainer.predict_output(0)
-    
+
     assert trainer.R2 > 0.5
     assert trainer.MSE < 1.0
 
@@ -98,10 +99,10 @@ def test_all_sklearn_model_types():
     np.random.seed(42)
     X = np.random.random((30, 2))
     y = np.sum(X, axis=1)
-    
+
     df = pd.DataFrame(X, columns=['x1', 'x2'])
     df['y'] = y
-    
+
     # Test Random Forest
     trainer = MLTrainer(n_features=2, n_outputs=1)
     trainer.load_df_dataset(df, ['x1', 'x2'], ['y'])
@@ -111,7 +112,7 @@ def test_all_sklearn_model_types():
     trainer.train(0)
     trainer.predict_output(0)
     assert trainer.R2 > 0.8
-    
+
     # Test MLP
     trainer2 = MLTrainer(n_features=2, n_outputs=1)
     trainer2.load_df_dataset(df, ['x1', 'x2'], ['y'])
@@ -128,10 +129,10 @@ def test_predict_functionality():
     np.random.seed(42)
     X = np.random.random((30, 3))
     y = np.sum(X, axis=1) + 0.1 * np.random.randn(30)
-    
+
     df = pd.DataFrame(X, columns=['x1', 'x2', 'x3'])
     df['y'] = y
-    
+
     trainer = MLTrainer(n_features=3, n_outputs=1)
     trainer.load_df_dataset(df, ['x1', 'x2', 'x3'], ['y'])
     trainer.train_test_split(test_split=0.3)
@@ -139,7 +140,7 @@ def test_predict_functionality():
     trainer.init_model(0)  # Random Forest
     trainer.train(0)
     trainer.predict_output(0)
-    
+
     # Test that predictions were stored
     assert hasattr(trainer, 'y_pred_test')
     assert hasattr(trainer, 'y_pred_train_val')
@@ -160,10 +161,10 @@ def test_model_info():
     np.random.seed(42)
     X = np.random.random((30, 3))
     y = np.sum(X, axis=1) + 0.1 * np.random.randn(30)
-    
+
     df = pd.DataFrame(X, columns=['x1', 'x2', 'x3'])
     df['y'] = y
-    
+
     trainer = MLTrainer(n_features=3, n_outputs=1)
     trainer.load_df_dataset(df, ['x1', 'x2', 'x3'], ['y'])
     trainer.train_test_split(test_split=0.3)
@@ -171,7 +172,7 @@ def test_model_info():
     trainer.init_model(0)  # Random Forest
     trainer.train(0)
     trainer.predict_output(0)
-    
+
     # Test model summary
     trainer.get_model_summary(0)  # Should not raise an error
     trainer.get_model_summary()   # Test all models summary
