@@ -16,10 +16,14 @@ This dataset contains High Harmonic Fast Wave (HHFW) heating simulation results 
 All files are pandas DataFrames saved in pickle format (.pkl) containing:
 
 - **Input Features**: HHFW simulation parameters
-  - Plasma parameters (density, temperature profiles)
-  - Magnetic field configuration
-  - Antenna parameters (frequency, power, phasing)
-  - Geometry settings
+  - **n_phi**: Toroidal mode number spectrum
+  - **Te0**: Core electron temperature [keV] 
+  - **Te1**: Edge electron temperature [keV]
+  - **ne0**: Core electron density [m⁻³]
+  - **ne1**: Edge electron density [m⁻³]
+  - **alpha_T**: Temperature profile exponent (for flux coordinate dependence)
+  - **alpha_n**: Density profile exponent (for flux coordinate dependence)
+  - Additional plasma geometry and antenna parameters
   
 - **Output Targets**: Spatial power deposition profiles
   - **PwE_**: Electron heating power density [W/m³] across spatial grid points
@@ -46,16 +50,16 @@ The data was generated using TORIC, a full-wave electromagnetic code that solves
 
 ## Dataset Structure
 
-### Input Variables (Example subset)
+### Input Variables (Key parameters)
 
-- `freq`: RF frequency [Hz]
-- `power`: Total antenna power [W]
-- `n_phi`: Toroidal mode number spectrum
-- `Te0`: Central electron temperature [keV]
-- `ne0`: Central electron density [m⁻³]
-- `Bt0`: Toroidal magnetic field [T]
-- Plasma geometry parameters
-- Antenna configuration parameters
+- **`n_phi`**: Toroidal mode number spectrum for HHFW launch
+- **`Te0`**: Core electron temperature [keV]
+- **`Te1`**: Edge electron temperature [keV] 
+- **`ne0`**: Core electron density [m⁻³]
+- **`ne1`**: Edge electron density [m⁻³]
+- **`alpha_T`**: Temperature profile exponent (assumes T ∝ (1-ψ)^α_T where ψ is normalized flux)
+- **`alpha_n`**: Density profile exponent (assumes n ∝ (1-ψ)^α_n where ψ is normalized flux)
+- Additional geometric and antenna configuration parameters
 
 ### Output Variables
 

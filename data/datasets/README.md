@@ -33,10 +33,11 @@ input_vars, output_vars = trainer.load_dataset_pickle('data/datasets/HHFW-NSTX/P
 
 The datasets contain:
 - **Input Features**: HHFW heating simulation parameters
-  - RF frequency and power settings
-  - Plasma parameters (density, temperature profiles)
-  - Magnetic field configuration
-  - Antenna configurations
+  - **n_phi**: Toroidal mode number spectrum
+  - **Te0, Te1**: Core and edge electron temperatures [keV]
+  - **ne0, ne1**: Core and edge electron densities [m⁻³]  
+  - **alpha_T, alpha_n**: Profile exponents for flux coordinate dependence
+  - Plasma geometry and antenna configuration parameters
   
 - **Output Targets**: Power deposition profiles
   - `PwE_*`: Electron heating power deposition [W/m³] (spatial distribution)
