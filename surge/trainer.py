@@ -1,30 +1,23 @@
-from .models import (
-    MLPModel, GPRModel, RFRModel, 
-    PyTorchMLPModelWrapper, GPflowGPRModelWrapper, GPflowMultiKernelGPRWrapper
-)
-from .preprocessing import train_test_split_data, make_cv_splits, StandardScaler
-from .metrics import evaluate, summarize, r2_score, mean_squared_error, mean_absolute_error
-from .utils import get_device, save_model, save_json
-
 import os
-import sys
 import time
-import pickle
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
-from sklearn.model_selection import train_test_split, KFold, cross_val_score
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import KFold, cross_val_score, train_test_split
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler as SKStandardScaler
-from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
+
+from .metrics import mean_squared_error, r2_score
 
 # Optional imports for advanced functionality
 try:
     import torch
     import torch.nn as nn
     import torch.optim as optim
-    from torch.utils.data import Dataset, DataLoader, TensorDataset, random_split
+    from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
@@ -57,7 +50,7 @@ class SurrogateTrainer:
     integrating data loading, preprocessing, model training, and evaluation
     with automated analysis and visualization capabilities.
     """
-    
+
     def __init__(self, dir_path=None):
         """
         Initialize the SurrogateTrainer.
@@ -73,7 +66,7 @@ class SurrogateTrainer:
         self.input_variables = None
         self.output_variables = None
         self.trainer = None
-        
+
     def load_dataset_pickle(self, pickle_path):
         """
         Load dataset from pickle file and perform comprehensive analysis.
@@ -88,36 +81,40 @@ class SurrogateTrainer:
         tuple : (input_variables, output_variables)
             Lists of identified input and output variable names
         """
-        from .preprocessing import analyze_dataset_structure, print_dataset_analysis, get_dataset_statistics
         import pandas as pd
-        from pathlib import Path
-        
+
+        from .preprocessing import (
+            analyze_dataset_structure,
+            get_dataset_statistics,
+            print_dataset_analysis,
+        )
+
         print("📥 Loading dataset from pickle file...")
-        
+
         # Load data
         pickle_path = Path(pickle_path)
         if not pickle_path.exists():
             raise FileNotFoundError(f"Pickle file not found: {pickle_path}")
-            
+
         self.df = pd.read_pickle(pickle_path)
         print(f"✅ Dataset loaded: {self.df.shape[0]} samples, {self.df.shape[1]} features")
-        
+
         # Perform comprehensive dataset analysis
         print("\n🔍 Performing dataset structure analysis...")
         dataset_info = analyze_dataset_structure(self.df)
-        
+
         print("\n📊 Dataset Analysis Results:")
         print_dataset_analysis(dataset_info)
-        
+
         print("\n📈 Dataset Statistics:")
         stats = get_dataset_statistics(self.df)
-        
+
         # Identify input and output variables
         print("\n🎯 Identifying input and output variables...")
-        
+
         # Find output variables (PwE_ prefix)
         output_variables = [col for col in self.df.columns if col.startswith('PwE_')]
-        
+
         # Find input variables (everything else that's numeric and not an output)
         input_variables = []
         for col in self.df.columns:
@@ -126,20 +123,20 @@ class SurrogateTrainer:
                 if pd.api.types.is_numeric_dtype(self.df[col]):
                     if self.df[col].nunique() > 1:  # Has variation
                         input_variables.append(col)
-        
+
         # Store variables
         self.input_variables = input_variables
         self.output_variables = output_variables
-        
+
         print(f"📥 Input variables ({len(input_variables)}): {input_variables}")
         print(f"📤 Output variables ({len(output_variables)}): {len(output_variables)} targets")
         print(f"   First 5 outputs: {output_variables[:5]}")
-        
+
         # Initialize MLTrainer with the identified variables
         self.trainer = MLTrainer(len(input_variables), len(output_variables))
-        
+
         return input_variables, output_variables
-    
+
     def get_trainer(self):
         """
         Get the underlying MLTrainer instance for advanced operations.
@@ -161,7 +158,7 @@ class MLTrainer:
     including Random Forest, Neural Networks, and Gaussian Processes with
     automated hyperparameter optimization and cross-validation.
     """
-    
+
     def __init__(self, n_features=None, n_outputs=None, dir_path=None):
         """
         Initialize the MLTrainer.
@@ -181,18 +178,18 @@ class MLTrainer:
         self.models = []
         self.model_types = []
         self.dir_path = dir_path or ''
-        
+
         # Model performance tracking
         self.model_performance = []
-        
+
         # Model type mapping
         self.MODEL_TYPES = {
             0: 'RandomForestRegressor',
-            1: 'MLPRegressor', 
+            1: 'MLPRegressor',
             2: 'PyTorchMLP',
             3: 'GPRModel'
         }
-        
+
         if n_features is not None and n_outputs is not None:
             print(f"📊 Configured for {n_features} features → {n_outputs} outputs")
         else:
@@ -237,26 +234,26 @@ class MLTrainer:
             List of output target column names
         """
         print("📥 Loading dataset...")
-        
+
         self.df = df
         self.input_feature_names = input_feature_names
         self.output_feature_names = output_feature_names
-        
+
         # Determine main output prefix
         common_prefix = os.path.commonprefix(output_feature_names)
         print(f"📋 Common output prefix: {common_prefix}")
         self.main_output = common_prefix
-        
+
         # Extract features and targets
         self.X = self.df[self.input_feature_names]
         self.y = self.df[self.output_feature_names]
-        
+
         # Set F and T if not provided in constructor
         if self.F is None:
             self.F = len(input_feature_names)
         if self.T is None:
             self.T = len(output_feature_names)
-        
+
         print(f"✅ Dataset loaded: {self.X.shape[0]} samples")
         print(f"   📥 Input features: {len(input_feature_names)} (F={self.F})")
         print(f"   📤 Output targets: {len(output_feature_names)} (T={self.T})")
@@ -271,12 +268,12 @@ class MLTrainer:
             Fraction of data to use for testing (default: 0.2)
         """
         print(f"\n🔄 Splitting into test and training data (test_split={test_split})")
-        
+
         # Split into train+val and test
         self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split(
             self.X, self.y, test_size=test_split, random_state=42, shuffle=True
         )
-        
+
         print(f"X train + val shape: {self.X_train_val.shape}")
         print(f"y train + val shape: {self.y_train_val.shape}")
         print(f"X test shape: {self.X_test.shape}")
@@ -285,23 +282,23 @@ class MLTrainer:
     def standardize_data(self):
         """Standardize the dataset using training set statistics."""
         print("\n🔧 Standardizing data")
-        
+
         # Standardize inputs
         self.x_scaler = SKStandardScaler()
         self.x_train_val_sc = self.x_scaler.fit_transform(self.X_train_val)
         self.x_test_sc = self.x_scaler.transform(self.X_test)
-        
+
         # Standardize outputs
         self.y_scaler = SKStandardScaler()
         self.y_train_val_sc = self.y_scaler.fit_transform(self.y_train_val)
         self.y_test_sc = self.y_scaler.transform(self.y_test)
-        
+
         print("✅ x_train_sc, x_test_sc, y_train_sc, y_test_sc generated")
         print("\n--- Statistics for x_scaler [all features] ---")
         print("means: ", self.x_scaler.mean_)
         if self.x_scaler.var_ is not None:
             print("standard deviation: ", np.sqrt(self.x_scaler.var_))
-        
+
         # Show statistics for most varying output
         if self.y_scaler.mean_ is not None and self.y_scaler.var_ is not None:
             idx_max_ytrain_mean = np.argmax(self.y_scaler.mean_)
@@ -323,7 +320,7 @@ class MLTrainer:
             3: GPR Model
         """
         print(f"\n🎯 Initializing Model {model_type}: {self.MODEL_TYPES.get(model_type, 'Unknown')}")
-        
+
         if model_type == 0:
             self._init_random_forest()
         elif model_type == 1:
@@ -348,7 +345,7 @@ class MLTrainer:
         )
         self.models.append(model)
         self.model_types.append(0)
-        
+
         # Initialize performance tracking for this model
         performance = {
             'model_type': 'RandomForestRegressor',
@@ -372,7 +369,7 @@ class MLTrainer:
         )
         self.models.append(model)
         self.model_types.append(1)
-        
+
         # Initialize performance tracking for this model
         performance = {
             'model_type': 'MLPRegressor',
@@ -391,7 +388,7 @@ class MLTrainer:
         """Initialize PyTorch MLP"""
         if not TORCH_AVAILABLE:
             raise ImportError("PyTorch not available. Please install torch.")
-        
+
         model = self.MLP(
             input_size=self.F,
             hidden_layers=[128, 64, 32],
@@ -400,7 +397,7 @@ class MLTrainer:
         )
         self.models.append(model)
         self.model_types.append(2)
-        
+
         # Initialize performance tracking for this model
         performance = {
             'model_type': 'PyTorchMLP',
@@ -419,12 +416,12 @@ class MLTrainer:
         """Initialize Gaussian Process Regressor"""
         if not GPFLOW_AVAILABLE:
             raise ImportError("GPflow not available. Please install gpflow.")
-        
+
         print("🔄 GPR initialization - to be implemented")
         # GPR implementation would go here
         self.models.append(None)  # Placeholder
         self.model_types.append(3)
-        
+
         # Initialize performance tracking for this model
         performance = {
             'model_type': 'GPR',
@@ -449,48 +446,48 @@ class MLTrainer:
         """
         if model_index >= len(self.models):
             raise ValueError(f"Model index {model_index} not available")
-        
+
         print(f'\n🎯 Training Model {model_index}: {self.MODEL_TYPES[self.model_types[model_index]]}')
-        
+
         start_time = time.time()
-        
+
         if self.model_types[model_index] in [0, 1]:  # sklearn models
             self.models[model_index].fit(self.x_train_val_sc, self.y_train_val_sc)
         elif self.model_types[model_index] == 2:  # PyTorch MLP
             self._train_pytorch_mlp(model_index)
         elif self.model_types[model_index] == 3:  # GPR
             self._train_gpr(model_index)
-        
+
         training_time = time.time() - start_time
-        
+
         # Store training time in model performance
         self.model_performance[model_index]['training_time'] = training_time
-        
+
         print(f"⏱️ Elapsed time: {training_time:.2f} seconds")
 
     def _train_pytorch_mlp(self, model_index):
         """Train PyTorch MLP with proper training loop"""
         if not TORCH_AVAILABLE:
             raise ImportError("PyTorch not available")
-        
+
         model = self.models[model_index]
-        
+
         # Convert to tensors
         X_train_tensor = torch.tensor(self.x_train_val_sc, dtype=torch.float32)
         y_train_tensor = torch.tensor(self.y_train_val_sc, dtype=torch.float32)
-        
+
         # Setup training
         criterion = nn.MSELoss()
         optimizer = optim.Adam(model.parameters(), lr=0.001)
-        
+
         # Training loop
         model.train()
         n_epochs = 100
         batch_size = 32
-        
+
         dataset = TensorDataset(X_train_tensor, y_train_tensor)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-        
+
         for epoch in range(n_epochs):
             total_loss = 0
             for batch_X, batch_y in dataloader:
@@ -500,7 +497,7 @@ class MLTrainer:
                 loss.backward()
                 optimizer.step()
                 total_loss += loss.item()
-            
+
             if (epoch + 1) % 20 == 0:
                 print(f"  Epoch {epoch+1}/{n_epochs}, Loss: {total_loss/len(dataloader):.6f}")
 
@@ -518,51 +515,51 @@ class MLTrainer:
             Index of the model to use for prediction
         """
         print(f'\n🎯 Predicting outputs - Model {model_index}')
-        
+
         model = self.models[model_index]
-        
+
         # Training set predictions
         print('\n--- Training Set Results ---')
         start_time = time.time()
         y_pred_train_val_sc = model.predict(self.x_train_val_sc)
-        
+
         # Ensure 2D shape for sklearn inverse_transform (required for scalers)
         if y_pred_train_val_sc.ndim == 1:
             y_pred_train_val_sc = y_pred_train_val_sc.reshape(-1, 1)
-        
+
         self.y_pred_train_val = self.y_scaler.inverse_transform(y_pred_train_val_sc)
         t_pred_train_val = time.time() - start_time
         avg_inference_time_train = t_pred_train_val / self.x_train_val_sc.shape[0]
         print(f' t_I(avg) = {avg_inference_time_train:.6f} seconds per sample')
-        
+
         # Calculate training metrics
         self.MSE_train_val = mean_squared_error(self.y_train_val, self.y_pred_train_val)
         self.R2_train_val = r2_score(self.y_train_val, self.y_pred_train_val)
-        
+
         print(f' MSE_train_val = {self.MSE_train_val:.6f}')
         print(f' R2_train_val = {self.R2_train_val:.4f}')
-        
+
         # Test set predictions
         print('\n--- Testing Set Results ---')
         start_time = time.time()
         y_pred_test_sc = model.predict(self.x_test_sc)
-        
+
         # Ensure 2D shape for sklearn inverse_transform (required for scalers)
         if y_pred_test_sc.ndim == 1:
             y_pred_test_sc = y_pred_test_sc.reshape(-1, 1)
-            
+
         self.y_pred_test = self.y_scaler.inverse_transform(y_pred_test_sc)
         t_pred_test = time.time() - start_time
         avg_inference_time_test = t_pred_test / self.x_test_sc.shape[0]
         print(f' t_I(avg) = {avg_inference_time_test:.6f} seconds per sample')
-        
+
         # Calculate test metrics
         self.MSE = mean_squared_error(self.y_test, self.y_pred_test)
         self.R2 = r2_score(self.y_test, self.y_pred_test)
-        
+
         print(f' MSE = {self.MSE:.6f}')
         print(f' R2 = {self.R2:.4f}')
-        
+
         # Store all performance metrics
         self.model_performance[model_index].update({
             'R2_train_val': self.R2_train_val,
@@ -589,24 +586,24 @@ class MLTrainer:
         if not SKOPT_AVAILABLE:
             print("⚠️ scikit-optimize not available. Please install scikit-optimize.")
             return
-        
+
         model_type = self.model_types[model_idx]
-        
+
         if model_type == 0:  # Random Forest
             print('🔍 Optimizing Random Forest Regressor Model')
             print('- Method: Bayesian Search Cross Validated')
-            
+
             model = self.models[model_idx]
-            
+
             if search_spaces is None:
                 search_spaces = {
                     'n_estimators': (50, 500),
-                    'max_depth': (5, 50), 
+                    'max_depth': (5, 50),
                     'min_samples_split': (2, 20),
                     'min_samples_leaf': (1, 10),
                     'max_features': [1.0, 'log2', 'sqrt'],
                 }
-            
+
             opt = BayesSearchCV(
                 estimator=model,
                 search_spaces=search_spaces,
@@ -617,16 +614,16 @@ class MLTrainer:
                 random_state=42,
                 verbose=2
             )
-            
+
             print(f'🚀 Running optimization for n_iter = {n_iter}')
             opt.fit(self.x_train_val_sc, self.y_train_val_sc)
-            
+
             print("🎯 Best hyperparameters:", opt.best_params_)  # type: ignore
             self.models[model_idx] = opt.best_estimator_  # type: ignore
-            
+
             # Generate predictions with optimized model
             self.predict_output(model_idx)
-            
+
         else:
             print(f'⚠️ Optimization not implemented for model type {model_type}')
 
@@ -646,82 +643,82 @@ class MLTrainer:
         dict : Cross-validation results with metrics on original scale
         """
         import time
-        from sklearn.model_selection import KFold
-        from sklearn.metrics import mean_squared_error, r2_score
+
         from sklearn.base import clone
-        
+        from sklearn.metrics import mean_squared_error, r2_score
+
         print(f'\n🔄 Performing {cv_folds}-fold cross-validation')
-        print(f'   Computing MSE and R² on original (unstandardized) scale...')
-        
+        print('   Computing MSE and R² on original (unstandardized) scale...')
+
         base_model = self.models[model_idx]
-        
+
         # Initialize KFold
         kf = KFold(n_splits=cv_folds, shuffle=True, random_state=42)
-        
+
         # Storage for results
         fold_mse = []
         fold_r2 = []
         fold_train_time = []
         fold_inference_time = []
-        
+
         # Perform cross-validation
         for fold_idx, (train_idx, val_idx) in enumerate(kf.split(self.x_train_val_sc)):
             print(f'   Fold {fold_idx + 1}/{cv_folds}...', end=' ')
-            
+
             # Split data for this fold
             X_fold_train = self.x_train_val_sc[train_idx]
             y_fold_train = self.y_train_val_sc[train_idx]
             X_fold_val = self.x_train_val_sc[val_idx]
             y_fold_val = self.y_train_val_sc[val_idx]
-            
+
             # Clone model for this fold
             fold_model = clone(base_model)
-            
+
             # Train model and measure training time
             start_time = time.time()
             fold_model.fit(X_fold_train, y_fold_train)
             train_time = time.time() - start_time
-            
+
             # Make predictions and measure inference time
             start_time = time.time()
             y_pred_sc = fold_model.predict(X_fold_val)
             inference_time = (time.time() - start_time) / len(val_idx)  # Per sample
-            
+
             # Ensure 2D shapes for sklearn inverse_transform
             if y_pred_sc.ndim == 1:
                 y_pred_sc = y_pred_sc.reshape(-1, 1)
             if y_fold_val.ndim == 1:
                 y_fold_val = y_fold_val.reshape(-1, 1)
-            
+
             # Rescale predictions and targets back to original scale
             y_pred_orig = self.y_scaler.inverse_transform(y_pred_sc)
             y_true_orig = self.y_scaler.inverse_transform(y_fold_val)
-            
+
             # Compute metrics on original scale
             mse = mean_squared_error(y_true_orig, y_pred_orig)
             r2 = r2_score(y_true_orig, y_pred_orig)
-            
+
             # Store results
             fold_mse.append(mse)
             fold_r2.append(r2)
             fold_train_time.append(train_time)
             fold_inference_time.append(inference_time)
-            
+
             print(f'MSE={mse:.6f}, R²={r2:.4f}')
-        
+
         # Convert to numpy arrays
         fold_mse = np.array(fold_mse)
         fold_r2 = np.array(fold_r2)
         fold_train_time = np.array(fold_train_time)
         fold_inference_time = np.array(fold_inference_time)
-        
+
         # Print summary statistics
-        print(f'\n📊 Cross-validation results (original scale):')
+        print('\n📊 Cross-validation results (original scale):')
         print(f'   MSE:  {fold_mse.mean():.6f} ± {fold_mse.std():.6f}')
         print(f'   R²:   {fold_r2.mean():.4f} ± {fold_r2.std():.4f}')
         print(f'   Training time:   {fold_train_time.mean():.3f} ± {fold_train_time.std():.3f} sec/fold')
         print(f'   Inference time:  {fold_inference_time.mean()*1000:.2f} ± {fold_inference_time.std()*1000:.2f} ms/sample')
-        
+
         # Create results dictionary
         results = {
             'mse_folds': fold_mse,
@@ -737,7 +734,7 @@ class MLTrainer:
             'inference_time_mean': fold_inference_time.mean(),
             'inference_time_std': fold_inference_time.std()
         }
-        
+
         return results
 
     def save_prediction(self, output_fmt='pickle', output_dir=None, model_idx=0):
@@ -755,26 +752,26 @@ class MLTrainer:
         """
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir)
-        
+
         model_type_str = {
             0: 'RFR', 1: 'MLP', 2: 'PyTorchMLP', 3: 'GPR'
         }.get(self.model_types[model_idx], 'Model')
-        
+
         if output_fmt == 'pickle':
             # Create prediction dataframe
             columns_out = [f'{model_type_str}_{col}' for col in self.output_feature_names]
-            
+
             # Initialize prediction array
             y_pred_full = np.zeros(self.y.shape)
-            
+
             # Create dataframe with predictions
             df_y_pred = pd.DataFrame(data=y_pred_full, columns=columns_out, dtype='float64')
             df_complete = pd.concat([self.df, df_y_pred], axis=1)
-            
+
             # Fill in predictions
             df_complete.loc[self.X_train_val.index, columns_out] = self.y_pred_train_val
             df_complete.loc[self.X_test.index, columns_out] = self.y_pred_test
-            
+
             # Determine output path
             if self.dir_path:
                 if output_dir:
@@ -786,13 +783,13 @@ class MLTrainer:
                     path_out_folder = output_dir
                 else:
                     path_out_folder = os.path.join(os.getenv('HOME', '.'), 'Downloads', 'Model_prediction')
-        
+
         if not os.path.exists(path_out_folder):
             os.makedirs(path_out_folder)
-        
+
         path_out_file = os.path.join(path_out_folder, f'{self.main_output}{model_type_str}.pkl')
         print(f"💾 Saving prediction to: {path_out_file}")
-        
+
         df_complete.to_pickle(path_out_file)
         print('✅ Prediction saved')
 
@@ -812,12 +809,12 @@ class MLTrainer:
         if not OPTUNA_AVAILABLE:
             print("⚠️ Optuna not available. Please install optuna.")
             return
-        
+
         model_type = self.model_types[model_idx]
-        
+
         if model_type == 0:  # Random Forest
             print(f'🔍 Optimizing Random Forest with Optuna ({n_trials} trials)')
-            
+
             def objective_rf(trial):
                 # Suggest hyperparameters
                 n_estimators = trial.suggest_int('n_estimators', 50, 500)
@@ -825,7 +822,7 @@ class MLTrainer:
                 min_samples_split = trial.suggest_int('min_samples_split', 2, 20)
                 min_samples_leaf = trial.suggest_int('min_samples_leaf', 1, 10)
                 max_features = trial.suggest_categorical('max_features', [1.0, 'sqrt', 'log2'])
-                
+
                 # Create model with suggested parameters
                 model = RandomForestRegressor(
                     n_estimators=n_estimators,
@@ -836,33 +833,33 @@ class MLTrainer:
                     random_state=42,
                     n_jobs=-1
                 )
-                
+
                 # Cross-validation score
                 cv_scores = cross_val_score(
                     model, self.x_train_val_sc, self.y_train_val_sc,
                     cv=3, scoring='neg_mean_squared_error', n_jobs=-1
                 )
-                
+
                 return -cv_scores.mean()  # Return positive MSE
-            
+
             # Create study and optimize
             study = optuna.create_study(direction='minimize')
             study.optimize(objective_rf, n_trials=n_trials)
-            
+
             print("🎯 Best hyperparameters:", study.best_params)
             print(f"🎯 Best MSE: {study.best_value:.6f}")
-            
+
             # Update model with best parameters
             best_model = RandomForestRegressor(**study.best_params, random_state=42, n_jobs=-1)
             self.models[model_idx] = best_model
-            
+
             # Train with best parameters
             self.train(model_idx)
             self.predict_output(model_idx)
-            
+
         elif model_type == 2:  # PyTorch MLP
             print(f'🔍 Optimizing PyTorch MLP with Optuna ({n_trials} trials)')
-            
+
             def objective_mlp(trial):
                 # Suggest hyperparameters
                 num_layers = trial.suggest_int("num_layers", 1, 5)
@@ -871,7 +868,7 @@ class MLTrainer:
                 learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-1, log=True)
                 batch_size = trial.suggest_int("batch_size", 16, 128)
                 activation_fn = trial.suggest_categorical("activation_fn", ["ReLU", "Tanh", "LeakyReLU"])
-                
+
                 # Map activation function
                 activation_mapping = {
                     "ReLU": nn.ReLU,
@@ -879,7 +876,7 @@ class MLTrainer:
                     "LeakyReLU": nn.LeakyReLU
                 }
                 activation_class = activation_mapping[activation_fn]
-                
+
                 # Build model
                 hidden_layers = [hidden_size] * num_layers
                 model = self.MLP(
@@ -889,19 +886,19 @@ class MLTrainer:
                     dropout_rate=dropout_rate,
                     activation_fn=activation_class
                 )
-                
+
                 # Setup training
                 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
                 criterion = nn.MSELoss()
-                
+
                 # Convert data to tensors
                 X_tensor = torch.tensor(self.x_train_val_sc, dtype=torch.float32)
                 y_tensor = torch.tensor(self.y_train_val_sc, dtype=torch.float32)
-                
+
                 # Create data loader
                 dataset = TensorDataset(X_tensor, y_tensor)
                 train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-                
+
                 # Training loop (reduced epochs for speed)
                 model.train()
                 for epoch in range(50):  # Reduced for hyperparameter search
@@ -911,27 +908,27 @@ class MLTrainer:
                         loss = criterion(outputs, batch_y)
                         loss.backward()
                         optimizer.step()
-                
+
                 # Evaluation on validation data (use a portion of training data)
                 model.eval()
                 with torch.no_grad():
                     predictions = model(X_tensor)
                     mse = criterion(predictions, y_tensor).item()
-                
+
                 return mse
-            
+
             # Create study and optimize
             study = optuna.create_study(direction='minimize')
             study.optimize(objective_mlp, n_trials=n_trials)
-            
+
             print("🎯 Best hyperparameters:", study.best_params)
             print(f"🎯 Best MSE: {study.best_value:.6f}")
-            
+
             # Update model with best parameters
             activation_mapping = {"ReLU": nn.ReLU, "Tanh": nn.Tanh, "LeakyReLU": nn.LeakyReLU}
             activation_class = activation_mapping[study.best_params['activation_fn']]
             hidden_layers = [study.best_params['hidden_size']] * study.best_params['num_layers']
-            
+
             best_model = self.MLP(
                 input_size=self.F,
                 hidden_layers=hidden_layers,
@@ -939,14 +936,14 @@ class MLTrainer:
                 dropout_rate=study.best_params['dropout_rate'],
                 activation_fn=activation_class
             )
-            
+
             self.models[model_idx] = best_model
             self.best_mlp_params = study.best_params  # Store for final training
-            
+
             # Train with best parameters
             self._train_pytorch_mlp_with_params(model_idx, study.best_params)
             self.predict_output(model_idx)
-            
+
         else:
             print(f'⚠️ Optuna optimization not implemented for model type {model_type}')
 
@@ -954,30 +951,30 @@ class MLTrainer:
         """Train PyTorch MLP with specific hyperparameters"""
         if not TORCH_AVAILABLE:
             raise ImportError("PyTorch not available")
-        
+
         model = self.models[model_index]
-        
+
         # Convert to tensors
         X_train_tensor = torch.tensor(self.x_train_val_sc, dtype=torch.float32)
         y_train_tensor = torch.tensor(self.y_train_val_sc, dtype=torch.float32)
-        
+
         # Setup training with optimized parameters
         criterion = nn.MSELoss()
         optimizer = optim.Adam(model.parameters(), lr=params.get('learning_rate', 0.001))
-        
+
         # Training parameters
         n_epochs = 200  # More epochs for final training
         batch_size = params.get('batch_size', 32)
-        
+
         dataset = TensorDataset(X_train_tensor, y_train_tensor)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-        
+
         # Training loop with validation tracking
         model.train()
         best_loss = float('inf')
         patience = 20
         patience_counter = 0
-        
+
         for epoch in range(n_epochs):
             total_loss = 0
             for batch_X, batch_y in dataloader:
@@ -987,9 +984,9 @@ class MLTrainer:
                 loss.backward()
                 optimizer.step()
                 total_loss += loss.item()
-            
+
             avg_loss = total_loss / len(dataloader)
-            
+
             # Early stopping
             if avg_loss < best_loss:
                 best_loss = avg_loss
@@ -999,7 +996,7 @@ class MLTrainer:
                 if patience_counter >= patience:
                     print(f"  Early stopping at epoch {epoch+1}")
                     break
-            
+
             if (epoch + 1) % 50 == 0:
                 print(f"  Epoch {epoch+1}/{n_epochs}, Loss: {avg_loss:.6f}")
 
@@ -1016,7 +1013,7 @@ class MLTrainer:
             # Summary for specific model
             if model_index >= len(self.model_performance):
                 raise ValueError(f"Model index {model_index} not available")
-            
+
             perf = self.model_performance[model_index]
             print(f"\n🏆 MODEL {model_index} PERFORMANCE SUMMARY")
             print("=" * 60)
@@ -1031,20 +1028,20 @@ class MLTrainer:
             print("=" * 60)
         else:
             # Summary for all models
-            print(f"\n🏆 ALL MODELS PERFORMANCE SUMMARY")
+            print("\n🏆 ALL MODELS PERFORMANCE SUMMARY")
             print("=" * 80)
-            
+
             if not self.model_performance:
                 print("No models trained yet.")
                 return
-                
+
             for i, perf in enumerate(self.model_performance):
                 print(f"Model {i} ({perf['model_type']}):")
                 print(f"  Training R²: {perf['R2_train_val']:.4f} | Test R²: {perf['R2']:.4f}")
                 print(f"  Training MSE: {perf['MSE_train_val']:.6f} | Test MSE: {perf['MSE']:.6f}")
                 print(f"  Training Time: {perf['training_time']:.2f}s | Inference: {perf['average_inference_time_test']:.6f}s/sample")
                 print("-" * 60)
-            
+
             print("=" * 80)
 
     def export_model_onnx(self, model_idx=0, output_path='model.onnx'):
@@ -1061,21 +1058,21 @@ class MLTrainer:
         if not TORCH_AVAILABLE:
             print("⚠️ PyTorch not available for ONNX export")
             return
-        
+
         model_type = self.model_types[model_idx]
-        
+
         if model_type == 2:  # PyTorch MLP
             try:
                 import torch.onnx
-                
+
                 model = self.models[model_idx]
                 model.eval()
-                
+
                 # Create dummy input with correct shape
                 if self.F is None:
                     raise ValueError("Number of features (F) not set. Call load_data() first.")
                 dummy_input = torch.randn(1, self.F, dtype=torch.float32)
-                
+
                 # Export to ONNX
                 torch.onnx.export(
                     model,
@@ -1091,15 +1088,15 @@ class MLTrainer:
                         'output': {0: 'batch_size'}
                     }
                 )
-                
+
                 print(f"✅ Model exported to ONNX: {output_path}")
-                
+
             except ImportError:
                 print("⚠️ ONNX export requires torch.onnx")
             except Exception as e:
                 print(f"❌ ONNX export failed: {e}")
         else:
-            print(f"⚠️ ONNX export only available for PyTorch models (type 2)")
+            print("⚠️ ONNX export only available for PyTorch models (type 2)")
 
     def run_comprehensive_cv(self, model_idx=0, cv_folds=5, n_repeats=3):
         """
@@ -1115,28 +1112,28 @@ class MLTrainer:
             Number of repeated CV runs
         """
         from sklearn.model_selection import RepeatedKFold
-        
+
         print(f'\n🔄 Comprehensive CV: {n_repeats} × {cv_folds}-fold cross-validation')
-        
+
         model = self.models[model_idx]
-        
+
         # Setup repeated k-fold
         rkf = RepeatedKFold(n_splits=cv_folds, n_repeats=n_repeats, random_state=42)
-        
+
         # Perform cross-validation
         cv_scores = cross_val_score(
             model, self.x_train_val_sc, self.y_train_val_sc,
             cv=rkf, scoring='neg_mean_squared_error', n_jobs=-1
         )
-        
+
         # Convert to positive MSE
         cv_mse = -cv_scores
-        
+
         print(f'📊 Comprehensive CV results ({len(cv_scores)} total folds):')
         print(f'   Mean MSE: {cv_mse.mean():.6f} ± {cv_mse.std():.6f}')
         print(f'   Min MSE: {cv_mse.min():.6f}')
         print(f'   Max MSE: {cv_mse.max():.6f}')
-        
+
         return {
             'cv_scores': cv_mse,
             'mean_mse': cv_mse.mean(),
@@ -1144,7 +1141,7 @@ class MLTrainer:
             'min_mse': cv_mse.min(),
             'max_mse': cv_mse.max()
         }
-    
+
     def tune(self, model_index=0, method='bayesian', n_trials=20, search_space=None):
         """
         Memory-efficient hyperparameter tuning with various optimization methods.
@@ -1163,20 +1160,19 @@ class MLTrainer:
         Returns:
         --------
         dict : Tuning results with best parameters and history
-        """ 
-        import matplotlib.pyplot as plt
-        
+        """
+
         if model_index >= len(self.models):
             raise ValueError(f"Model index {model_index} not available")
-            
+
         model_type = self.model_types[model_index]
         if model_type != 0:  # Only Random Forest for now
             raise ValueError("Hyperparameter tuning currently only supports Random Forest models")
-            
+
         print(f"🔍 Hyperparameter Tuning: {method.upper()}")
         print(f"Model: RandomForestRegressor | Trials: {n_trials}")
         print("=" * 60)
-        
+
         # Default search space for Random Forest
         if search_space is None:
             if method == 'random_mem_eff':
@@ -1195,7 +1191,7 @@ class MLTrainer:
                     'min_samples_leaf': (1, 10),
                     'max_features': ['sqrt', 'log2', 1.0]
                 }
-        
+
         # Execute the appropriate tuning method
         if method == 'random_mem_eff':
             return self._tune_random_memory_efficient(model_index, n_trials, search_space)
@@ -1207,14 +1203,15 @@ class MLTrainer:
             return self._tune_optuna_tpe(model_index, n_trials, search_space)
         else:
             raise ValueError(f"Unknown tuning method: {method}")
-    
+
     def _tune_random_memory_efficient(self, model_index, n_trials, search_space):
         """Random search with memory cleanup"""
+        import gc
+
         import numpy as np
         from sklearn.ensemble import RandomForestRegressor
         from sklearn.metrics import r2_score
-        import gc
-        
+
         # Initialize tracking
         results = {
             'method': 'random_mem_eff',
@@ -1224,7 +1221,7 @@ class MLTrainer:
             'best_params': None,
             'hyperparams_history': []
         }
-        
+
         np.random.seed(42)
         for i in range(n_trials):
             # Sample random hyperparameters with proper types
@@ -1237,41 +1234,42 @@ class MLTrainer:
                 'random_state': 42,
                 'n_jobs': -1
             }
-            
+
             # Train and evaluate
             model = RandomForestRegressor(**params)
             model.fit(self.x_train_val_sc, self.y_train_val_sc)
             y_pred_sc = model.predict(self.x_test_sc)
             y_pred = self.y_scaler.inverse_transform(y_pred_sc)
             r2 = r2_score(self.y_test, y_pred)
-            
+
             # Track results
             results['iterations'].append(i + 1)
             results['r2_scores'].append(r2)
             results['hyperparams_history'].append(params.copy())
-            
+
             if r2 > results['best_r2']:
                 results['best_r2'] = r2
                 results['best_params'] = params.copy()
-            
+
             print(f"Trial {i+1:2d}: R² = {r2:.4f} | Best: {results['best_r2']:.4f}")
-            
+
             # Memory cleanup
             del model
             gc.collect()
-            
+
         return results
-    
+
     def _tune_bayesian_skopt(self, model_index, n_trials, search_space):
         """Bayesian optimization using scikit-optimize"""
         try:
-            from skopt import BayesSearchCV
+            import gc
+
             from sklearn.ensemble import RandomForestRegressor
             from sklearn.metrics import r2_score
-            import gc
+            from skopt import BayesSearchCV
         except ImportError:
             raise ImportError("scikit-optimize not available. Install with: pip install scikit-optimize")
-        
+
         # Convert search space for skopt
         skopt_space = {}
         for key, value in search_space.items():
@@ -1281,10 +1279,10 @@ class MLTrainer:
                 skopt_space[key] = value  # Continuous/Integer ranges
             else:
                 skopt_space[key] = value  # Categorical
-        
+
         # Initialize base model
         base_model = RandomForestRegressor(random_state=42, n_jobs=-1)
-        
+
         # Bayesian search
         opt = BayesSearchCV(
             estimator=base_model,
@@ -1295,15 +1293,15 @@ class MLTrainer:
             n_jobs=1,  # Limit parallelism to save memory
             random_state=42
         )
-        
+
         print("🚀 Running Bayesian optimization with scikit-optimize...")
         opt.fit(self.x_train_val_sc, self.y_train_val_sc)
-        
+
         # Evaluate best model on test set
         y_pred_sc = opt.predict(self.x_test_sc)
         y_pred = self.y_scaler.inverse_transform(y_pred_sc)
         test_r2 = r2_score(self.y_test, y_pred)
-        
+
         results = {
             'method': 'bayesian_skopt',
             'best_r2': test_r2,
@@ -1311,23 +1309,24 @@ class MLTrainer:
             'cv_best_score': opt.best_score_ if hasattr(opt, 'best_score_') else None,
             'optimization_results': opt.cv_results_ if hasattr(opt, 'cv_results_') else None
         }
-        
+
         cv_score = opt.best_score_ if hasattr(opt, 'best_score_') else "N/A"
         print(f"✅ Best CV Score: {cv_score}, Test R²: {test_r2:.4f}")
-        
+
         return results
-    
+
     def _tune_optuna_botorch(self, model_index, n_trials, search_space):
         """Optuna optimization with BoTorch sampler"""
         try:
+            import gc
+
             import optuna
             from optuna.integration import BoTorchSampler
             from sklearn.ensemble import RandomForestRegressor
             from sklearn.metrics import r2_score
-            import gc
         except ImportError:
             raise ImportError("Optuna/BoTorch not available. Install with: pip install optuna botorch")
-        
+
         # Track results
         results = {
             'method': 'optuna_botorch',
@@ -1336,7 +1335,7 @@ class MLTrainer:
             'best_r2': -np.inf,
             'best_params': None
         }
-        
+
         def objective(trial):
             # Suggest hyperparameters
             params = {
@@ -1348,54 +1347,55 @@ class MLTrainer:
                 'random_state': 42,
                 'n_jobs': -1
             }
-            
+
             # Train and evaluate
             model = RandomForestRegressor(**params)
             model.fit(self.x_train_val_sc, self.y_train_val_sc)
             y_pred_sc = model.predict(self.x_test_sc)
             y_pred = self.y_scaler.inverse_transform(y_pred_sc)
             r2 = r2_score(self.y_test, y_pred)
-            
+
             # Track progress
             results['iterations'].append(len(results['iterations']) + 1)
             results['r2_scores'].append(r2)
             if r2 > results['best_r2']:
                 results['best_r2'] = r2
                 results['best_params'] = params.copy()
-            
+
             print(f"Trial {len(results['iterations']):2d}: R² = {r2:.4f} | Best: {results['best_r2']:.4f}")
-            
+
             # Memory cleanup
             del model
             gc.collect()
-            
+
             return r2
-        
+
         # Create study with BoTorch sampler
         sampler = BoTorchSampler()
         study = optuna.create_study(direction='maximize', sampler=sampler)
-        
+
         print("🚀 Running Optuna optimization with BoTorch sampler...")
         study.optimize(objective, n_trials=n_trials)
-        
+
         results['study'] = study
         results['best_r2'] = study.best_value
         results['best_params'] = study.best_params
-        
+
         print(f"✅ Best R²: {study.best_value:.4f}")
-        
+
         return results
-    
+
     def _tune_optuna_tpe(self, model_index, n_trials, search_space):
         """Optuna optimization with TPE sampler"""
         try:
+            import gc
+
             import optuna
             from sklearn.ensemble import RandomForestRegressor
             from sklearn.metrics import r2_score
-            import gc
         except ImportError:
             raise ImportError("Optuna not available. Install with: pip install optuna")
-        
+
         # Track results
         results = {
             'method': 'optuna_tpe',
@@ -1404,7 +1404,7 @@ class MLTrainer:
             'best_r2': -np.inf,
             'best_params': None
         }
-        
+
         def objective(trial):
             # Suggest hyperparameters
             params = {
@@ -1416,39 +1416,39 @@ class MLTrainer:
                 'random_state': 42,
                 'n_jobs': -1
             }
-            
+
             # Train and evaluate
             model = RandomForestRegressor(**params)
             model.fit(self.x_train_val_sc, self.y_train_val_sc)
             y_pred_sc = model.predict(self.x_test_sc)
             y_pred = self.y_scaler.inverse_transform(y_pred_sc)
             r2 = r2_score(self.y_test, y_pred)
-            
+
             # Track progress
             results['iterations'].append(len(results['iterations']) + 1)
             results['r2_scores'].append(r2)
             if r2 > results['best_r2']:
                 results['best_r2'] = r2
                 results['best_params'] = params.copy()
-            
+
             print(f"Trial {len(results['iterations']):2d}: R² = {r2:.4f} | Best: {results['best_r2']:.4f}")
-            
+
             # Memory cleanup
             del model
             gc.collect()
-            
+
             return r2
-        
+
         # Create study with TPE sampler (default)
         study = optuna.create_study(direction='maximize')
-        
+
         print("🚀 Running Optuna optimization with TPE sampler...")
         study.optimize(objective, n_trials=n_trials)
-        
+
         results['study'] = study
         results['best_r2'] = study.best_value
         results['best_params'] = study.best_params
-        
+
         print(f"✅ Best R²: {study.best_value:.4f}")
-        
+
         return results

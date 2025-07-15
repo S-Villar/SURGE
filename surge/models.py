@@ -1,6 +1,6 @@
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.neural_network import MLPRegressor
 from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.neural_network import MLPRegressor
 
 # Import enhanced model implementations
 try:
@@ -28,10 +28,10 @@ class RandomForestModel:
 
     def predict(self, X):
         return self._rf.predict(X)
-    
+
     def score(self, X, y):
         return self._rf.score(X, y)
-    
+
     @property
     def feature_importances_(self):
         return self._rf.feature_importances_
@@ -76,10 +76,10 @@ class PyTorchMLPModelWrapper:
 
     def predict(self, X):
         return self._mlp.predict(X)
-    
+
     def save(self, filepath):
         return self._mlp.save(filepath)
-    
+
     def load(self, filepath):
         return self._mlp.load(filepath)
 
@@ -112,10 +112,10 @@ class GPflowGPRModelWrapper:
 
     def predict(self, X):
         return self._gpr.predict(X)
-    
+
     def predict_with_uncertainty(self, X):
         return self._gpr.predict_with_uncertainty(X)
-    
+
     def sample_posterior(self, X, num_samples=10):
         return self._gpr.sample_posterior(X, num_samples)
 
@@ -134,12 +134,12 @@ class GPflowMultiKernelGPRWrapper:
 
     def predict(self, X):
         return self._gpr.predict(X)
-    
+
     def predict_with_uncertainty(self, X):
         return self._gpr.predict(X, return_std=True)
-    
+
     def get_best_kernel_info(self):
         return self._gpr.get_best_kernel_info()
-    
+
     def get_all_results(self):
         return self._gpr.get_all_results()
