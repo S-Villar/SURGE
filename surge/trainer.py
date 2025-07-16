@@ -1142,9 +1142,10 @@ class MLTrainer:
             'max_mse': cv_mse.max()
         }
 
-    def tune(self, model_index=0, method='bayesian', n_trials=20, search_space=None):
+    def tune(self, model_index=0, method='bayesian', n_trials=20, search_space=None, 
+             monitor_resources=True, plot_resources=True):
         """
-        Memory-efficient hyperparameter tuning with various optimization methods.
+        Memory-efficient hyperparameter tuning with various optimization methods and resource monitoring.
         
         Parameters:
         -----------
@@ -1156,10 +1157,14 @@ class MLTrainer:
             Number of optimization trials
         search_space : dict, optional
             Custom search space for hyperparameters
+        monitor_resources : bool, default=True
+            Whether to monitor system resources (RAM, CPU) during tuning
+        plot_resources : bool, default=True
+            Whether to plot resource usage after tuning completes
             
         Returns:
         --------
-        dict : Tuning results with best parameters and history
+        dict : Tuning results with best parameters, history, and resource monitoring data
         """
 
         if model_index >= len(self.models):
@@ -1171,7 +1176,22 @@ class MLTrainer:
 
         print(f"🔍 Hyperparameter Tuning: {method.upper()}")
         print(f"Model: RandomForestRegressor | Trials: {n_trials}")
+        if monitor_resources:
+            print("📊 Resource monitoring: ENABLED")
         print("=" * 60)
+
+        # Initialize resource monitor if requested
+        resource_monitor = None
+        if monitor_resources:
+            try:
+                from .utils import ResourceMonitor
+                resource_monitor = ResourceMonitor()
+                initial_ram, initial_cpu = resource_monitor.update()
+                print(f"📊 Initial Resources: RAM: {initial_ram:.1f} MB | CPU: {initial_cpu:.1f}%")
+                print("=" * 60)
+            except ImportError as e:
+                print(f"⚠️ Resource monitoring disabled: {e}")
+                monitor_resources = False
 
         # Default search space for Random Forest
         if search_space is None:
@@ -1194,18 +1214,35 @@ class MLTrainer:
 
         # Execute the appropriate tuning method
         if method == 'random_mem_eff':
-            return self._tune_random_memory_efficient(model_index, n_trials, search_space)
+            result = self._tune_random_memory_efficient(model_index, n_trials, search_space, resource_monitor)
         elif method == 'bayesian_skopt':
-            return self._tune_bayesian_skopt(model_index, n_trials, search_space)
+            result = self._tune_bayesian_skopt(model_index, n_trials, search_space, resource_monitor)
         elif method == 'optuna_botorch':
-            return self._tune_optuna_botorch(model_index, n_trials, search_space)
+            result = self._tune_optuna_botorch(model_index, n_trials, search_space, resource_monitor)
         elif method == 'optuna_tpe':
-            return self._tune_optuna_tpe(model_index, n_trials, search_space)
+            result = self._tune_optuna_tpe(model_index, n_trials, search_space, resource_monitor)
         else:
             raise ValueError(f"Unknown tuning method: {method}")
 
-    def _tune_random_memory_efficient(self, model_index, n_trials, search_space):
-        """Random search with memory cleanup"""
+        # Add resource monitoring results and plotting
+        if resource_monitor is not None:
+            resource_summary = resource_monitor.get_summary()
+            result['resource_summary'] = resource_summary
+            result['resource_monitor'] = resource_monitor
+            
+            print(f"\n📊 Resource Summary:")
+            print(f"   Peak RAM Usage: {resource_summary['peak_ram_mb']:.1f} MB")
+            print(f"   Average RAM Usage: {resource_summary['avg_ram_mb']:.1f} MB")
+            print(f"   Average CPU Usage: {resource_summary['avg_cpu_percent']:.1f}%")
+            print(f"   Total Duration: {resource_summary['duration_sec']:.1f} seconds")
+            
+            if plot_resources:
+                resource_monitor.plot_resources(title=f"Resource Usage - {method.upper()} Optimization")
+
+        return result
+
+    def _tune_random_memory_efficient(self, model_index, n_trials, search_space, resource_monitor=None):
+        """Random search with memory cleanup and resource monitoring"""
         import gc
 
         import numpy as np
@@ -1224,6 +1261,10 @@ class MLTrainer:
 
         np.random.seed(42)
         for i in range(n_trials):
+            # Monitor resources before training
+            if resource_monitor:
+                pre_ram, pre_cpu = resource_monitor.update()
+            
             # Sample random hyperparameters with proper types
             params = {
                 'n_estimators': int(np.random.choice(search_space['n_estimators'])),
@@ -1242,6 +1283,10 @@ class MLTrainer:
             y_pred = self.y_scaler.inverse_transform(y_pred_sc)
             r2 = r2_score(self.y_test, y_pred)
 
+            # Monitor resources after training
+            if resource_monitor:
+                post_ram, post_cpu = resource_monitor.update()
+
             # Track results
             results['iterations'].append(i + 1)
             results['r2_scores'].append(r2)
@@ -1251,16 +1296,25 @@ class MLTrainer:
                 results['best_r2'] = r2
                 results['best_params'] = params.copy()
 
-            print(f"Trial {i+1:2d}: R² = {r2:.4f} | Best: {results['best_r2']:.4f}")
+            # Enhanced progress report with resource info
+            if resource_monitor:
+                print(f"Trial {i+1:2d}: R² = {r2:.4f} | Best: {results['best_r2']:.4f} | "
+                      f"RAM: {pre_ram:.0f}→{post_ram:.0f}MB")
+            else:
+                print(f"Trial {i+1:2d}: R² = {r2:.4f} | Best: {results['best_r2']:.4f}")
 
             # Memory cleanup
             del model
             gc.collect()
+            
+            # Monitor resources after cleanup
+            if resource_monitor:
+                resource_monitor.update()
 
         return results
 
-    def _tune_bayesian_skopt(self, model_index, n_trials, search_space):
-        """Bayesian optimization using scikit-optimize"""
+    def _tune_bayesian_skopt(self, model_index, n_trials, search_space, resource_monitor=None):
+        """Bayesian optimization using scikit-optimize with resource monitoring"""
         try:
             import gc
 
@@ -1269,6 +1323,10 @@ class MLTrainer:
             from skopt import BayesSearchCV
         except ImportError:
             raise ImportError("scikit-optimize not available. Install with: pip install scikit-optimize")
+
+        # Monitor resources at start
+        if resource_monitor:
+            resource_monitor.update()
 
         # Convert search space for skopt
         skopt_space = {}
@@ -1295,7 +1353,16 @@ class MLTrainer:
         )
 
         print("🚀 Running Bayesian optimization with scikit-optimize...")
+        
+        # Monitor during optimization
+        if resource_monitor:
+            resource_monitor.update()
+            
         opt.fit(self.x_train_val_sc, self.y_train_val_sc)
+        
+        # Monitor after optimization
+        if resource_monitor:
+            resource_monitor.update()
 
         # Evaluate best model on test set
         y_pred_sc = opt.predict(self.x_test_sc)
@@ -1315,8 +1382,8 @@ class MLTrainer:
 
         return results
 
-    def _tune_optuna_botorch(self, model_index, n_trials, search_space):
-        """Optuna optimization with BoTorch sampler"""
+    def _tune_optuna_botorch(self, model_index, n_trials, search_space, resource_monitor=None):
+        """Optuna optimization with BoTorch sampler and resource monitoring"""
         try:
             import gc
 
@@ -1326,6 +1393,10 @@ class MLTrainer:
             from sklearn.metrics import r2_score
         except ImportError:
             raise ImportError("Optuna/BoTorch not available. Install with: pip install optuna botorch")
+
+        # Monitor resources at start
+        if resource_monitor:
+            resource_monitor.update()
 
         # Track results
         results = {
@@ -1337,6 +1408,10 @@ class MLTrainer:
         }
 
         def objective(trial):
+            # Monitor resources before training
+            if resource_monitor:
+                pre_ram, pre_cpu = resource_monitor.update()
+                
             # Suggest hyperparameters
             params = {
                 'n_estimators': trial.suggest_int('n_estimators', search_space['n_estimators'][0], search_space['n_estimators'][1]),
@@ -1355,6 +1430,10 @@ class MLTrainer:
             y_pred = self.y_scaler.inverse_transform(y_pred_sc)
             r2 = r2_score(self.y_test, y_pred)
 
+            # Monitor resources after training
+            if resource_monitor:
+                post_ram, post_cpu = resource_monitor.update()
+
             # Track progress
             results['iterations'].append(len(results['iterations']) + 1)
             results['r2_scores'].append(r2)
@@ -1362,11 +1441,20 @@ class MLTrainer:
                 results['best_r2'] = r2
                 results['best_params'] = params.copy()
 
-            print(f"Trial {len(results['iterations']):2d}: R² = {r2:.4f} | Best: {results['best_r2']:.4f}")
+            # Enhanced progress report with resource info
+            if resource_monitor:
+                print(f"Trial {len(results['iterations']):2d}: R² = {r2:.4f} | Best: {results['best_r2']:.4f} | "
+                      f"RAM: {pre_ram:.0f}→{post_ram:.0f}MB")
+            else:
+                print(f"Trial {len(results['iterations']):2d}: R² = {r2:.4f} | Best: {results['best_r2']:.4f}")
 
             # Memory cleanup
             del model
             gc.collect()
+            
+            # Monitor resources after cleanup
+            if resource_monitor:
+                resource_monitor.update()
 
             return r2
 
@@ -1385,8 +1473,8 @@ class MLTrainer:
 
         return results
 
-    def _tune_optuna_tpe(self, model_index, n_trials, search_space):
-        """Optuna optimization with TPE sampler"""
+    def _tune_optuna_tpe(self, model_index, n_trials, search_space, resource_monitor=None):
+        """Optuna optimization with TPE sampler and resource monitoring"""
         try:
             import gc
 
@@ -1395,6 +1483,10 @@ class MLTrainer:
             from sklearn.metrics import r2_score
         except ImportError:
             raise ImportError("Optuna not available. Install with: pip install optuna")
+
+        # Monitor resources at start
+        if resource_monitor:
+            resource_monitor.update()
 
         # Track results
         results = {
@@ -1406,6 +1498,10 @@ class MLTrainer:
         }
 
         def objective(trial):
+            # Monitor resources before training
+            if resource_monitor:
+                pre_ram, pre_cpu = resource_monitor.update()
+                
             # Suggest hyperparameters
             params = {
                 'n_estimators': trial.suggest_int('n_estimators', search_space['n_estimators'][0], search_space['n_estimators'][1]),
@@ -1424,6 +1520,10 @@ class MLTrainer:
             y_pred = self.y_scaler.inverse_transform(y_pred_sc)
             r2 = r2_score(self.y_test, y_pred)
 
+            # Monitor resources after training
+            if resource_monitor:
+                post_ram, post_cpu = resource_monitor.update()
+
             # Track progress
             results['iterations'].append(len(results['iterations']) + 1)
             results['r2_scores'].append(r2)
@@ -1431,11 +1531,20 @@ class MLTrainer:
                 results['best_r2'] = r2
                 results['best_params'] = params.copy()
 
-            print(f"Trial {len(results['iterations']):2d}: R² = {r2:.4f} | Best: {results['best_r2']:.4f}")
+            # Enhanced progress report with resource info
+            if resource_monitor:
+                print(f"Trial {len(results['iterations']):2d}: R² = {r2:.4f} | Best: {results['best_r2']:.4f} | "
+                      f"RAM: {pre_ram:.0f}→{post_ram:.0f}MB")
+            else:
+                print(f"Trial {len(results['iterations']):2d}: R² = {r2:.4f} | Best: {results['best_r2']:.4f}")
 
             # Memory cleanup
             del model
             gc.collect()
+            
+            # Monitor resources after cleanup
+            if resource_monitor:
+                resource_monitor.update()
 
             return r2
 
