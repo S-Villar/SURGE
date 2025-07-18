@@ -181,6 +181,9 @@ class MLTrainer:
 
         # Model performance tracking
         self.model_performance = []
+        
+        # Baseline performance tracking
+        self.baseline_r2 = None
 
         # Model type mapping
         self.MODEL_TYPES = {
@@ -1143,7 +1146,7 @@ class MLTrainer:
         }
 
     def tune(self, model_index=0, method='bayesian', n_trials=20, search_space=None, 
-             monitor_resources=True, plot_resources=True):
+             monitor_resources=True, plot_resources=True, plot_results=True):
         """
         Memory-efficient hyperparameter tuning with various optimization methods and resource monitoring.
         
@@ -1161,6 +1164,8 @@ class MLTrainer:
             Whether to monitor system resources (RAM, CPU) during tuning
         plot_resources : bool, default=True
             Whether to plot resource usage after tuning completes
+        plot_results : bool, default=True
+            Whether to plot optimization results showing R² evolution
             
         Returns:
         --------
@@ -1180,6 +1185,22 @@ class MLTrainer:
             print("📊 Resource monitoring: ENABLED")
         print("=" * 60)
 
+        # Check if baseline performance has already been calculated
+        if not hasattr(self, 'baseline_r2') or self.baseline_r2 is None:
+            print("📊 Calculating baseline performance...")
+            baseline_model = RandomForestRegressor(
+                n_estimators=100, max_depth=None, min_samples_split=2, 
+                min_samples_leaf=1, random_state=42, n_jobs=-1
+            )
+            baseline_model.fit(self.x_train_val_sc, self.y_train_val_sc)
+            y_pred_baseline_sc = baseline_model.predict(self.x_test_sc)
+            y_pred_baseline = self.y_scaler.inverse_transform(y_pred_baseline_sc)
+            self.baseline_r2 = r2_score(self.y_test, y_pred_baseline)
+            print(f"📊 Baseline R²: {self.baseline_r2:.4f}")
+        else:
+            print(f"📊 Using cached baseline R²: {self.baseline_r2:.4f}")
+        print("=" * 60)
+
         # Initialize resource monitor if requested
         resource_monitor = None
         if monitor_resources:
@@ -1194,23 +1215,19 @@ class MLTrainer:
                 monitor_resources = False
 
         # Default search space for Random Forest
+        # max_depth is fixed to None (unlimited) for all optimization methods
         if search_space is None:
-            if method == 'random_mem_eff':
-                search_space = {
-                    'n_estimators': [50, 100, 200, 300],
-                    'max_depth': [10, 20, 30, None],
-                    'min_samples_split': [2, 5, 10],
-                    'min_samples_leaf': [1, 2, 4],
-                    'max_features': ['sqrt', 'log2', 1.0]
-                }
-            else:  # For Bayesian methods
-                search_space = {
-                    'n_estimators': (50, 300),
-                    'max_depth': (5, 50),
-                    'min_samples_split': (2, 20),
-                    'min_samples_leaf': (1, 10),
-                    'max_features': ['sqrt', 'log2', 1.0]
-                }
+            search_space = {
+                'n_estimators': (50, 500),
+                'min_samples_split': (2, 20),
+                'min_samples_leaf': (1, 10),
+                'max_features': ['sqrt', 'log2', 1.0]
+                # max_depth is excluded from optimization and fixed to None
+            }
+
+        # Record start time for total tuning time
+        import time
+        start_time = time.time()
 
         # Execute the appropriate tuning method
         if method == 'random_mem_eff':
@@ -1223,6 +1240,15 @@ class MLTrainer:
             result = self._tune_optuna_tpe(model_index, n_trials, search_space, resource_monitor)
         else:
             raise ValueError(f"Unknown tuning method: {method}")
+
+        # Calculate total tuning time
+        total_tuning_time = time.time() - start_time
+        result['total_tuning_time'] = total_tuning_time
+        result['baseline_r2'] = self.baseline_r2
+
+        print(f"\n⏱️ Total tuning time: {total_tuning_time:.2f} seconds")
+        print(f"📊 Baseline vs Best: {self.baseline_r2:.4f} → {result['best_r2']:.4f} "
+              f"(Δ = {result['best_r2'] - self.baseline_r2:+.4f})")
 
         # Add resource monitoring results and plotting
         if resource_monitor is not None:
@@ -1239,6 +1265,10 @@ class MLTrainer:
             if plot_resources:
                 resource_monitor.plot_resources(title=f"Resource Usage - {method.upper()} Optimization")
 
+        # Plot optimization results if requested
+        if plot_results and 'r2_evolution' in result:
+            self._plot_optimization_results(result, self.baseline_r2)
+
         return result
 
     def _tune_random_memory_efficient(self, model_index, n_trials, search_space, resource_monitor=None):
@@ -1254,6 +1284,7 @@ class MLTrainer:
             'method': 'random_mem_eff',
             'iterations': [],
             'r2_scores': [],
+            'r2_evolution': [],  # Track R² evolution over iterations
             'best_r2': -np.inf,
             'best_params': None,
             'hyperparams_history': []
@@ -1267,10 +1298,10 @@ class MLTrainer:
             
             # Sample random hyperparameters with proper types
             params = {
-                'n_estimators': int(np.random.choice(search_space['n_estimators'])),
-                'max_depth': search_space['max_depth'][np.random.randint(0, len(search_space['max_depth']))],
-                'min_samples_split': int(np.random.choice(search_space['min_samples_split'])),
-                'min_samples_leaf': int(np.random.choice(search_space['min_samples_leaf'])),
+                'n_estimators': int(np.random.randint(search_space['n_estimators'][0], search_space['n_estimators'][1] + 1)),
+                'max_depth': None,  # Fixed to None (unlimited depth)
+                'min_samples_split': int(np.random.randint(search_space['min_samples_split'][0], search_space['min_samples_split'][1] + 1)),
+                'min_samples_leaf': int(np.random.randint(search_space['min_samples_leaf'][0], search_space['min_samples_leaf'][1] + 1)),
                 'max_features': search_space['max_features'][np.random.randint(0, len(search_space['max_features']))],
                 'random_state': 42,
                 'n_jobs': -1
@@ -1290,6 +1321,7 @@ class MLTrainer:
             # Track results
             results['iterations'].append(i + 1)
             results['r2_scores'].append(r2)
+            results['r2_evolution'].append(max(results['r2_scores']))  # Best R² so far
             results['hyperparams_history'].append(params.copy())
 
             if r2 > results['best_r2']:
@@ -1318,6 +1350,7 @@ class MLTrainer:
         try:
             import gc
 
+            import numpy as np
             from sklearn.ensemble import RandomForestRegressor
             from sklearn.metrics import r2_score
             from skopt import BayesSearchCV
@@ -1328,7 +1361,7 @@ class MLTrainer:
         if resource_monitor:
             resource_monitor.update()
 
-        # Convert search space for skopt
+        # Convert search space for skopt (max_depth excluded from optimization)
         skopt_space = {}
         for key, value in search_space.items():
             if key == 'max_features':
@@ -1338,8 +1371,8 @@ class MLTrainer:
             else:
                 skopt_space[key] = value  # Categorical
 
-        # Initialize base model
-        base_model = RandomForestRegressor(random_state=42, n_jobs=-1)
+        # Initialize base model with max_depth=None (fixed, not optimized)
+        base_model = RandomForestRegressor(max_depth=None, random_state=42, n_jobs=-1)
 
         # Bayesian search
         opt = BayesSearchCV(
@@ -1347,9 +1380,10 @@ class MLTrainer:
             search_spaces=skopt_space,
             n_iter=n_trials,
             scoring='r2',
-            cv=3,
-            n_jobs=1,  # Limit parallelism to save memory
-            random_state=42
+            cv=1,
+            n_jobs=-1,  
+            random_state=42,
+            verbose=2
         )
 
         print("🚀 Running Bayesian optimization with scikit-optimize...")
@@ -1369,12 +1403,29 @@ class MLTrainer:
         y_pred = self.y_scaler.inverse_transform(y_pred_sc)
         test_r2 = r2_score(self.y_test, y_pred)
 
+        # Extract iteration data from cv_results_ for consistent format
+        cv_results = opt.cv_results_ if hasattr(opt, 'cv_results_') else {}
+        iterations = list(range(1, len(cv_results.get('mean_test_score', [])) + 1)) if cv_results else []
+        r2_scores = list(cv_results.get('mean_test_score', [])) if cv_results else []
+        
+        # Calculate r2_evolution (best R² so far at each iteration)
+        r2_evolution = []
+        if r2_scores:
+            best_so_far = -np.inf
+            for score in r2_scores:
+                if score > best_so_far:
+                    best_so_far = score
+                r2_evolution.append(best_so_far)
+
         results = {
             'method': 'bayesian_skopt',
+            'iterations': iterations,
+            'r2_scores': r2_scores,
+            'r2_evolution': r2_evolution,
             'best_r2': test_r2,
             'best_params': dict(opt.best_params_) if hasattr(opt, 'best_params_') else {},
             'cv_best_score': opt.best_score_ if hasattr(opt, 'best_score_') else None,
-            'optimization_results': opt.cv_results_ if hasattr(opt, 'cv_results_') else None
+            'optimization_results': cv_results
         }
 
         cv_score = opt.best_score_ if hasattr(opt, 'best_score_') else "N/A"
@@ -1387,6 +1438,7 @@ class MLTrainer:
         try:
             import gc
 
+            import numpy as np
             import optuna
             from optuna.integration import BoTorchSampler
             from sklearn.ensemble import RandomForestRegressor
@@ -1403,6 +1455,7 @@ class MLTrainer:
             'method': 'optuna_botorch',
             'iterations': [],
             'r2_scores': [],
+            'r2_evolution': [],
             'best_r2': -np.inf,
             'best_params': None
         }
@@ -1412,10 +1465,10 @@ class MLTrainer:
             if resource_monitor:
                 pre_ram, pre_cpu = resource_monitor.update()
                 
-            # Suggest hyperparameters
+            # Suggest hyperparameters (max_depth fixed to None)
             params = {
                 'n_estimators': trial.suggest_int('n_estimators', search_space['n_estimators'][0], search_space['n_estimators'][1]),
-                'max_depth': trial.suggest_int('max_depth', search_space['max_depth'][0], search_space['max_depth'][1]),
+                'max_depth': None,  # Fixed to None (unlimited depth)
                 'min_samples_split': trial.suggest_int('min_samples_split', search_space['min_samples_split'][0], search_space['min_samples_split'][1]),
                 'min_samples_leaf': trial.suggest_int('min_samples_leaf', search_space['min_samples_leaf'][0], search_space['min_samples_leaf'][1]),
                 'max_features': trial.suggest_categorical('max_features', search_space['max_features']),
@@ -1437,6 +1490,7 @@ class MLTrainer:
             # Track progress
             results['iterations'].append(len(results['iterations']) + 1)
             results['r2_scores'].append(r2)
+            results['r2_evolution'].append(max(results['r2_scores']))  # Best R² so far
             if r2 > results['best_r2']:
                 results['best_r2'] = r2
                 results['best_params'] = params.copy()
@@ -1478,6 +1532,7 @@ class MLTrainer:
         try:
             import gc
 
+            import numpy as np
             import optuna
             from sklearn.ensemble import RandomForestRegressor
             from sklearn.metrics import r2_score
@@ -1493,6 +1548,7 @@ class MLTrainer:
             'method': 'optuna_tpe',
             'iterations': [],
             'r2_scores': [],
+            'r2_evolution': [],
             'best_r2': -np.inf,
             'best_params': None
         }
@@ -1502,10 +1558,10 @@ class MLTrainer:
             if resource_monitor:
                 pre_ram, pre_cpu = resource_monitor.update()
                 
-            # Suggest hyperparameters
+            # Suggest hyperparameters (max_depth fixed to None)
             params = {
                 'n_estimators': trial.suggest_int('n_estimators', search_space['n_estimators'][0], search_space['n_estimators'][1]),
-                'max_depth': trial.suggest_int('max_depth', search_space['max_depth'][0], search_space['max_depth'][1]),
+                'max_depth': None,  # Fixed to None (unlimited depth)
                 'min_samples_split': trial.suggest_int('min_samples_split', search_space['min_samples_split'][0], search_space['min_samples_split'][1]),
                 'min_samples_leaf': trial.suggest_int('min_samples_leaf', search_space['min_samples_leaf'][0], search_space['min_samples_leaf'][1]),
                 'max_features': trial.suggest_categorical('max_features', search_space['max_features']),
@@ -1527,6 +1583,7 @@ class MLTrainer:
             # Track progress
             results['iterations'].append(len(results['iterations']) + 1)
             results['r2_scores'].append(r2)
+            results['r2_evolution'].append(max(results['r2_scores']))  # Best R² so far
             if r2 > results['best_r2']:
                 results['best_r2'] = r2
                 results['best_params'] = params.copy()
@@ -1561,3 +1618,58 @@ class MLTrainer:
         print(f"✅ Best R²: {study.best_value:.4f}")
 
         return results
+
+    def _plot_optimization_results(self, result, baseline_r2):
+        """
+        Plot optimization results showing R² evolution over iterations.
+        
+        Parameters:
+        -----------
+        result : dict
+            Tuning results dictionary with r2_evolution, iterations, etc.
+        baseline_r2 : float
+            Baseline R² score for reference
+        """
+        try:
+            import matplotlib.pyplot as plt
+            
+            # Extract data for plotting
+            iterations = result.get('iterations', [])
+            r2_evolution = result.get('r2_evolution', [])
+            method = result.get('method', 'optimization')
+            
+            if not iterations or not r2_evolution:
+                print("⚠️ No iteration data available for plotting")
+                return
+                
+            # Create the plot
+            plt.figure(figsize=(10, 6))
+            plt.plot(iterations, r2_evolution, 'b-', linewidth=2, label=f'{method.upper()} - Best R² Evolution')
+            plt.axhline(y=baseline_r2, color='r', linestyle='--', linewidth=2, label=f'Baseline R² = {baseline_r2:.4f}')
+            
+            # Add final improvement annotation
+            final_r2 = r2_evolution[-1] if r2_evolution else baseline_r2
+            improvement = final_r2 - baseline_r2
+            plt.annotate(f'Final: {final_r2:.4f}\nΔ = {improvement:+.4f}', 
+                        xy=(len(iterations), final_r2), 
+                        xytext=(len(iterations) * 0.7, final_r2 + 0.01),
+                        fontsize=10, 
+                        bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue", alpha=0.7),
+                        arrowprops=dict(arrowstyle='->', color='black'))
+            
+            plt.xlabel('Iteration')
+            plt.ylabel('R² Score')
+            plt.title(f'Hyperparameter Optimization Results - {method.upper()}')
+            plt.legend()
+            plt.grid(True, alpha=0.3)
+            plt.tight_layout()
+            
+            # Show the plot
+            plt.show()
+            
+            print(f"📊 Optimization plot displayed for {method.upper()}")
+            
+        except ImportError:
+            print("⚠️ Matplotlib not available for plotting. Install with: pip install matplotlib")
+        except Exception as e:
+            print(f"⚠️ Error creating plot: {e}")
