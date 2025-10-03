@@ -204,3 +204,13 @@ results.json
 
 # Specific notebook files
 notebooks/Test_Botorch_Pe_NSTX_Compare.ipynb
+# Ignore HPO result pickles (heavy)
+data/datasets/HHFW-NSTX/combined_hpo_results*.pkl
+
+# Notebook outputs and checkpoints
+.ipynb_checkpoints/
+notebooks/*.ipynb
+notebooks/*.csv
+
+# OS files
+.DS_Store
