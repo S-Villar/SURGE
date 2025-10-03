@@ -796,9 +796,9 @@ class MLTrainer:
         df_complete.to_pickle(path_out_file)
         print('✅ Prediction saved')
 
-    def optimize_with_optuna(self, model_idx=0, n_trials=100, objective_type='mse'):
+    def optimize_with_optuna(self, model_idx=0, n_trials=100, objective_type='mse', sampler_type='default'):
         """
-        Optimize hyperparameters using Optuna.
+        Optimize hyperparameters using Optuna with different samplers.
         
         Parameters:
         -----------
@@ -808,12 +808,40 @@ class MLTrainer:
             Number of Optuna trials
         objective_type : str
             Optimization objective ('mse', 'r2')
+        sampler_type : str
+            Optuna sampler type ('default', 'tpe', 'botorch')
         """
         if not OPTUNA_AVAILABLE:
             print("⚠️ Optuna not available. Please install optuna.")
             return
 
+        import optuna
+        print(f"🔍 Optuna imported successfully: {optuna.__version__}")
         model_type = self.model_types[model_idx]
+        
+        # Initialize sampler based on type
+        sampler = None
+        if sampler_type == 'tpe':
+            try:
+                sampler = optuna.samplers.TPESampler(seed=42)
+                print(f"🔬 Using TPE Sampler")
+            except Exception as e:
+                print(f"⚠️ TPE sampler initialization failed: {e}")
+                sampler = None
+        elif sampler_type == 'botorch':
+            try:
+                from optuna.integration import BoTorchSampler
+                sampler = BoTorchSampler()
+                print(f"🔬 Using BoTorch Sampler")
+            except ImportError:
+                print("⚠️ BoTorch not available. Install with: pip install botorch")
+                sampler = None
+            except Exception as e:
+                print(f"⚠️ BoTorch sampler initialization failed: {e}")
+                sampler = None
+        else:
+            print(f"🔬 Using Default Optuna Sampler")
+            sampler = None
 
         if model_type == 0:  # Random Forest
             print(f'🔍 Optimizing Random Forest with Optuna ({n_trials} trials)')
@@ -846,7 +874,7 @@ class MLTrainer:
                 return -cv_scores.mean()  # Return positive MSE
 
             # Create study and optimize
-            study = optuna.create_study(direction='minimize')
+            study = optuna.create_study(direction='minimize', sampler=sampler)
             study.optimize(objective_rf, n_trials=n_trials)
 
             print("🎯 Best hyperparameters:", study.best_params)
@@ -921,7 +949,7 @@ class MLTrainer:
                 return mse
 
             # Create study and optimize
-            study = optuna.create_study(direction='minimize')
+            study = optuna.create_study(direction='minimize', sampler=sampler)
             study.optimize(objective_mlp, n_trials=n_trials)
 
             print("🎯 Best hyperparameters:", study.best_params)
