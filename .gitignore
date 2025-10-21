@@ -212,5 +212,8 @@ data/datasets/HHFW-NSTX/combined_hpo_results*.pkl
 notebooks/*.ipynb
 notebooks/*.csv
 
+# Developer diagnostics artifacts
+surge_dev_artifacts/
+
 # OS files
 .DS_Store
