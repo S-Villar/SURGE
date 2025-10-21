@@ -5,9 +5,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
-from sklearn.model_selection import KFold, cross_val_score, train_test_split
 from sklearn.neural_network import MLPRegressor
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
+from sklearn.model_selection import KFold, cross_val_score, train_test_split
 from sklearn.preprocessing import StandardScaler as SKStandardScaler
 
 from .metrics import mean_squared_error, r2_score
@@ -1284,11 +1284,15 @@ class MLTrainer:
             result['resource_summary'] = resource_summary
             result['resource_monitor'] = resource_monitor
             
-            print(f"\n📊 Resource Summary:")
-            print(f"   Peak RAM Usage: {resource_summary['peak_ram_mb']:.1f} MB")
-            print(f"   Average RAM Usage: {resource_summary['avg_ram_mb']:.1f} MB")
-            print(f"   Average CPU Usage: {resource_summary['avg_cpu_percent']:.1f}%")
-            print(f"   Total Duration: {resource_summary['duration_sec']:.1f} seconds")
+            # Only print if we have valid dictionary data (not the "No data collected" string)
+            if isinstance(resource_summary, dict):
+                print(f"\n📊 Resource Summary:")
+                print(f"   Peak RAM Usage: {resource_summary['peak_ram_mb']:.1f} MB")
+                print(f"   Average RAM Usage: {resource_summary['avg_ram_mb']:.1f} MB")
+                print(f"   Average CPU Usage: {resource_summary['avg_cpu_percent']:.1f}%")
+                print(f"   Total Duration: {resource_summary['duration_sec']:.1f} seconds")
+            else:
+                print(f"\n📊 Resource Summary: {resource_summary}")
             
             if plot_resources:
                 resource_monitor.plot_resources(title=f"Resource Usage - {method.upper()} Optimization")
@@ -1432,7 +1436,7 @@ class MLTrainer:
         test_r2 = r2_score(self.y_test, y_pred)
 
         # Extract iteration data from cv_results_ for consistent format
-        cv_results = opt.cv_results_ if hasattr(opt, 'cv_results_') else {}
+        cv_results = getattr(opt, 'cv_results_', {})
         iterations = list(range(1, len(cv_results.get('mean_test_score', [])) + 1)) if cv_results else []
         r2_scores = list(cv_results.get('mean_test_score', [])) if cv_results else []
         
@@ -1451,12 +1455,12 @@ class MLTrainer:
             'r2_scores': r2_scores,
             'r2_evolution': r2_evolution,
             'best_r2': test_r2,
-            'best_params': dict(opt.best_params_) if hasattr(opt, 'best_params_') else {},
-            'cv_best_score': opt.best_score_ if hasattr(opt, 'best_score_') else None,
+            'best_params': dict(getattr(opt, 'best_params_', {})),
+            'cv_best_score': getattr(opt, 'best_score_', None),
             'optimization_results': cv_results
         }
 
-        cv_score = opt.best_score_ if hasattr(opt, 'best_score_') else "N/A"
+        cv_score = getattr(opt, 'best_score_', "N/A")
         print(f"✅ Best CV Score: {cv_score}, Test R²: {test_r2:.4f}")
 
         return results
