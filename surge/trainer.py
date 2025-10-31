@@ -1,6 +1,8 @@
 import os
 import time
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -11,13 +13,11 @@ from sklearn.model_selection import KFold, cross_val_score, train_test_split
 from sklearn.preprocessing import StandardScaler as SKStandardScaler
 
 from .metrics import mean_squared_error, r2_score
+from .models import BaseModelAdapter, MODEL_REGISTRY
 
 # Optional imports for advanced functionality
 try:
     import torch
-    import torch.nn as nn
-    import torch.optim as optim
-    from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
@@ -40,6 +40,13 @@ try:
     GPFLOW_AVAILABLE = True
 except ImportError:
     GPFLOW_AVAILABLE = False
+
+
+@dataclass(frozen=True)
+class ModelSpec:
+    registry_key: str
+    display_name: str
+    default_params: Dict[str, Any] = field(default_factory=dict)
 
 
 class SurrogateTrainer:
@@ -175,22 +182,29 @@ class MLTrainer:
         print("🚀 Initializing SURGE MLTrainer")
         self.F = n_features
         self.T = n_outputs
-        self.models = []
-        self.model_types = []
+        self.models: List[BaseModelAdapter] = []
+        self.model_types: List[ModelSpec] = []
         self.dir_path = dir_path or ''
 
         # Model performance tracking
-        self.model_performance = []
-        
+        self.model_performance: List[Dict[str, Any]] = []
+
         # Baseline performance tracking
-        self.baseline_r2 = None
+        self.baseline_r2: Optional[float] = None
 
         # Model type mapping
-        self.MODEL_TYPES = {
-            0: 'RandomForestRegressor',
-            1: 'MLPRegressor',
-            2: 'PyTorchMLP',
-            3: 'GPRModel'
+        self.MODEL_TYPES: Dict[int, ModelSpec] = {
+            0: ModelSpec('sklearn.random_forest', 'RandomForestRegressor'),
+            1: ModelSpec('sklearn.mlp', 'MLPRegressor'),
+            2: ModelSpec('pytorch.mlp', 'PyTorchMLP'),
+            3: ModelSpec('gpflow.gpr', 'GPflowGPR'),
+        }
+        self.MODEL_EXPORT_PREFIX: Dict[str, str] = {
+            'sklearn.random_forest': 'RFR',
+            'sklearn.mlp': 'MLP',
+            'pytorch.mlp': 'PyTorchMLP',
+            'gpflow.gpr': 'GPR',
+            'gpflow.multi_kernel_gpr': 'GPRMulti',
         }
 
         if n_features is not None and n_outputs is not None:
@@ -198,30 +212,69 @@ class MLTrainer:
         else:
             print("📊 Features and outputs will be set when loading data")
 
-    # Define PyTorch MLP model
-    class MLP(nn.Module):
-        def __init__(self, input_size, hidden_layers, output_size, dropout_rate=0.0, activation_fn=nn.ReLU):
-            super().__init__()
-            layers = []
-            for i in range(len(hidden_layers)):
-                layers.append(nn.Linear(input_size if i == 0 else hidden_layers[i-1], hidden_layers[i]))
-                layers.append(activation_fn())
-                if dropout_rate > 0:
-                    layers.append(nn.Dropout(dropout_rate))
-            layers.append(nn.Linear(hidden_layers[-1], output_size))
-            self.model = nn.Sequential(*layers)
+    # ------------------------------------------------------------------
+    # Internal helpers for model registry integration
+    # ------------------------------------------------------------------
 
-        def forward(self, x):
-            return self.model(x)
+    def _resolve_model_spec(self, model_type: int) -> ModelSpec:
+        spec = self.MODEL_TYPES.get(model_type)
+        if spec is None:
+            available = ", ".join(f"{idx}:{spec.display_name}" for idx, spec in self.MODEL_TYPES.items())
+            raise ValueError(f"Unknown model_type {model_type}. Available: {available}")
+        return spec
 
-        def predict(self, x):
-            """Custom predict method compatible with sklearn interface"""
-            self.eval()
-            if isinstance(x, np.ndarray):
-                x = torch.tensor(x, dtype=torch.float32)
-            with torch.no_grad():
-                prediction = self.forward(x)
-            return prediction.cpu().numpy()
+    def _build_performance_stub(self, model_name: str) -> Dict[str, Optional[float]]:
+        return {
+            'model_type': model_name,
+            'R2_train_val': None,
+            'R2': None,
+            'MSE_train_val': None,
+            'MSE': None,
+            'training_time': None,
+            'average_inference_time_train': None,
+            'average_inference_time_test': None,
+        }
+
+    def _get_model_spec(self, model_index: int) -> ModelSpec:
+        if model_index >= len(self.model_types):
+            raise ValueError(f"Model index {model_index} not available")
+        return self.model_types[model_index]
+
+    def _get_model_adapter(self, model_index: int) -> BaseModelAdapter:
+        if model_index >= len(self.models):
+            raise ValueError(f"Model index {model_index} not available")
+        return self.models[model_index]
+
+    def _to_numpy(self, data: Any) -> np.ndarray:
+        if isinstance(data, np.ndarray):
+            return data
+        if hasattr(data, 'values'):
+            return data.values
+        return np.asarray(data)
+
+    def _ensure_2d(self, data: Any) -> np.ndarray:
+        arr = np.asarray(data)
+        if arr.ndim == 1:
+            arr = arr.reshape(-1, 1)
+        return arr
+
+    def _select_training_data(self, adapter: BaseModelAdapter) -> Tuple[np.ndarray, np.ndarray]:
+        if adapter.uses_internal_preprocessing:
+            X = self._to_numpy(self.X_train_val)
+            y = self._to_numpy(self.y_train_val)
+        else:
+            X = self.x_train_val_sc
+            y = self.y_train_val_sc
+        return X, y
+
+    def _select_prediction_inputs(self, adapter: BaseModelAdapter, dataset: str) -> np.ndarray:
+        if adapter.uses_internal_preprocessing:
+            if dataset == 'train':
+                return self._to_numpy(self.X_train_val)
+            return self._to_numpy(self.X_test)
+        if dataset == 'train':
+            return self.x_train_val_sc
+        return self.x_test_sc
 
     def load_df_dataset(self, df, input_feature_names, output_feature_names):
         """
@@ -309,261 +362,93 @@ class MLTrainer:
             print("means: ", self.y_scaler.mean_[[0, idx_max_ytrain_mean]])
             print("standard deviation: ", np.sqrt(self.y_scaler.var_[[0, idx_max_ytrain_mean]]))
 
-    def init_model(self, model_type):
-        """
-        Initialize a model of the specified type.
-        
-        Parameters:
-        -----------
-        model_type : int
-            Model type identifier:
-            0: Random Forest Regressor
-            1: MLP Regressor (sklearn)
-            2: PyTorch MLP
-            3: GPR Model
-        """
-        print(f"\n🎯 Initializing Model {model_type}: {self.MODEL_TYPES.get(model_type, 'Unknown')}")
+    def init_model(self, model_type: int, **model_kwargs: Any):
+        """Initialize a model of the specified type."""
+        spec = self._resolve_model_spec(model_type)
+        print(f"\n🎯 Initializing Model {model_type}: {spec.display_name}")
 
-        if model_type == 0:
-            self._init_random_forest()
-        elif model_type == 1:
-            self._init_mlp_sklearn()
-        elif model_type == 2:
-            self._init_mlp_pytorch()
-        elif model_type == 3:
-            self._init_gpr()
-        else:
-            print("⚠️ Unknown model type, defaulting to Random Forest")
-            self._init_random_forest()
+        params = dict(spec.default_params)
+        params.update(model_kwargs)
 
-    def _init_random_forest(self):
-        """Initialize Random Forest Regressor"""
-        model = RandomForestRegressor(
-            n_estimators=100,
-            max_depth=None,
-            min_samples_split=2,
-            min_samples_leaf=1,
-            random_state=42,
-            n_jobs=-1
-        )
-        self.models.append(model)
-        self.model_types.append(0)
+        adapter = MODEL_REGISTRY.create(spec.registry_key, **params)
+        self.models.append(adapter)
+        self.model_types.append(spec)
 
-        # Initialize performance tracking for this model
-        performance = {
-            'model_type': 'RandomForestRegressor',
-            'R2_train_val': None,
-            'R2': None,
-            'MSE_train_val': None,
-            'MSE': None,
-            'training_time': None,
-            'average_inference_time_train': None,
-            'average_inference_time_test': None
-        }
+        performance = self._build_performance_stub(spec.display_name)
         self.model_performance.append(performance)
-        print("✅ Random Forest Regressor initialized")
+        print(f"✅ {spec.display_name} initialized")
 
-    def _init_mlp_sklearn(self):
-        """Initialize sklearn MLP Regressor"""
-        model = MLPRegressor(
-            hidden_layer_sizes=(100, 50),
-            max_iter=500,
-            random_state=42
-        )
-        self.models.append(model)
-        self.model_types.append(1)
+    def train(self, model_index: int):
+        """Train the specified model."""
+        adapter = self._get_model_adapter(model_index)
+        spec = self._get_model_spec(model_index)
 
-        # Initialize performance tracking for this model
-        performance = {
-            'model_type': 'MLPRegressor',
-            'R2_train_val': None,
-            'R2': None,
-            'MSE_train_val': None,
-            'MSE': None,
-            'training_time': None,
-            'average_inference_time_train': None,
-            'average_inference_time_test': None
-        }
-        self.model_performance.append(performance)
-        print("✅ MLP Regressor (sklearn) initialized")
-
-    def _init_mlp_pytorch(self):
-        """Initialize PyTorch MLP"""
-        if not TORCH_AVAILABLE:
-            raise ImportError("PyTorch not available. Please install torch.")
-
-        model = self.MLP(
-            input_size=self.F,
-            hidden_layers=[128, 64, 32],
-            output_size=self.T,
-            dropout_rate=0.1
-        )
-        self.models.append(model)
-        self.model_types.append(2)
-
-        # Initialize performance tracking for this model
-        performance = {
-            'model_type': 'PyTorchMLP',
-            'R2_train_val': None,
-            'R2': None,
-            'MSE_train_val': None,
-            'MSE': None,
-            'training_time': None,
-            'average_inference_time_train': None,
-            'average_inference_time_test': None
-        }
-        self.model_performance.append(performance)
-        print("✅ PyTorch MLP initialized")
-
-    def _init_gpr(self):
-        """Initialize Gaussian Process Regressor"""
-        if not GPFLOW_AVAILABLE:
-            raise ImportError("GPflow not available. Please install gpflow.")
-
-        print("🔄 GPR initialization - to be implemented")
-        # GPR implementation would go here
-        self.models.append(None)  # Placeholder
-        self.model_types.append(3)
-
-        # Initialize performance tracking for this model
-        performance = {
-            'model_type': 'GPR',
-            'R2_train_val': None,
-            'R2': None,
-            'MSE_train_val': None,
-            'MSE': None,
-            'training_time': None,
-            'average_inference_time_train': None,
-            'average_inference_time_test': None
-        }
-        self.model_performance.append(performance)
-
-    def train(self, model_index):
-        """
-        Train the specified model.
-        
-        Parameters:
-        -----------
-        model_index : int
-            Index of the model to train
-        """
-        if model_index >= len(self.models):
-            raise ValueError(f"Model index {model_index} not available")
-
-        print(f'\n🎯 Training Model {model_index}: {self.MODEL_TYPES[self.model_types[model_index]]}')
+        print(f'\n🎯 Training Model {model_index}: {spec.display_name}')
 
         start_time = time.time()
-
-        if self.model_types[model_index] in [0, 1]:  # sklearn models
-            self.models[model_index].fit(self.x_train_val_sc, self.y_train_val_sc)
-        elif self.model_types[model_index] == 2:  # PyTorch MLP
-            self._train_pytorch_mlp(model_index)
-        elif self.model_types[model_index] == 3:  # GPR
-            self._train_gpr(model_index)
-
+        X_train, y_train = self._select_training_data(adapter)
+        adapter.fit(X_train, y_train)
         training_time = time.time() - start_time
 
-        # Store training time in model performance
         self.model_performance[model_index]['training_time'] = training_time
-
         print(f"⏱️ Elapsed time: {training_time:.2f} seconds")
-
-    def _train_pytorch_mlp(self, model_index):
-        """Train PyTorch MLP with proper training loop"""
-        if not TORCH_AVAILABLE:
-            raise ImportError("PyTorch not available")
-
-        model = self.models[model_index]
-
-        # Convert to tensors
-        X_train_tensor = torch.tensor(self.x_train_val_sc, dtype=torch.float32)
-        y_train_tensor = torch.tensor(self.y_train_val_sc, dtype=torch.float32)
-
-        # Setup training
-        criterion = nn.MSELoss()
-        optimizer = optim.Adam(model.parameters(), lr=0.001)
-
-        # Training loop
-        model.train()
-        n_epochs = 100
-        batch_size = 32
-
-        dataset = TensorDataset(X_train_tensor, y_train_tensor)
-        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-
-        for epoch in range(n_epochs):
-            total_loss = 0
-            for batch_X, batch_y in dataloader:
-                optimizer.zero_grad()
-                outputs = model(batch_X)
-                loss = criterion(outputs, batch_y)
-                loss.backward()
-                optimizer.step()
-                total_loss += loss.item()
-
-            if (epoch + 1) % 20 == 0:
-                print(f"  Epoch {epoch+1}/{n_epochs}, Loss: {total_loss/len(dataloader):.6f}")
 
     def _train_gpr(self, model_index):
         """Train Gaussian Process Regressor"""
         print("🔄 GPR training - to be implemented")
 
-    def predict_output(self, model_index):
-        """
-        Generate predictions and calculate performance metrics.
-        
-        Parameters:
-        -----------
-        model_index : int
-            Index of the model to use for prediction
-        """
-        print(f'\n🎯 Predicting outputs - Model {model_index}')
-
-        model = self.models[model_index]
+    def predict_output(self, model_index: int):
+        """Generate predictions and calculate performance metrics."""
+        adapter = self._get_model_adapter(model_index)
+        spec = self._get_model_spec(model_index)
+        print(f'\n🎯 Predicting outputs - Model {model_index} ({spec.display_name})')
 
         # Training set predictions
         print('\n--- Training Set Results ---')
+        X_train = self._select_prediction_inputs(adapter, 'train')
         start_time = time.time()
-        y_pred_train_val_sc = model.predict(self.x_train_val_sc)
-
-        # Ensure 2D shape for sklearn inverse_transform (required for scalers)
-        if y_pred_train_val_sc.ndim == 1:
-            y_pred_train_val_sc = y_pred_train_val_sc.reshape(-1, 1)
-
-        self.y_pred_train_val = self.y_scaler.inverse_transform(y_pred_train_val_sc)
+        y_pred_train = adapter.predict(X_train)
         t_pred_train_val = time.time() - start_time
-        avg_inference_time_train = t_pred_train_val / self.x_train_val_sc.shape[0]
+
+        y_pred_train = self._ensure_2d(y_pred_train)
+        if adapter.handles_output_scaling:
+            self.y_pred_train_val = y_pred_train
+        else:
+            self.y_pred_train_val = self.y_scaler.inverse_transform(y_pred_train)
+
+        avg_inference_time_train = t_pred_train_val / X_train.shape[0]
         print(f' t_I(avg) = {avg_inference_time_train:.6f} seconds per sample')
 
-        # Calculate training metrics
-        self.MSE_train_val = mean_squared_error(self.y_train_val, self.y_pred_train_val)
-        self.R2_train_val = r2_score(self.y_train_val, self.y_pred_train_val)
+        y_true_train = self._to_numpy(self.y_train_val)
+        self.MSE_train_val = mean_squared_error(y_true_train, self.y_pred_train_val)
+        self.R2_train_val = r2_score(y_true_train, self.y_pred_train_val)
 
         print(f' MSE_train_val = {self.MSE_train_val:.6f}')
         print(f' R2_train_val = {self.R2_train_val:.4f}')
 
         # Test set predictions
         print('\n--- Testing Set Results ---')
+        X_test = self._select_prediction_inputs(adapter, 'test')
         start_time = time.time()
-        y_pred_test_sc = model.predict(self.x_test_sc)
-
-        # Ensure 2D shape for sklearn inverse_transform (required for scalers)
-        if y_pred_test_sc.ndim == 1:
-            y_pred_test_sc = y_pred_test_sc.reshape(-1, 1)
-
-        self.y_pred_test = self.y_scaler.inverse_transform(y_pred_test_sc)
+        y_pred_test = adapter.predict(X_test)
         t_pred_test = time.time() - start_time
-        avg_inference_time_test = t_pred_test / self.x_test_sc.shape[0]
+
+        y_pred_test = self._ensure_2d(y_pred_test)
+        if adapter.handles_output_scaling:
+            self.y_pred_test = y_pred_test
+        else:
+            self.y_pred_test = self.y_scaler.inverse_transform(y_pred_test)
+
+        avg_inference_time_test = t_pred_test / X_test.shape[0]
         print(f' t_I(avg) = {avg_inference_time_test:.6f} seconds per sample')
 
-        # Calculate test metrics
-        self.MSE = mean_squared_error(self.y_test, self.y_pred_test)
-        self.R2 = r2_score(self.y_test, self.y_pred_test)
+        y_true_test = self._to_numpy(self.y_test)
+        self.MSE = mean_squared_error(y_true_test, self.y_pred_test)
+        self.R2 = r2_score(y_true_test, self.y_pred_test)
 
         print(f' MSE = {self.MSE:.6f}')
         print(f' R2 = {self.R2:.4f}')
 
-        # Store all performance metrics
         self.model_performance[model_index].update({
             'R2_train_val': self.R2_train_val,
             'R2': self.R2,
@@ -590,13 +475,14 @@ class MLTrainer:
             print("⚠️ scikit-optimize not available. Please install scikit-optimize.")
             return
 
-        model_type = self.model_types[model_idx]
+        adapter = self._get_model_adapter(model_idx)
+        spec = self._get_model_spec(model_idx)
 
-        if model_type == 0:  # Random Forest
+        if spec.registry_key == 'sklearn.random_forest':
             print('🔍 Optimizing Random Forest Regressor Model')
             print('- Method: Bayesian Search Cross Validated')
 
-            model = self.models[model_idx]
+            estimator = adapter.get_estimator()
 
             if search_spaces is None:
                 search_spaces = {
@@ -608,7 +494,7 @@ class MLTrainer:
                 }
 
             opt = BayesSearchCV(
-                estimator=model,
+                estimator=estimator,
                 search_spaces=search_spaces,
                 n_iter=n_iter,
                 scoring='neg_mean_squared_error',
@@ -622,13 +508,13 @@ class MLTrainer:
             opt.fit(self.x_train_val_sc, self.y_train_val_sc)
 
             print("🎯 Best hyperparameters:", opt.best_params_)  # type: ignore
-            self.models[model_idx] = opt.best_estimator_  # type: ignore
+            adapter.update_estimator(opt.best_estimator_)  # type: ignore
 
             # Generate predictions with optimized model
             self.predict_output(model_idx)
 
         else:
-            print(f'⚠️ Optimization not implemented for model type {model_type}')
+            print(f"⚠️ Optimization not implemented for model type {spec.display_name}")
 
     def cross_validate(self, model_idx=0, cv_folds=5):
         """
@@ -653,7 +539,13 @@ class MLTrainer:
         print(f'\n🔄 Performing {cv_folds}-fold cross-validation')
         print('   Computing MSE and R² on original (unstandardized) scale...')
 
-        base_model = self.models[model_idx]
+        adapter = self._get_model_adapter(model_idx)
+        spec = self._get_model_spec(model_idx)
+
+        if not adapter.supports_sklearn_interface:
+            raise ValueError(f"Cross-validation currently requires sklearn-compatible models. '{spec.display_name}' is not supported.")
+
+        base_model = adapter.get_estimator()
 
         # Initialize KFold
         kf = KFold(n_splits=cv_folds, shuffle=True, random_state=42)
@@ -756,9 +648,8 @@ class MLTrainer:
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        model_type_str = {
-            0: 'RFR', 1: 'MLP', 2: 'PyTorchMLP', 3: 'GPR'
-        }.get(self.model_types[model_idx], 'Model')
+        spec = self._get_model_spec(model_idx)
+        model_type_str = self.MODEL_EXPORT_PREFIX.get(spec.registry_key, spec.display_name.replace(' ', ''))
 
         if output_fmt == 'pickle':
             # Create prediction dataframe
@@ -817,7 +708,8 @@ class MLTrainer:
 
         import optuna
         print(f"🔍 Optuna imported successfully: {optuna.__version__}")
-        model_type = self.model_types[model_idx]
+        adapter = self._get_model_adapter(model_idx)
+        spec = self._get_model_spec(model_idx)
         
         # Initialize sampler based on type
         sampler = None
@@ -843,7 +735,7 @@ class MLTrainer:
             print(f"🔬 Using Default Optuna Sampler")
             sampler = None
 
-        if model_type == 0:  # Random Forest
+        if spec.registry_key == 'sklearn.random_forest':
             print(f'🔍 Optimizing Random Forest with Optuna ({n_trials} trials)')
 
             def objective_rf(trial):
@@ -882,154 +774,73 @@ class MLTrainer:
 
             # Update model with best parameters
             best_model = RandomForestRegressor(**study.best_params, random_state=42, n_jobs=-1)
-            self.models[model_idx] = best_model
+            adapter.update_estimator(best_model)
+            self.model_performance[model_idx] = self._build_performance_stub(spec.display_name)
 
             # Train with best parameters
             self.train(model_idx)
             self.predict_output(model_idx)
 
-        elif model_type == 2:  # PyTorch MLP
+        elif spec.registry_key == 'pytorch.mlp':
+            if not TORCH_AVAILABLE:
+                raise ImportError("PyTorch not available. Please install torch.")
+
             print(f'🔍 Optimizing PyTorch MLP with Optuna ({n_trials} trials)')
 
+            from .pytorch_models import PyTorchMLPModel  # Local import to avoid optional dependency issues
+
             def objective_mlp(trial):
-                # Suggest hyperparameters
                 num_layers = trial.suggest_int("num_layers", 1, 5)
                 hidden_size = trial.suggest_int("hidden_size", 32, 256)
                 dropout_rate = trial.suggest_float("dropout_rate", 0.0, 0.5)
-                learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-1, log=True)
+                learning_rate = trial.suggest_float("learning_rate", 1e-4, 1e-2, log=True)
                 batch_size = trial.suggest_int("batch_size", 16, 128)
-                activation_fn = trial.suggest_categorical("activation_fn", ["ReLU", "Tanh", "LeakyReLU"])
+                activation_fn = trial.suggest_categorical("activation_fn", ["relu", "tanh", "leaky_relu"])
 
-                # Map activation function
-                activation_mapping = {
-                    "ReLU": nn.ReLU,
-                    "Tanh": nn.Tanh,
-                    "LeakyReLU": nn.LeakyReLU
-                }
-                activation_class = activation_mapping[activation_fn]
-
-                # Build model
                 hidden_layers = [hidden_size] * num_layers
-                model = self.MLP(
-                    input_size=self.F,
+                candidate = PyTorchMLPModel(
                     hidden_layers=hidden_layers,
-                    output_size=self.T,
                     dropout_rate=dropout_rate,
-                    activation_fn=activation_class
+                    activation_fn=activation_fn,
+                    learning_rate=learning_rate,
+                    batch_size=batch_size,
+                    n_epochs=80,
                 )
 
-                # Setup training
-                optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-                criterion = nn.MSELoss()
-
-                # Convert data to tensors
-                X_tensor = torch.tensor(self.x_train_val_sc, dtype=torch.float32)
-                y_tensor = torch.tensor(self.y_train_val_sc, dtype=torch.float32)
-
-                # Create data loader
-                dataset = TensorDataset(X_tensor, y_tensor)
-                train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-
-                # Training loop (reduced epochs for speed)
-                model.train()
-                for epoch in range(50):  # Reduced for hyperparameter search
-                    for batch_X, batch_y in train_loader:
-                        optimizer.zero_grad()
-                        outputs = model(batch_X)
-                        loss = criterion(outputs, batch_y)
-                        loss.backward()
-                        optimizer.step()
-
-                # Evaluation on validation data (use a portion of training data)
-                model.eval()
-                with torch.no_grad():
-                    predictions = model(X_tensor)
-                    mse = criterion(predictions, y_tensor).item()
-
+                candidate.fit(self.X_train_val, self.y_train_val)
+                preds = candidate.predict(self.X_train_val)
+                mse = mean_squared_error(self._to_numpy(self.y_train_val), self._ensure_2d(preds))
                 return mse
 
-            # Create study and optimize
             study = optuna.create_study(direction='minimize', sampler=sampler)
             study.optimize(objective_mlp, n_trials=n_trials)
 
             print("🎯 Best hyperparameters:", study.best_params)
             print(f"🎯 Best MSE: {study.best_value:.6f}")
 
-            # Update model with best parameters
-            activation_mapping = {"ReLU": nn.ReLU, "Tanh": nn.Tanh, "LeakyReLU": nn.LeakyReLU}
-            activation_class = activation_mapping[study.best_params['activation_fn']]
-            hidden_layers = [study.best_params['hidden_size']] * study.best_params['num_layers']
+            best_params = study.best_params
+            hidden_layers = [best_params['hidden_size']] * best_params['num_layers']
+            activation_fn = best_params['activation_fn']
 
-            best_model = self.MLP(
-                input_size=self.F,
+            tuned_adapter = MODEL_REGISTRY.create(
+                spec.registry_key,
                 hidden_layers=hidden_layers,
-                output_size=self.T,
-                dropout_rate=study.best_params['dropout_rate'],
-                activation_fn=activation_class
+                dropout_rate=best_params['dropout_rate'],
+                activation_fn=activation_fn,
+                learning_rate=best_params['learning_rate'],
+                batch_size=best_params['batch_size'],
+                n_epochs=200,
             )
 
-            self.models[model_idx] = best_model
-            self.best_mlp_params = study.best_params  # Store for final training
+            self.models[model_idx] = tuned_adapter
+            self.best_mlp_params = best_params
+            self.model_performance[model_idx] = self._build_performance_stub(spec.display_name)
 
-            # Train with best parameters
-            self._train_pytorch_mlp_with_params(model_idx, study.best_params)
+            self.train(model_idx)
             self.predict_output(model_idx)
 
         else:
-            print(f'⚠️ Optuna optimization not implemented for model type {model_type}')
-
-    def _train_pytorch_mlp_with_params(self, model_index, params):
-        """Train PyTorch MLP with specific hyperparameters"""
-        if not TORCH_AVAILABLE:
-            raise ImportError("PyTorch not available")
-
-        model = self.models[model_index]
-
-        # Convert to tensors
-        X_train_tensor = torch.tensor(self.x_train_val_sc, dtype=torch.float32)
-        y_train_tensor = torch.tensor(self.y_train_val_sc, dtype=torch.float32)
-
-        # Setup training with optimized parameters
-        criterion = nn.MSELoss()
-        optimizer = optim.Adam(model.parameters(), lr=params.get('learning_rate', 0.001))
-
-        # Training parameters
-        n_epochs = 200  # More epochs for final training
-        batch_size = params.get('batch_size', 32)
-
-        dataset = TensorDataset(X_train_tensor, y_train_tensor)
-        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-
-        # Training loop with validation tracking
-        model.train()
-        best_loss = float('inf')
-        patience = 20
-        patience_counter = 0
-
-        for epoch in range(n_epochs):
-            total_loss = 0
-            for batch_X, batch_y in dataloader:
-                optimizer.zero_grad()
-                outputs = model(batch_X)
-                loss = criterion(outputs, batch_y)
-                loss.backward()
-                optimizer.step()
-                total_loss += loss.item()
-
-            avg_loss = total_loss / len(dataloader)
-
-            # Early stopping
-            if avg_loss < best_loss:
-                best_loss = avg_loss
-                patience_counter = 0
-            else:
-                patience_counter += 1
-                if patience_counter >= patience:
-                    print(f"  Early stopping at epoch {epoch+1}")
-                    break
-
-            if (epoch + 1) % 50 == 0:
-                print(f"  Epoch {epoch+1}/{n_epochs}, Loss: {avg_loss:.6f}")
+            print(f"⚠️ Optuna optimization not implemented for model type {spec.display_name}")
 
     def get_model_summary(self, model_index=None):
         """
@@ -1090,14 +901,25 @@ class MLTrainer:
             print("⚠️ PyTorch not available for ONNX export")
             return
 
-        model_type = self.model_types[model_idx]
+        adapter = self._get_model_adapter(model_idx)
+        spec = self._get_model_spec(model_idx)
 
-        if model_type == 2:  # PyTorch MLP
+        if spec.registry_key == 'pytorch.mlp':
             try:
                 import torch.onnx
 
-                model = self.models[model_idx]
-                model.eval()
+                estimator = adapter.get_estimator()
+                if estimator is None:
+                    raise ValueError("PyTorch model not initialized")
+
+                if hasattr(estimator, 'eval'):
+                    export_model = estimator
+                elif hasattr(estimator, 'model') and hasattr(estimator.model, 'eval'):
+                    export_model = estimator.model  # type: ignore[attr-defined]
+                else:
+                    raise TypeError("Estimator does not expose an eval() method for ONNX export")
+
+                export_model.eval()
 
                 # Create dummy input with correct shape
                 if self.F is None:
@@ -1106,7 +928,7 @@ class MLTrainer:
 
                 # Export to ONNX
                 torch.onnx.export(
-                    model,
+                    export_model,
                     (dummy_input,),
                     output_path,
                     export_params=True,
@@ -1127,7 +949,7 @@ class MLTrainer:
             except Exception as e:
                 print(f"❌ ONNX export failed: {e}")
         else:
-            print("⚠️ ONNX export only available for PyTorch models (type 2)")
+            print("⚠️ ONNX export only available for PyTorch models")
 
     def run_comprehensive_cv(self, model_idx=0, cv_folds=5, n_repeats=3):
         """
@@ -1146,7 +968,13 @@ class MLTrainer:
 
         print(f'\n🔄 Comprehensive CV: {n_repeats} × {cv_folds}-fold cross-validation')
 
-        model = self.models[model_idx]
+        adapter = self._get_model_adapter(model_idx)
+        spec = self._get_model_spec(model_idx)
+
+        if not adapter.supports_sklearn_interface:
+            raise ValueError(f"Comprehensive CV currently requires sklearn-compatible models. '{spec.display_name}' is not supported.")
+
+        model = adapter.get_estimator()
 
         # Setup repeated k-fold
         rkf = RepeatedKFold(n_splits=cv_folds, n_repeats=n_repeats, random_state=42)
@@ -1203,8 +1031,8 @@ class MLTrainer:
         if model_index >= len(self.models):
             raise ValueError(f"Model index {model_index} not available")
 
-        model_type = self.model_types[model_index]
-        if model_type != 0:  # Only Random Forest for now
+        spec = self._get_model_spec(model_index)
+        if spec.registry_key != 'sklearn.random_forest':  # Only Random Forest for now
             raise ValueError("Hyperparameter tuning currently only supports Random Forest models")
 
         print(f"🔍 Hyperparameter Tuning: {method.upper()}")
@@ -1254,7 +1082,6 @@ class MLTrainer:
             }
 
         # Record start time for total tuning time
-        import time
         start_time = time.time()
 
         # Execute the appropriate tuning method
