@@ -15,6 +15,17 @@ from sklearn.preprocessing import StandardScaler as SKStandardScaler
 from .metrics import mean_squared_error, r2_score
 from .models import BaseModelAdapter, MODEL_REGISTRY
 
+# Import visualization functions
+try:
+    from .visualization import (
+        plot_gt_vs_prediction,
+        plot_regression_comparison,
+        plot_multi_output_comparison,
+    )
+    VISUALIZATION_AVAILABLE = True
+except ImportError:
+    VISUALIZATION_AVAILABLE = False
+
 # Optional imports for advanced functionality
 try:
     import torch
@@ -458,6 +469,271 @@ class MLTrainer:
             'average_inference_time_test': avg_inference_time_test
         })
 
+    def plot_regression_results(
+        self,
+        model_index: int = 0,
+        output_index: Optional[int] = None,
+        dataset: str = 'both',
+        bins: int = 100,
+        cmap: str = 'plasma_r',
+        save_path: Optional[str] = None,
+        dpi: int = 150,
+        xlabel: Optional[str] = None,
+        ylabel: Optional[str] = None,
+        units: Optional[str] = None,
+        **kwargs
+    ):
+        """
+        Plot Ground Truth vs Prediction with density heatmap.
+        
+        Creates publication-quality plots showing model performance using
+        density scatter plots with histograms in 'plasma' colormap.
+        
+        Parameters
+        ----------
+        model_index : int, default=0
+            Index of the model to plot.
+        output_index : int, optional
+            Index of output to plot (for multi-output models).
+            If None and multi-output, plots first output.
+        dataset : str, default='both'
+            Which dataset to plot: 'train', 'test', or 'both'.
+            If 'both', creates side-by-side comparison.
+        bins : int, default=50
+            Number of bins for the 2D histogram.
+        cmap : str, default='plasma_r'
+            Colormap for the density heatmap. Defaults to inverse plasma ('plasma_r').
+            Use 'plasma' for original direction, or any other matplotlib colormap.
+        save_path : str, optional
+            Path to save the figure. If None, figure is displayed.
+        dpi : int, default=150
+            Resolution for saved figures.
+        **kwargs
+            Additional arguments passed to plot_gt_vs_prediction.
+            
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+            The figure object.
+        axes : matplotlib.axes.Axes or np.ndarray
+            The axes object(s).
+        results : dict
+            Dictionary with R² scores.
+        """
+        if not VISUALIZATION_AVAILABLE:
+            raise ImportError(
+                "Visualization functions not available. "
+                "Ensure matplotlib is installed: pip install matplotlib"
+            )
+        
+        # Check if predictions exist
+        if not hasattr(self, 'y_pred_train_val') or not hasattr(self, 'y_pred_test'):
+            raise ValueError(
+                "Predictions not available. Call predict_output() first."
+            )
+        
+        adapter = self._get_model_adapter(model_index)
+        spec = self._get_model_spec(model_index)
+        model_name = spec.display_name
+        
+        # Get true and predicted values
+        y_true_train = self._to_numpy(self.y_train_val)
+        y_pred_train = self.y_pred_train_val
+        y_true_test = self._to_numpy(self.y_test)
+        y_pred_test = self.y_pred_test
+        
+        # Handle multi-output
+        if output_index is not None:
+            if y_true_train.ndim > 1:
+                y_true_train = y_true_train[:, output_index]
+                y_pred_train = y_pred_train[:, output_index]
+                y_true_test = y_true_test[:, output_index]
+                y_pred_test = y_pred_test[:, output_index]
+            else:
+                print("⚠️ Single output model, ignoring output_index")
+        
+        # Get output name and units from dataset if available
+        output_name = ""
+        if hasattr(self, 'output_feature_names') and self.output_feature_names:
+            if output_index is not None and output_index < len(self.output_feature_names):
+                output_name = self.output_feature_names[output_index]
+            elif y_true_train.ndim == 1:
+                output_name = self.output_feature_names[0] if self.output_feature_names else ""
+        
+        # Set default labels if not provided - use dynamic names from dataset
+        if xlabel is None:
+            xlabel = 'Ground Truth'
+        if ylabel is None:
+            ylabel = f'Prediction ({model_name})' if model_name else 'Prediction'
+        
+        # Default to arbitrary units if not provided
+        # User can pass units parameter to override (e.g., "W/cm³/MWabs")
+        if units is None:
+            units = 'a.u.'  # Default to arbitrary units
+        
+        # Plot based on dataset selection
+        if dataset == 'both':
+            # Side-by-side comparison
+            fig, axes, results = plot_regression_comparison(
+                y_true_train, y_pred_train,
+                y_true_test, y_pred_test,
+                model_name=model_name,
+                output_name=output_name,
+                bins=bins,
+                cmap=cmap,
+                save_path=save_path,
+                dpi=dpi,
+                xlabel=xlabel,
+                ylabel=ylabel,
+                units=units,
+            )
+            return fig, axes, results
+        
+        elif dataset == 'train':
+            title = f"Training Set - {model_name}"
+            if output_name:
+                title = f"{output_name} - Training Set"
+            
+            fig, ax, r2 = plot_gt_vs_prediction(
+                y_true_train, y_pred_train,
+                dataset_name="Training Set",
+                title=title,
+                bins=bins,
+                cmap=cmap,
+                save_path=save_path,
+                dpi=dpi,
+                xlabel=xlabel,
+                ylabel=ylabel,
+                units=units,
+                **kwargs
+            )
+            results = {'r2_train': r2}
+            return fig, ax, results
+        
+        elif dataset == 'test':
+            title = f"Test Set - {model_name}"
+            if output_name:
+                title = f"{output_name} - Test Set"
+            
+            fig, ax, r2 = plot_gt_vs_prediction(
+                y_true_test, y_pred_test,
+                dataset_name="Test Set",
+                title=title,
+                bins=bins,
+                cmap=cmap,
+                save_path=save_path,
+                dpi=dpi,
+                xlabel=xlabel,
+                ylabel=ylabel,
+                units=units,
+                **kwargs
+            )
+            results = {'r2_test': r2}
+            return fig, ax, results
+        
+        else:
+            raise ValueError(f"Invalid dataset: {dataset}. Must be 'train', 'test', or 'both'")
+
+    def plot_all_outputs(
+        self,
+        model_index: int = 0,
+        max_outputs: int = 4,
+        bins: int = 100,
+        cmap: str = 'plasma_r',
+        save_path: Optional[str] = None,
+        dpi: int = 150,
+        xlabel: Optional[str] = None,
+        ylabel: Optional[str] = None,
+        units: Optional[str] = None,
+    ):
+        """
+        Plot Ground Truth vs Prediction for all outputs (multi-output models).
+        
+        Creates a grid of plots showing performance for each output variable.
+        
+        Parameters
+        ----------
+        model_index : int, default=0
+            Index of the model to plot.
+        max_outputs : int, default=4
+            Maximum number of outputs to plot.
+        bins : int, default=50
+            Number of bins for the 2D histogram.
+        cmap : str, default='plasma_r'
+            Colormap for the density heatmap. Defaults to inverse plasma ('plasma_r').
+            Use 'plasma' for original direction, or any other matplotlib colormap.
+        save_path : str, optional
+            Path to save the figure.
+        dpi : int, default=150
+            Resolution for saved figures.
+            
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+            The figure object.
+        axes : np.ndarray
+            Array of axes objects.
+        results : dict
+            Dictionary with R² scores for each output.
+        """
+        if not VISUALIZATION_AVAILABLE:
+            raise ImportError(
+                "Visualization functions not available. "
+                "Ensure matplotlib is installed: pip install matplotlib"
+            )
+        
+        # Check if predictions exist
+        if not hasattr(self, 'y_pred_train_val') or not hasattr(self, 'y_pred_test'):
+            raise ValueError(
+                "Predictions not available. Call predict_output() first."
+            )
+        
+        adapter = self._get_model_adapter(model_index)
+        spec = self._get_model_spec(model_index)
+        model_name = spec.display_name
+        
+        # Get true and predicted values
+        y_true_train = self._to_numpy(self.y_train_val)
+        y_pred_train = self.y_pred_train_val
+        y_true_test = self._to_numpy(self.y_test)
+        y_pred_test = self.y_pred_test
+        
+        # Get output names from dataset
+        output_names = []
+        if hasattr(self, 'output_feature_names') and self.output_feature_names:
+            output_names = self.output_feature_names
+        else:
+            n_outputs = y_true_train.shape[1] if y_true_train.ndim > 1 else 1
+            output_names = [f"Output {i+1}" for i in range(n_outputs)]
+        
+        # Set default labels if not provided
+        if xlabel is None:
+            xlabel = 'Ground Truth'
+        if ylabel is None:
+            ylabel = f'Prediction ({model_name})' if model_name else 'Prediction'
+        
+        # Default to arbitrary units if not provided
+        if units is None:
+            units = 'a.u.'  # Default to arbitrary units
+        
+        # Create multi-output comparison plot
+        fig, axes, results = plot_multi_output_comparison(
+            y_true_train, y_pred_train,
+            y_true_test, y_pred_test,
+            output_names=output_names,
+            model_name=model_name,
+            bins=bins,
+            cmap=cmap,
+            save_path=save_path,
+            dpi=dpi,
+            max_outputs=max_outputs,
+            xlabel=xlabel,
+            ylabel=ylabel,
+            units=units,
+        )
+        
+        return fig, axes, results
+
     def optimize_solver(self, n_iter=50, model_idx=0, search_spaces=None):
         """
         Optimize hyperparameters using Bayesian Search.
@@ -686,6 +962,142 @@ class MLTrainer:
 
         df_complete.to_pickle(path_out_file)
         print('✅ Prediction saved')
+
+    def save_results(
+        self,
+        model_index: int = 0,
+        cv_results: Optional[Dict[str, Any]] = None,
+        filepath: Optional[str] = None,
+        include_dataset_info: bool = True,
+    ) -> str:
+        """
+        Save model results to JSON file.
+        
+        Saves comprehensive results including:
+        - Model type
+        - Cross-validation results (if provided)
+        - Training metrics
+        - Testing metrics
+        - Dataset information (optional)
+        
+        Parameters
+        ----------
+        model_index : int, default=0
+            Index of the model to save results for.
+        cv_results : dict, optional
+            Cross-validation results from cross_validate(). If None, skipped.
+        filepath : str, optional
+            Path to save JSON file. If None, uses dir_path or current directory.
+        include_dataset_info : bool, default=True
+            Whether to include dataset information (n_samples, n_features, etc.).
+        
+        Returns
+        -------
+        str
+            Path to saved file.
+        
+        Examples
+        --------
+        >>> trainer = MLTrainer(n_features=5, n_outputs=2)
+        >>> # ... train model ...
+        >>> cv_results = trainer.cross_validate(model_idx=0)
+        >>> trainer.predict_output(0)
+        >>> trainer.save_results(0, cv_results=cv_results, filepath='results.json')
+        """
+        import json
+        
+        spec = self._get_model_spec(model_index)
+        model_type = spec.display_name
+        
+        # Convert numpy types to Python native types for JSON serialization
+        def convert_numpy(obj):
+            """Convert numpy types to Python native types for JSON serialization."""
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            elif isinstance(obj, (np.floating, np.integer)):
+                return float(obj) if isinstance(obj, np.floating) else int(obj)
+            elif isinstance(obj, dict):
+                return {k: convert_numpy(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [convert_numpy(item) for item in obj]
+            return obj
+        
+        # Build results dictionary
+        results = {
+            'model_type': model_type,
+        }
+        
+        # Add cross-validation results if provided
+        if cv_results is not None:
+            results['cross_validation'] = convert_numpy(cv_results)
+        
+        # Add training metrics
+        if hasattr(self, 'R2_train_val') and self.R2_train_val is not None:
+            training_info = {
+                'r2_train': float(self.R2_train_val),
+                'mse_train': float(self.MSE_train_val),
+            }
+            if self.model_performance and model_index < len(self.model_performance):
+                perf = self.model_performance[model_index]
+                if 'training_time' in perf and perf['training_time'] is not None:
+                    training_info['training_time'] = float(perf['training_time'])
+                if 'average_inference_time_train' in perf:
+                    training_info['inference_time_train'] = float(perf['average_inference_time_train'])
+            results['training'] = training_info
+        
+        # Add testing metrics
+        if hasattr(self, 'R2') and self.R2 is not None:
+            testing_info = {
+                'r2_test': float(self.R2),
+                'mse_test': float(self.MSE),
+            }
+            if self.model_performance and model_index < len(self.model_performance):
+                perf = self.model_performance[model_index]
+                if 'average_inference_time_test' in perf:
+                    testing_info['inference_time_test'] = float(perf['average_inference_time_test'])
+            results['testing'] = testing_info
+        
+        # Add dataset information if requested
+        if include_dataset_info:
+            dataset_info = {}
+            if hasattr(self, 'X') and self.X is not None:
+                dataset_info['n_samples'] = int(len(self.X))
+            if self.F is not None:
+                dataset_info['n_features'] = int(self.F)
+            if self.T is not None:
+                dataset_info['n_outputs'] = int(self.T)
+            if hasattr(self, 'X_train_val') and self.X_train_val is not None:
+                dataset_info['train_size'] = int(len(self.X_train_val))
+            if hasattr(self, 'X_test') and self.X_test is not None:
+                dataset_info['test_size'] = int(len(self.X_test))
+            if dataset_info:
+                results['dataset_info'] = dataset_info
+        
+        # Determine output path
+        if filepath is None:
+            if self.dir_path:
+                output_dir = Path(self.dir_path)
+            else:
+                output_dir = Path.cwd()
+            # Generate filename based on model type
+            model_type_str = self.MODEL_EXPORT_PREFIX.get(
+                spec.registry_key, 
+                model_type.replace(' ', '_')
+            )
+            filepath = output_dir / f'{model_type_str}_results.json'
+        else:
+            filepath = Path(filepath)
+        
+        # Ensure output directory exists
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Save to JSON
+        with open(filepath, 'w') as f:
+            json.dump(results, f, indent=2)
+        
+        print(f"💾 Results saved to: {filepath}")
+        
+        return str(filepath)
 
     def optimize_with_optuna(self, model_idx=0, n_trials=100, objective_type='mse', sampler_type='default'):
         """
