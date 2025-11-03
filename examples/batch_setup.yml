@@ -1,0 +1,50 @@
+# Example SURGE batch configuration
+#
+# Fill in the paths below to match your environment.
+# You can also override most fields via CLI flags.
+
+# Where to create the next batch_N directory
+out_root: /global/cfs/projectdirs/mp288/asvillar/proj/mlsurrogate/datasets/SPARC
+
+# Full path to the reference input file to copy and edit
+# If using equilibria, this typically points into a prior batch's run folder
+# and its basename is the input file to edit inside each sparc_* case.
+inpfile: /global/cfs/projectdirs/mp288/asvillar/proj/mlsurrogate/datasets/SPARC/batch_0/run1/C1input
+
+# Parameters to vary
+params: [ntor, pscale, batemanscale]
+
+# Ranges for each parameter (min, max)
+ranges:
+  - [1, 5]          # ntor (integer)
+  - [0.5, 2.0]      # pscale (float)
+  - [0.1, 1.0]      # batemanscale (float)
+
+# Whether each parameter is integer
+integer_mask: [true, false, false]
+
+# Number of samples (cases or runs)
+nsamples: 3
+
+# Sampling method: lhs | random
+spl: lhs
+
+# Optional random seed
+seed: 42
+
+# Equilibria handling:
+# - omit or set to null for simple case folders (no equilibria set)
+# - fixed: all equilibria in a run share the same parameters
+# - per_case: parameters vary per equilibrium case
+# For fixed/per_case, eqsetpath should point to a prior batch or directly to a run folder.
+equilibria: fixed
+
+# Path to an equilibria set (e.g., a previous batch or a specific run folder)
+eqsetpath: /global/cfs/projectdirs/mp288/asvillar/proj/mlsurrogate/datasets/SPARC/batch_0
+
+# Use in-Python replacement to avoid external shell scripts
+use_python_replacement: true
+
+# Non-interactive and plots
+confirm_dirs: false
+save_plots: true
