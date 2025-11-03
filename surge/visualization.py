@@ -511,3 +511,152 @@ def plot_multi_output_comparison(
     
     return fig, axes, results
 
+
+def plot_model_comparison(
+    y_true: np.ndarray,
+    predictions: dict,  # {model_name: y_pred}
+    dataset_name: str = "Dataset",
+    output_name: str = "",
+    bins: int = 100,
+    cmap: str = 'plasma_r',
+    figsize: Optional[Tuple[float, float]] = None,
+    save_path: Optional[str] = None,
+    dpi: int = 150,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    units: Optional[str] = None,  # Defaults to 'a.u.' if None
+):
+    """
+    Create side-by-side comparison plots for multiple models.
+    
+    Creates a grid of plots showing Ground Truth vs Prediction for each model,
+    allowing direct visual comparison of model performance.
+    
+    Parameters
+    ----------
+    y_true : np.ndarray
+        Ground truth values. Shape: (n_samples,) or (n_samples, 1).
+    predictions : dict
+        Dictionary mapping model names to prediction arrays.
+        Format: {'Model1': y_pred1, 'Model2': y_pred2, ...}
+        Each y_pred should have shape: (n_samples,) or (n_samples, 1).
+    dataset_name : str, default="Dataset"
+        Name of the dataset (e.g., "Training Set", "Test Set").
+    output_name : str, default=""
+        Name of the output variable (e.g., "P_e", "P_D").
+    bins : int, default=100
+        Number of bins for the 2D histogram.
+    cmap : str, default='plasma_r'
+        Colormap for the density heatmap.
+    figsize : tuple, optional
+        Figure size. Auto-calculated if None.
+    save_path : str, optional
+        Path to save the figure.
+    dpi : int, default=150
+        Resolution for saved figures.
+    xlabel : str, optional
+        X-axis label. Defaults to "Ground Truth [units]".
+    ylabel : str, optional
+        Y-axis label. Defaults to "Prediction [units]" (will include model name).
+    units : str, optional
+        Units for the output variable. Defaults to "a.u." if None.
+        
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The figure object.
+    axes : np.ndarray
+        Array of axes objects.
+    results : dict
+        Dictionary with R² scores for each model.
+    """
+    if not MATPLOTLIB_AVAILABLE:
+        raise ImportError("matplotlib is required for plotting. Install with: pip install matplotlib")
+    
+    # Ensure y_true is 1D
+    if y_true.ndim > 1:
+        y_true = y_true.ravel()
+    
+    # Number of models to compare
+    n_models = len(predictions)
+    if n_models == 0:
+        raise ValueError("predictions dictionary cannot be empty")
+    
+    # Calculate grid dimensions
+    n_cols = min(3, n_models)  # Max 3 columns
+    n_rows = (n_models + n_cols - 1) // n_cols  # Ceiling division
+    
+    if figsize is None:
+        figsize = (6 * n_cols, 6 * n_rows)
+    
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize)
+    if n_models == 1:
+        axes = np.array([axes])
+    elif n_rows == 1:
+        axes = axes.reshape(1, -1)
+    else:
+        axes = axes.flatten() if hasattr(axes, 'flatten') else [axes]
+    
+    results = {}
+    
+    # Plot each model
+    for idx, (model_name, y_pred) in enumerate(predictions.items()):
+        # Ensure y_pred is 1D
+        if y_pred.ndim > 1:
+            y_pred = y_pred.ravel()
+        
+        # Ensure same length
+        min_len = min(len(y_true), len(y_pred))
+        y_true_plot = y_true[:min_len]
+        y_pred_plot = y_pred[:min_len]
+        
+        # Calculate R²
+        from sklearn.metrics import r2_score
+        r2 = r2_score(y_true_plot, y_pred_plot)
+        results[model_name] = r2
+        
+        # Get axis - handle different array shapes
+        if isinstance(axes, np.ndarray):
+            if axes.ndim == 0:
+                ax = axes.item()
+            elif axes.ndim == 1:
+                ax = axes[idx] if idx < len(axes) else axes[-1]
+            else:
+                ax = axes.flatten()[idx] if idx < axes.size else axes.flatten()[-1]
+        else:
+            ax = axes[idx] if idx < len(axes) else axes[-1]
+        
+        # Build title
+        title = f"{model_name}\nR² = {r2:.4f}"
+        if output_name:
+            title = f"{title}\n{output_name}"
+        
+        # Plot
+        plot_gt_vs_prediction(
+            y_true_plot, y_pred_plot,
+            dataset_name=dataset_name,
+            title=title,
+            ax=ax,
+            bins=bins,
+            cmap=cmap,
+            show_colorbar=(idx == n_models - 1),  # Only show colorbar on last plot
+            show_r2=False,  # Already in title
+            show_diagonal=True,
+            xlabel=xlabel,
+            ylabel=ylabel or f"{model_name} Prediction",
+            units=units,
+        )
+    
+    # Hide unused subplots
+    for idx in range(n_models, len(axes)):
+        axes[idx].set_visible(False)
+    
+    plt.tight_layout()
+    
+    # Save if requested
+    if save_path is not None:
+        fig.savefig(save_path, dpi=dpi, bbox_inches='tight')
+        print(f"✅ Model comparison plot saved to: {save_path}")
+    
+    return fig, axes, results
+

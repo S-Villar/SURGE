@@ -19,7 +19,7 @@ try:
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
-from surge import MLTrainer
+from surge import SurrogateEngine
 
 
 @pytest.fixture
@@ -49,15 +49,15 @@ def trained_model():
     for i, output_name in enumerate(output_names):
         df[output_name] = y_multi[:, i]
     
-    trainer = MLTrainer(n_features=len(input_names), n_outputs=len(output_names))
-    trainer.load_df_dataset(df, input_names, output_names)
-    trainer.train_test_split(test_split=0.2)
-    trainer.standardize_data()
-    trainer.init_model(0, n_estimators=50, max_depth=8, random_state=42)
-    trainer.train(0)
-    trainer.predict_output(0)
+    engine = SurrogateEngine(n_features=len(input_names), n_outputs=len(output_names))
+    engine.load_df_dataset(df, input_names, output_names)
+    engine.train_test_split(test_split=0.2)
+    engine.standardize_data()
+    engine.init_model(0, n_estimators=50, max_depth=8, random_state=42)
+    engine.train(0)
+    engine.predict_output(0)
     
-    return trainer
+    return engine
 
 
 @pytest.mark.skipif(not MATPLOTLIB_AVAILABLE, reason="matplotlib not available")

@@ -17,10 +17,23 @@ try:
 except ImportError:  # pragma: no cover - optional dependency
     PYTORCH_AVAILABLE = False
 
+# Lazy import for gpflow to avoid loading on module import
+# Only import gpflow_models if gpflow is actually available and compatible
+GPFLOW_AVAILABLE = False
+_GPflowGPRModel = None
+_GPflowMultiKernelGPR = None
+
 try:
-    from .gpflow_models import GPflowGPRModel, GPflowMultiKernelGPR
-    GPFLOW_AVAILABLE = True
-except ImportError:  # pragma: no cover - optional dependency
+    # Check if gpflow module exists without importing it
+    import importlib.util
+    spec = importlib.util.find_spec("gpflow")
+    if spec is not None:
+        # Try importing gpflow_models (which handles its own gpflow import safely)
+        from .gpflow_models import GPflowGPRModel, GPflowMultiKernelGPR
+        GPFLOW_AVAILABLE = True
+        _GPflowGPRModel = GPflowGPRModel
+        _GPflowMultiKernelGPR = GPflowMultiKernelGPR
+except (ImportError, Exception):  # pragma: no cover - optional dependency
     GPFLOW_AVAILABLE = False
 
 
@@ -284,7 +297,22 @@ class ModelRegistry:
         return registered.adapter_cls(**kwargs)
 
     def keys(self) -> Iterable[str]:
+        """Return all registered model keys."""
         return sorted(self._registry)
+    
+    def list_models(self) -> Dict[str, str]:
+        """
+        List all registered models with their adapter classes.
+        
+        Returns
+        -------
+        dict
+            Mapping of model keys to adapter class names.
+        """
+        return {
+            key: registered.adapter_cls.__name__
+            for key, registered in self._registry.items()
+        }
 
     def get(self, key: str) -> RegisteredModel:
         registered = self._registry.get(key)
