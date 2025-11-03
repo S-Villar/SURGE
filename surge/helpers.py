@@ -102,7 +102,7 @@ def quick_train(
         y_data = pd.DataFrame(y, columns=output_names)
     
     # Create trainer
-        trainer = SurrogateEngine(n_features=n_features, n_outputs=n_outputs)
+    trainer = SurrogateEngine(n_features=n_features, n_outputs=n_outputs)
     
     # Load data
     if isinstance(X_data, pd.DataFrame) and isinstance(y_data, pd.DataFrame):
@@ -133,6 +133,9 @@ def quick_train(
             default_params=model_kwargs
         )
         trainer.model_types.append(spec)
+        # Initialize performance tracking for this model
+        performance = trainer._build_performance_stub(spec.display_name)
+        trainer.model_performance.append(performance)
         model_index = len(trainer.models) - 1
     else:
         # Legacy integer-based model type
