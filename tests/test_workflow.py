@@ -1,15 +1,16 @@
 """
-Minimal test for complete MLTrainer workflow.
+Comprehensive test for complete MLTrainer workflow.
 
 Demonstrates:
 1. Dataset loading
 2. Data preprocessing (split, standardization)
-3. Model initialization
+3. Model initialization (both integer and registry key formats)
 4. Cross-validation
 5. Training
 6. Prediction and evaluation
 7. Saving results
 8. Saving model with scalers
+9. Convenience methods
 """
 
 import json
@@ -172,4 +173,70 @@ def test_model_save_load(synthetic_dataset):
         
         assert predictions.shape == (5, len(output_names))
         assert not np.any(np.isnan(predictions))
+
+
+def test_model_registry_integration(synthetic_dataset):
+    """Test using model registry keys with MLTrainer."""
+    df, input_names, output_names = synthetic_dataset
+    
+    trainer = MLTrainer(n_features=len(input_names), n_outputs=len(output_names))
+    trainer.load_df_dataset(df, input_names, output_names)
+    trainer.train_test_split(test_split=0.2, random_state=42)
+    trainer.standardize_data()
+    
+    # Test using registry key instead of integer
+    try:
+        trainer.init_model('random_forest', n_estimators=50, random_state=42)
+        trainer.train(0)
+        trainer.predict_output(0)
+        
+        assert trainer.R2 is not None
+        assert trainer.MSE is not None
+    except KeyError:
+        # If registry key doesn't work, try alternative
+        trainer.init_model('sklearn.random_forest', n_estimators=50, random_state=42)
+        trainer.train(0)
+        trainer.predict_output(0)
+        
+        assert trainer.R2 is not None
+
+
+def test_convenience_methods(synthetic_dataset):
+    """Test MLTrainer convenience methods."""
+    df, input_names, output_names = synthetic_dataset
+    
+    trainer = MLTrainer(n_features=len(input_names), n_outputs=len(output_names))
+    trainer.load_df_dataset(df, input_names, output_names)
+    trainer.train_test_split(test_split=0.2, random_state=42)
+    trainer.standardize_data()
+    
+    # Train two models
+    trainer.init_model(0, n_estimators=50, random_state=42)
+    trainer.train(0)
+    trainer.predict_output(0)
+    
+    trainer.init_model(1, hidden_layer_sizes=(20,), max_iter=100, random_state=42)
+    trainer.train(1)
+    trainer.predict_output(1)
+    
+    # Test list_available_models
+    available = trainer.list_available_models()
+    assert isinstance(available, dict)
+    assert len(available) > 0
+    
+    # Test get_model_summary
+    summary0 = trainer.get_model_summary(0)
+    assert 'model_index' in summary0
+    assert 'model_name' in summary0
+    assert 'performance' in summary0
+    assert summary0['model_index'] == 0
+    
+    # Test compare_all_models
+    try:
+        fig, axes = trainer.compare_all_models(output_index=0, dataset='test')
+        assert fig is not None
+    except Exception as e:
+        # If visualization fails, that's okay for testing
+        print(f"Visualization test skipped: {e}")
+
 

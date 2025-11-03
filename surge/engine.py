@@ -2,7 +2,7 @@ import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -21,6 +21,9 @@ try:
         plot_gt_vs_prediction,
         plot_regression_comparison,
         plot_multi_output_comparison,
+        plot_model_comparison,
+        plot_profile_comparison,
+        plot_profile_grid,
     )
     VISUALIZATION_AVAILABLE = True
 except ImportError:
@@ -55,131 +58,42 @@ except ImportError:
 
 @dataclass(frozen=True)
 class ModelSpec:
-    registry_key: str
-    display_name: str
+    """Specification for a model type in the registry."""
+    registry_key: Optional[str] = None
+    display_name: str = ""
     default_params: Dict[str, Any] = field(default_factory=dict)
 
 
-class SurrogateTrainer:
+class SurrogateEngine:
     """
-    SURGE Surrogate Trainer for comprehensive surrogate modeling workflows.
+    Unified SURGE surrogate modeling engine.
     
-    This class provides the main interface for SURGE surrogate modeling,
-    integrating data loading, preprocessing, model training, and evaluation
-    with automated analysis and visualization capabilities.
-    """
-
-    def __init__(self, dir_path=None):
-        """
-        Initialize the SurrogateTrainer.
-        
-        Parameters:
-        -----------
-        dir_path : str, optional
-            Directory path for saving outputs
-        """
-        print("🚀 Initializing SURGE SurrogateTrainer")
-        self.dir_path = dir_path or ''
-        self.df = None
-        self.input_variables = None
-        self.output_variables = None
-        self.trainer = None
-
-    def load_dataset_pickle(self, pickle_path):
-        """
-        Load dataset from pickle file and perform comprehensive analysis.
-        
-        Parameters:
-        -----------
-        pickle_path : str or Path
-            Path to the pickle file containing the dataset
-            
-        Returns:
-        --------
-        tuple : (input_variables, output_variables)
-            Lists of identified input and output variable names
-        """
-        import pandas as pd
-
-        from .preprocessing import (
-            analyze_dataset_structure,
-            get_dataset_statistics,
-            print_dataset_analysis,
-        )
-
-        print("📥 Loading dataset from pickle file...")
-
-        # Load data
-        pickle_path = Path(pickle_path)
-        if not pickle_path.exists():
-            raise FileNotFoundError(f"Pickle file not found: {pickle_path}")
-
-        self.df = pd.read_pickle(pickle_path)
-        print(f"✅ Dataset loaded: {self.df.shape[0]} samples, {self.df.shape[1]} features")
-
-        # Perform comprehensive dataset analysis
-        print("\n🔍 Performing dataset structure analysis...")
-        dataset_info = analyze_dataset_structure(self.df)
-
-        print("\n📊 Dataset Analysis Results:")
-        print_dataset_analysis(dataset_info)
-
-        print("\n📈 Dataset Statistics:")
-        stats = get_dataset_statistics(self.df)
-
-        # Identify input and output variables
-        print("\n🎯 Identifying input and output variables...")
-
-        # Find output variables (PwE_ prefix)
-        output_variables = [col for col in self.df.columns if col.startswith('PwE_')]
-
-        # Find input variables (everything else that's numeric and not an output)
-        input_variables = []
-        for col in self.df.columns:
-            if col not in output_variables:
-                # Check if column is numeric and has reasonable variation
-                if pd.api.types.is_numeric_dtype(self.df[col]):
-                    if self.df[col].nunique() > 1:  # Has variation
-                        input_variables.append(col)
-
-        # Store variables
-        self.input_variables = input_variables
-        self.output_variables = output_variables
-
-        print(f"📥 Input variables ({len(input_variables)}): {input_variables}")
-        print(f"📤 Output variables ({len(output_variables)}): {len(output_variables)} targets")
-        print(f"   First 5 outputs: {output_variables[:5]}")
-
-        # Initialize MLTrainer with the identified variables
-        self.trainer = MLTrainer(len(input_variables), len(output_variables))
-
-        return input_variables, output_variables
-
-    def get_trainer(self):
-        """
-        Get the underlying MLTrainer instance for advanced operations.
-        
-        Returns:
-        --------
-        MLTrainer : The MLTrainer instance
-        """
-        if self.trainer is None:
-            raise ValueError("No trainer available. Call load_dataset_pickle() first.")
-        return self.trainer
-
-
-class MLTrainer:
-    """
-    Comprehensive ML trainer for SURGE surrogate modeling.
+    This class provides a comprehensive interface for surrogate modeling workflows,
+    including automated data loading with pattern-based detection, model training,
+    evaluation, visualization, and optimization.
     
-    This class provides a unified interface for training various ML models
-    including Random Forest, Neural Networks, and Gaussian Processes with
-    automated hyperparameter optimization and cross-validation.
+    Supports both auto-detection and manual specification of inputs/outputs,
+    and works with various model types through the model registry.
+    
+    Examples
+    --------
+    >>> # Auto-detection from file
+    >>> engine = SurrogateEngine()
+    >>> engine.load_from_file('data.pkl', auto_detect=True)
+    >>> engine.train_test_split()
+    >>> engine.standardize_data()
+    >>> engine.init_model('random_forest')
+    >>> engine.train(0)
+    
+    >>> # Manual specification
+    >>> engine = SurrogateEngine()
+    >>> engine.load_df_dataset(df, input_cols, output_cols)
+    >>> # ... rest same
     """
 
     def __init__(self, n_features=None, n_outputs=None, dir_path=None):
         """
-        Initialize the MLTrainer.
+        Initialize the SurrogateEngine.
         
         Parameters:
         -----------
@@ -190,7 +104,7 @@ class MLTrainer:
         dir_path : str, optional
             Directory path for saving outputs
         """
-        print("🚀 Initializing SURGE MLTrainer")
+        print("🚀 Initializing SURGE SurrogateEngine")
         self.F = n_features
         self.T = n_outputs
         self.models: List[BaseModelAdapter] = []
@@ -199,11 +113,23 @@ class MLTrainer:
 
         # Model performance tracking
         self.model_performance: List[Dict[str, Any]] = []
+        
+        # Model predictions storage (per model index)
+        # Format: {model_index: {'train': y_pred_train, 'test': y_pred_test}}
+        self.model_predictions: Dict[int, Dict[str, np.ndarray]] = {}
+        
+        # Global predictions (for backward compatibility, stores last model's predictions)
+        self.y_pred_train_val: Optional[np.ndarray] = None
+        self.y_pred_test: Optional[np.ndarray] = None
+        self.MSE_train_val: Optional[float] = None
+        self.R2_train_val: Optional[float] = None
+        self.MSE: Optional[float] = None
+        self.R2: Optional[float] = None
 
         # Baseline performance tracking
         self.baseline_r2: Optional[float] = None
 
-        # Model type mapping
+        # Model type mapping (legacy integer-based, for backward compatibility)
         self.MODEL_TYPES: Dict[int, ModelSpec] = {
             0: ModelSpec('sklearn.random_forest', 'RandomForestRegressor'),
             1: ModelSpec('sklearn.mlp', 'MLPRegressor'),
@@ -217,6 +143,9 @@ class MLTrainer:
             'gpflow.gpr': 'GPR',
             'gpflow.multi_kernel_gpr': 'GPRMulti',
         }
+        
+        # Track if model registry keys are used
+        self._uses_registry = False
 
         if n_features is not None and n_outputs is not None:
             print(f"📊 Configured for {n_features} features → {n_outputs} outputs")
@@ -287,6 +216,88 @@ class MLTrainer:
             return self.x_train_val_sc
         return self.x_test_sc
 
+    def load_from_file(
+        self,
+        file_path: Union[str, Path],
+        input_cols: Optional[List[str]] = None,
+        output_cols: Optional[List[str]] = None,
+        auto_detect: bool = True,
+        **kwargs
+    ) -> Tuple[List[str], List[str]]:
+        """
+        Load dataset from file with optional auto-detection.
+        
+        Supports CSV, pickle (.pkl, .pickle), parquet (.parquet, .pq), and Excel (.xlsx, .xls).
+        Uses SurrogateDataset for generalized pattern-based detection.
+        
+        Parameters
+        ----------
+        file_path : str or Path
+            Path to the data file
+        input_cols : list of str, optional
+            Manual specification of input column names
+        output_cols : list of str, optional
+            Manual specification of output column names
+        auto_detect : bool, default=True
+            If True, automatically detect inputs/outputs using pattern analysis
+        **kwargs
+            Additional arguments passed to pandas read function
+            
+        Returns
+        -------
+        tuple
+            (input_columns, output_columns) lists
+            
+        Examples
+        --------
+        >>> engine = SurrogateEngine()
+        >>> input_cols, output_cols = engine.load_from_file('data.pkl', auto_detect=True)
+        """
+        from .dataset import SurrogateDataset
+        
+        dataset = SurrogateDataset()
+        input_cols, output_cols = dataset.load_from_file(
+            file_path, input_cols, output_cols, auto_detect, **kwargs
+        )
+        
+        # Load into engine
+        self.load_from_dataset(dataset)
+        
+        return input_cols, output_cols
+    
+    def load_from_dataset(self, dataset):
+        """
+        Load dataset from SurrogateDataset instance.
+        
+        Parameters
+        ----------
+        dataset : SurrogateDataset
+            SurrogateDataset instance with loaded data
+            
+        Examples
+        --------
+        >>> from surge import SurrogateDataset, SurrogateEngine
+        >>> dataset = SurrogateDataset()
+        >>> dataset.load_from_file('data.pkl')
+        >>> engine = SurrogateEngine()
+        >>> engine.load_from_dataset(dataset)
+        """
+        if dataset.df is None:
+            raise ValueError("Dataset not loaded. Call dataset.load_from_file() first.")
+        
+        if not dataset.input_columns or not dataset.output_columns:
+            raise ValueError("Dataset missing input/output columns. Ensure auto_detect=True or specify manually.")
+        
+        # Load using existing load_df_dataset method
+        self.load_df_dataset(
+            dataset.df,
+            dataset.input_columns,
+            dataset.output_columns
+        )
+        
+        # Store reference to dataset for access to analysis
+        self._dataset = dataset
+    
     def load_df_dataset(self, df, input_feature_names, output_feature_names):
         """
         Load dataset from pandas DataFrame.
@@ -325,7 +336,11 @@ class MLTrainer:
         print(f"   📥 Input features: {len(input_feature_names)} (F={self.F})")
         print(f"   📤 Output targets: {len(output_feature_names)} (T={self.T})")
 
-    def train_test_split(self, test_split=0.2):
+    def train_test_split(
+        self,
+        test_split: float = 0.2,
+        random_state: Optional[int] = None
+    ):
         """
         Split data into train+validation and test sets.
         
@@ -338,7 +353,7 @@ class MLTrainer:
 
         # Split into train+val and test
         self.X_train_val, self.X_test, self.y_train_val, self.y_test = train_test_split(
-            self.X, self.y, test_size=test_split, random_state=42, shuffle=True
+            self.X, self.y, test_size=test_split, random_state=random_state, shuffle=True
         )
 
         print(f"X train + val shape: {self.X_train_val.shape}")
@@ -373,18 +388,64 @@ class MLTrainer:
             print("means: ", self.y_scaler.mean_[[0, idx_max_ytrain_mean]])
             print("standard deviation: ", np.sqrt(self.y_scaler.var_[[0, idx_max_ytrain_mean]]))
 
-    def init_model(self, model_type: int, **model_kwargs: Any):
-        """Initialize a model of the specified type."""
-        spec = self._resolve_model_spec(model_type)
-        print(f"\n🎯 Initializing Model {model_type}: {spec.display_name}")
+    def init_model(
+        self,
+        model_type: Union[int, str],
+        **model_kwargs: Any
+    ):
+        """
+        Initialize a model of the specified type.
+        
+        Supports both legacy integer-based model types and registry keys.
+        
+        Parameters
+        ----------
+        model_type : int or str
+            Model type:
+            - int: Legacy model type (0=RFR, 1=MLP, 2=PyTorchMLP, 3=GPflowGPR)
+            - str: Model registry key (e.g., 'random_forest', 'sklearn.random_forest', 'pytorch.mlp_model')
+        **model_kwargs
+            Additional keyword arguments for model initialization.
+        
+        Examples
+        --------
+        >>> # Using legacy integer-based model type
+        >>> trainer.init_model(0, n_estimators=100, max_depth=10)
+        >>> 
+        >>> # Using model registry key
+        >>> trainer.init_model('random_forest', n_estimators=100, max_depth=10)
+        >>> trainer.init_model('pytorch.mlp_model', hidden_layers=[50, 25])
+        """
+        # Handle string-based model types (registry keys)
+        if isinstance(model_type, str):
+            # Use model registry directly
+            adapter = MODEL_REGISTRY.create(model_type, **model_kwargs)
+            self.models.append(adapter)
+            
+            # Create spec for registry-based model
+            registry_model = MODEL_REGISTRY.get(model_type)
+            spec = ModelSpec(
+                registry_key=model_type,
+                display_name=adapter.__class__.__name__.replace('Adapter', '').replace('Model', ''),
+                default_params=model_kwargs
+            )
+            self.model_types.append(spec)
+            self._uses_registry = True
+            
+            model_index = len(self.models) - 1
+            print(f"\n🎯 Initializing Model {model_index}: {spec.display_name} (from registry)")
+        else:
+            # Legacy integer-based model type
+            spec = self._resolve_model_spec(model_type)
+            print(f"\n🎯 Initializing Model {model_type}: {spec.display_name}")
 
-        params = dict(spec.default_params)
-        params.update(model_kwargs)
+            params = dict(spec.default_params)
+            params.update(model_kwargs)
 
-        adapter = MODEL_REGISTRY.create(spec.registry_key, **params)
-        self.models.append(adapter)
-        self.model_types.append(spec)
-
+            adapter = MODEL_REGISTRY.create(spec.registry_key, **params)
+            self.models.append(adapter)
+            self.model_types.append(spec)
+        
         performance = self._build_performance_stub(spec.display_name)
         self.model_performance.append(performance)
         print(f"✅ {spec.display_name} initialized")
@@ -423,19 +484,23 @@ class MLTrainer:
 
         y_pred_train = self._ensure_2d(y_pred_train)
         if adapter.handles_output_scaling:
-            self.y_pred_train_val = y_pred_train
+            y_pred_train_inv = y_pred_train
         else:
-            self.y_pred_train_val = self.y_scaler.inverse_transform(y_pred_train)
+            y_pred_train_inv = self.y_scaler.inverse_transform(y_pred_train)
 
         avg_inference_time_train = t_pred_train_val / X_train.shape[0]
         print(f' t_I(avg) = {avg_inference_time_train:.6f} seconds per sample')
 
         y_true_train = self._to_numpy(self.y_train_val)
-        self.MSE_train_val = mean_squared_error(y_true_train, self.y_pred_train_val)
-        self.R2_train_val = r2_score(y_true_train, self.y_pred_train_val)
+        train_mse = mean_squared_error(y_true_train, y_pred_train_inv)
+        train_r2 = r2_score(y_true_train, y_pred_train_inv)
+        
+        # Store globally for backward compatibility
+        self.MSE_train_val = train_mse
+        self.R2_train_val = train_r2
 
-        print(f' MSE_train_val = {self.MSE_train_val:.6f}')
-        print(f' R2_train_val = {self.R2_train_val:.4f}')
+        print(f' MSE_train_val = {train_mse:.6f}')
+        print(f' R2_train_val = {train_r2:.4f}')
 
         # Test set predictions
         print('\n--- Testing Set Results ---')
@@ -446,25 +511,39 @@ class MLTrainer:
 
         y_pred_test = self._ensure_2d(y_pred_test)
         if adapter.handles_output_scaling:
-            self.y_pred_test = y_pred_test
+            y_pred_test_inv = y_pred_test
         else:
-            self.y_pred_test = self.y_scaler.inverse_transform(y_pred_test)
+            y_pred_test_inv = self.y_scaler.inverse_transform(y_pred_test)
+
+        # Store predictions per model
+        self.model_predictions[model_index] = {
+            'train': y_pred_train_inv,
+            'test': y_pred_test_inv
+        }
+        
+        # Store globally for backward compatibility
+        self.y_pred_train_val = y_pred_train_inv
+        self.y_pred_test = y_pred_test_inv
 
         avg_inference_time_test = t_pred_test / X_test.shape[0]
         print(f' t_I(avg) = {avg_inference_time_test:.6f} seconds per sample')
 
         y_true_test = self._to_numpy(self.y_test)
-        self.MSE = mean_squared_error(y_true_test, self.y_pred_test)
-        self.R2 = r2_score(y_true_test, self.y_pred_test)
+        test_mse = mean_squared_error(y_true_test, y_pred_test_inv)
+        test_r2 = r2_score(y_true_test, y_pred_test_inv)
+        
+        # Store globally for backward compatibility
+        self.MSE = test_mse
+        self.R2 = test_r2
 
-        print(f' MSE = {self.MSE:.6f}')
-        print(f' R2 = {self.R2:.4f}')
+        print(f' MSE = {test_mse:.6f}')
+        print(f' R2 = {test_r2:.4f}')
 
         self.model_performance[model_index].update({
-            'R2_train_val': self.R2_train_val,
-            'R2': self.R2,
-            'MSE_train_val': self.MSE_train_val,
-            'MSE': self.MSE,
+            'R2_train_val': train_r2,
+            'R2': test_r2,
+            'MSE_train_val': train_mse,
+            'MSE': test_mse,
             'average_inference_time_train': avg_inference_time_train,
             'average_inference_time_test': avg_inference_time_test
         })
@@ -733,6 +812,424 @@ class MLTrainer:
         )
         
         return fig, axes, results
+
+    def compare_models(
+        self,
+        model_indices: List[int],
+        output_index: Optional[int] = None,
+        dataset: str = 'test',
+        bins: int = 100,
+        cmap: str = 'plasma_r',
+        save_path: Optional[str] = None,
+        dpi: int = 150,
+        xlabel: Optional[str] = None,
+        ylabel: Optional[str] = None,
+        units: Optional[str] = None,
+    ):
+        """
+        Compare multiple models side-by-side.
+        
+        Creates comparison plots showing Ground Truth vs Prediction for multiple models,
+        allowing direct visual comparison of model performance.
+        
+        Parameters
+        ----------
+        model_indices : List[int]
+            List of model indices to compare (e.g., [0, 1, 2]).
+        output_index : int, optional
+            Index of output to plot. If None, uses first output.
+        dataset : str, default='test'
+            Dataset to use for comparison ('train' or 'test').
+        bins : int, default=100
+            Number of bins for the 2D histogram.
+        cmap : str, default='plasma_r'
+            Colormap for the density heatmap.
+        save_path : str, optional
+            Path to save the figure.
+        dpi : int, default=150
+            Resolution for saved figures.
+        xlabel : str, optional
+            X-axis label. Defaults to "Ground Truth [units]".
+        ylabel : str, optional
+            Y-axis label. Defaults to "Prediction [units]".
+        units : str, optional
+            Units for the output variable. Defaults to "a.u." if None.
+        
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+            The figure object.
+        axes : np.ndarray
+            Array of axes objects.
+        results : dict
+            Dictionary with R² scores for each model.
+        """
+        if not VISUALIZATION_AVAILABLE:
+            raise ImportError("matplotlib is required for plotting. Install with: pip install matplotlib")
+        
+        if not model_indices:
+            raise ValueError("model_indices cannot be empty")
+        
+        # Validate model indices
+        for idx in model_indices:
+            if idx >= len(self.models):
+                raise ValueError(f"Model index {idx} out of range. Available: 0-{len(self.models)-1}")
+            if idx not in self.model_predictions:
+                raise ValueError(f"Model {idx} has not been trained. Call predict_output({idx}) first.")
+        
+        # Get predictions for each model
+        predictions = {}
+        model_names = []
+        
+        for idx in model_indices:
+            spec = self._get_model_spec(idx)
+            model_name = spec.display_name
+            
+            # Get predictions
+            preds = self.model_predictions[idx][dataset]
+            
+            # Extract output if needed
+            if output_index is not None:
+                if preds.ndim > 1:
+                    preds = preds[:, output_index]
+                else:
+                    preds = preds
+            
+            predictions[model_name] = preds
+            model_names.append(model_name)
+        
+        # Get ground truth
+        if dataset == 'train':
+            y_true = self._to_numpy(self.y_train_val)
+        else:
+            y_true = self._to_numpy(self.y_test)
+        
+        # Extract output if needed
+        if output_index is not None:
+            if y_true.ndim > 1:
+                y_true = y_true[:, output_index]
+            else:
+                y_true = y_true
+        
+        # Get output name
+        output_name = ""
+        if hasattr(self, 'output_feature_names') and self.output_feature_names:
+            if output_index is not None and output_index < len(self.output_feature_names):
+                output_name = self.output_feature_names[output_index]
+        
+        # Set default labels
+        if xlabel is None:
+            xlabel = 'Ground Truth'
+        if units is None:
+            units = 'a.u.'
+        
+        # Create comparison plot
+        fig, axes, results = plot_model_comparison(
+            y_true=y_true,
+            predictions=predictions,
+            dataset_name=f"{dataset.capitalize()} Set",
+            output_name=output_name,
+            bins=bins,
+            cmap=cmap,
+            save_path=save_path,
+            dpi=dpi,
+            xlabel=xlabel,
+            ylabel=ylabel,
+            units=units,
+        )
+        
+        return fig, axes, results
+
+    def plot_profiles(
+        self,
+        rho: np.ndarray,
+        case_indices: List[int],
+        case_labels: Optional[List[str]] = None,
+        model_indices: Optional[List[int]] = None,
+        output_indices: Optional[List[int]] = None,
+        dataset: str = 'test',
+        input_params_list: Optional[List[dict]] = None,
+        xlabel: str = "ρ [-]",
+        units: str = "",
+        figsize: Optional[Tuple[float, float]] = None,
+        save_path: Optional[str] = None,
+        dpi: int = 150,
+    ):
+        """
+        Plot profile comparisons for specific cases (similar to paper figure).
+        
+        Creates a grid of plots showing profiles (y vs ρ) comparing ground truth
+        with predictions from multiple models for selected cases.
+        
+        Parameters
+        ----------
+        rho : np.ndarray
+            Radial coordinate (spatial coordinate). Shape: (n_points,)
+            This should match the length of each profile.
+        case_indices : List[int]
+            List of sample indices to plot (e.g., [3676, 8197, 12027])
+        case_labels : List[str], optional
+            Labels for each case (e.g., ["Good", "Average", "Poor"]).
+            If None, uses case indices.
+        model_indices : List[int], optional
+            List of model indices to compare. If None, uses all trained models.
+        output_indices : List[int], optional
+            List of output indices to plot. If None, uses all outputs.
+        dataset : str, default='test'
+            Dataset to use ('train' or 'test').
+        input_params_list : List[dict], optional
+            List of input parameter dictionaries, one per case.
+            Each dict can contain keys like 'ne0', 'Te0', 'Nφ', 'α', etc.
+        xlabel : str, default="ρ [-]"
+            X-axis label.
+        units : str, default=""
+            Units for outputs (e.g., "W/cm³/MWabs"). Defaults to "a.u." if None.
+        figsize : tuple, optional
+            Figure size. Auto-calculated if None.
+        save_path : str, optional
+            Path to save the figure.
+        dpi : int, default=150
+            Resolution for saved figures.
+        
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+            The figure object.
+        axes : np.ndarray
+            Array of axes objects.
+        """
+        if not VISUALIZATION_AVAILABLE:
+            raise ImportError("matplotlib is required for plotting. Install with: pip install matplotlib")
+        
+        # Validate case indices
+        if dataset == 'train':
+            n_samples = len(self.y_train_val) if hasattr(self, 'y_train_val') else 0
+        else:
+            n_samples = len(self.y_test) if hasattr(self, 'y_test') else 0
+        
+        for case_idx in case_indices:
+            if case_idx >= n_samples:
+                raise ValueError(f"Case index {case_idx} out of range. Available: 0-{n_samples-1}")
+        
+        # Get model indices
+        if model_indices is None:
+            model_indices = [idx for idx in range(len(self.models)) if idx in self.model_predictions]
+        if not model_indices:
+            raise ValueError("No models available. Train models first.")
+        
+        # Get output indices
+        if output_indices is None:
+            output_indices = list(range(self.T))
+        
+        # Get case labels
+        if case_labels is None:
+            case_labels = [f"Case {idx}" for idx in case_indices]
+        
+        # Get output names
+        if hasattr(self, 'output_feature_names') and self.output_feature_names:
+            output_names = [self.output_feature_names[i] for i in output_indices]
+        else:
+            output_names = [f"Output {i+1}" for i in output_indices]
+        
+        # Get ground truth profiles for selected cases
+        if dataset == 'train':
+            y_true = self._to_numpy(self.y_train_val)
+        else:
+            y_true = self._to_numpy(self.y_test)
+        
+        # Extract profiles for selected cases and outputs
+        # Shape: (n_cases, n_outputs, n_points)
+        # Assuming outputs are profiles (vectors), need to reshape
+        y_true_profiles = []
+        for case_idx in case_indices:
+            case_true = y_true[case_idx]
+            # If outputs are vectors, they should already be shaped correctly
+            # Otherwise, we treat each output as a scalar (single point)
+            if case_true.ndim == 1:
+                # Multiple scalar outputs - convert to profiles if needed
+                # For now, assume we need to reshape or repeat
+                # This depends on data structure - may need adjustment
+                case_profiles = []
+                for out_idx in output_indices:
+                    if len(case_true) > out_idx:
+                        # Treat as scalar - create constant profile
+                        profile = np.full_like(rho, case_true[out_idx])
+                    else:
+                        profile = np.full_like(rho, case_true[out_idx] if out_idx < len(case_true) else 0)
+                    case_profiles.append(profile)
+                y_true_profiles.append(np.array(case_profiles))
+            else:
+                # Already a profile
+                case_profiles = [case_true[i] for i in output_indices]
+                y_true_profiles.append(np.array(case_profiles))
+        
+        y_true_profiles = np.array(y_true_profiles)
+        
+        # Get predictions for each model
+        y_pred_profiles = {}
+        mse_values_list = []
+        
+        for model_idx in model_indices:
+            spec = self._get_model_spec(model_idx)
+            model_name = spec.display_name
+            
+            # Get predictions
+            preds = self.model_predictions[model_idx][dataset]
+            
+            # Extract profiles for selected cases and outputs
+            model_preds = []
+            case_mse = {}
+            
+            for case_idx in case_indices:
+                case_pred = preds[case_idx]
+                if case_pred.ndim == 0:
+                    # Scalar - create constant profile
+                    case_profiles = [np.full_like(rho, case_pred) for _ in output_indices]
+                elif case_pred.ndim == 1:
+                    # Vector - treat as scalar outputs
+                    case_profiles = []
+                    for out_idx in output_indices:
+                        if len(case_pred) > out_idx:
+                            profile = np.full_like(rho, case_pred[out_idx])
+                        else:
+                            profile = np.full_like(rho, case_pred[out_idx] if out_idx < len(case_pred) else 0)
+                        case_profiles.append(profile)
+                else:
+                    # Already profiles
+                    case_profiles = [case_pred[i] for i in output_indices]
+                
+                model_preds.append(np.array(case_profiles))
+                
+                # Calculate MSE for this case
+                case_true = y_true_profiles[case_indices.index(case_idx)]
+                mse = mean_squared_error(case_true.flatten(), np.array(case_profiles).flatten())
+                case_mse[model_name] = mse
+            
+            y_pred_profiles[model_name] = np.array(model_preds)
+            mse_values_list.append(case_mse)
+        
+        # Combine MSE values across models
+        combined_mse_list = []
+        for case_idx in range(len(case_indices)):
+            combined_mse = {}
+            for mse_dict in mse_values_list:
+                combined_mse.update(mse_dict)
+            combined_mse_list.append(combined_mse)
+        
+        # Default units
+        if not units:
+            units = 'a.u.'
+        
+        # Create profile grid plot
+        fig, axes = plot_profile_grid(
+            rho=rho,
+            y_true_profiles=y_true_profiles,
+            y_pred_profiles=y_pred_profiles,
+            case_indices=case_indices,
+            case_labels=case_labels,
+            output_names=output_names,
+            input_params_list=input_params_list,
+            mse_values_list=combined_mse_list if combined_mse_list else None,
+            units=units,
+            xlabel=xlabel,
+            ylabel_prefix="",
+            figsize=figsize,
+            save_path=save_path,
+            dpi=dpi,
+        )
+        
+        return fig, axes
+
+    def list_available_models(self) -> Dict[str, Any]:
+        """
+        List all available models from the registry.
+        
+        Returns
+        -------
+        dict
+            Dictionary mapping model keys to their adapter class names.
+        
+        Examples
+        --------
+        >>> trainer.list_available_models()
+        {'random_forest': 'RandomForestModel', 'mlp': 'MLPModel', ...}
+        """
+        return MODEL_REGISTRY.list_models()
+    
+    def get_model_summary(self, model_index: int) -> Dict[str, Any]:
+        """
+        Get a summary of a trained model including performance metrics.
+        
+        Parameters
+        ----------
+        model_index : int
+            Index of the model to summarize.
+        
+        Returns
+        -------
+        dict
+            Dictionary containing model information and performance metrics.
+        
+        Examples
+        --------
+        >>> summary = trainer.get_model_summary(0)
+        >>> print(f"R² Score: {summary['performance']['R2']:.4f}")
+        """
+        if model_index >= len(self.models):
+            raise ValueError(f"Model index {model_index} not available")
+        
+        spec = self._get_model_spec(model_index)
+        perf = self.model_performance[model_index]
+        
+        return {
+            'model_index': model_index,
+            'model_name': spec.display_name,
+            'registry_key': spec.registry_key,
+            'performance': perf,
+            'has_predictions': model_index in self.model_predictions,
+        }
+    
+    def compare_all_models(
+        self,
+        output_index: Optional[int] = None,
+        dataset: str = 'test',
+        save_path: Optional[str] = None,
+        **kwargs
+    ):
+        """
+        Compare all trained models side-by-side.
+        
+        Convenience method that compares all models that have been trained.
+        
+        Parameters
+        ----------
+        output_index : int, optional
+            Index of output to compare. If None and T=1, uses 0.
+        dataset : str, default='test'
+            Dataset to use ('train' or 'test').
+        save_path : str, optional
+            Path to save comparison plot.
+        **kwargs
+            Additional arguments passed to compare_models().
+        
+        Returns
+        -------
+        fig, axes
+            Figure and axes objects from the comparison plot.
+        """
+        # Get all model indices that have predictions
+        model_indices = [idx for idx in range(len(self.models)) if idx in self.model_predictions]
+        
+        if not model_indices:
+            raise ValueError("No trained models available. Train models first.")
+        
+        return self.compare_models(
+            model_indices=model_indices,
+            output_index=output_index,
+            dataset=dataset,
+            save_path=save_path,
+            **kwargs
+        )
 
     def optimize_solver(self, n_iter=50, model_idx=0, search_spaces=None):
         """
