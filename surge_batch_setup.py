@@ -132,6 +132,7 @@ def run_from_config(config: Dict[str, Any], overrides: Dict[str, Any]) -> str:
 	params: List[str] = cfg.get("params") or cfg.get("inpnames")
 	ranges: List[List[float]] = cfg.get("ranges")
 	integer_mask: List[Any] = cfg.get("integer_mask")
+	log_space: Optional[List[Any]] = cfg.get("log_space")
 	nsamples: int = int(cfg.get("nsamples", 5))
 	spl: str = str(cfg.get("spl", cfg.get("method", "lhs"))).lower()
 	seed: Optional[int] = cfg.get("seed")
@@ -139,6 +140,13 @@ def run_from_config(config: Dict[str, Any], overrides: Dict[str, Any]) -> str:
 	eqsetpath: Optional[str] = cfg.get("eqsetpath")
 	out_root: Optional[str] = cfg.get("out_root")
 	inpfile: Optional[str] = cfg.get("inpfile")
+	# scratch: CLI override takes precedence, then config, default to True
+	if "scratch" in overrides and overrides["scratch"] is not None:
+		scratch = bool(overrides["scratch"])
+	elif "scratch" in cfg and cfg["scratch"] is not None:
+		scratch = bool(cfg["scratch"])
+	else:
+		scratch = True  # Default to True
 	confirm_dirs: bool = bool(cfg.get("confirm_dirs", False))
 	save_plots: bool = bool(cfg.get("save_plots", True))
 	use_python_replacement: bool = bool(cfg.get("use_python_replacement", True))
@@ -149,12 +157,30 @@ def run_from_config(config: Dict[str, Any], overrides: Dict[str, Any]) -> str:
 	if len(params) != len(ranges) or len(params) != len(integer_mask):
 		raise ValueError("Length mismatch among params, ranges, and integer_mask")
 	integer_mask_b = _coerce_bool_list(integer_mask)
+	if log_space is not None:
+		if len(log_space) != len(params):
+			raise ValueError("Length mismatch: log_space must match params length")
+		log_space_b = _coerce_bool_list(log_space)
+	else:
+		log_space_b = [False] * len(params)
 	method = "lhs" if spl in ("lhs", "latin", "latin_hypercube") else ("random" if spl in ("random", "uniform") else spl)
 
 	if not out_root:
-		# default to SURGE/examples/datagen
-		surge_root = os.path.dirname(os.path.abspath(__file__))
-		out_root = os.path.join(surge_root, "examples", "datagen")
+		# Default to $SCRATCH/mp288/jobs if scratch=True, otherwise use SURGE/examples/datagen
+		if scratch:
+			scratch_dir = os.environ.get("SCRATCH")
+			if scratch_dir:
+				out_root = os.path.join(scratch_dir, "mp288", "jobs")
+				if not dry_run:
+					print(f"Using scratch directory: {out_root}")
+			else:
+				print("[warn] SCRATCH environment variable not set, falling back to default location")
+				surge_root = os.path.dirname(os.path.abspath(__file__))
+				out_root = os.path.join(surge_root, "examples", "datagen")
+		else:
+			# default to SURGE/examples/datagen
+			surge_root = os.path.dirname(os.path.abspath(__file__))
+			out_root = os.path.join(surge_root, "examples", "datagen")
 	os.makedirs(out_root, exist_ok=True)
 
 	if not inpfile or not os.path.isfile(inpfile):
@@ -196,9 +222,6 @@ def run_from_config(config: Dict[str, Any], overrides: Dict[str, Any]) -> str:
 		except Exception as e:
 			print(f"[warn] failed to copy reference input file: {e}")
 
-		# Get mesh_filename from config if provided
-		mesh_filename = cfg.get("mesh_filename")
-		
 		created = gen.generate_runs_from_equilibria(
 			inpnames=params,
 			inputfilename=inputfilename,
@@ -211,7 +234,7 @@ def run_from_config(config: Dict[str, Any], overrides: Dict[str, Any]) -> str:
 			equilibria_mode=equilibria,
 			seed=seed,
 			template_inpfile=inpfile,
-			mesh_filename=mesh_filename,
+			log_space=log_space_b,
 		)
 
 		# Save a top-level metadata file
@@ -279,6 +302,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
 	p.add_argument("--seed", type=int, default=None, help="Random seed")
 	p.add_argument("--equilibria", type=str, default=None, help="fixed | per_case | (omit for none)")
 	p.add_argument("--eqsetpath", type=str, default=None, help="Path to batch_0 or a run folder containing sparc_* cases")
+	p.add_argument("--scratch", type=lambda x: x.lower() in ("true", "yes", "1"), default=None, help="Use $SCRATCH/mp288/jobs as out_root (default: true)")
+	p.add_argument("--no-scratch", action="store_true", help="Disable scratch mode (use default SURGE/examples/datagen)")
 	p.add_argument("--dry-run", action="store_true", help="Print actions without writing files")
 	p.add_argument("--use-python-replacement", action="store_true", help="Use in-Python replacement (no external scripts)")
 
@@ -289,6 +314,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 	args = parse_args(argv)
 	cfg = _load_config(args.config)
 
+	# Handle scratch flag (--no-scratch takes precedence over --scratch)
+	scratch_override = None
+	if args.no_scratch:
+		scratch_override = False
+	elif args.scratch is not None:
+		scratch_override = args.scratch
+
 	overrides = {
 		"out_root": args.out_root,
 		"inpfile": args.inpfile,
@@ -297,6 +329,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 		"seed": args.seed,
 		"equilibria": args.equilibria,
 		"eqsetpath": args.eqsetpath,
+		"scratch": scratch_override,
 		"dry_run": args.dry_run,
 		"use_python_replacement": args.use_python_replacement or cfg.get("use_python_replacement", True),
 	}
