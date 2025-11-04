@@ -16,6 +16,8 @@ Example usage:
 YAML schema (keys):
   out_root: <dir where new batch_N is created>
   inpfile: <full path to reference input file to copy and edit>
+           IMPORTANT: Always provide this to ensure correct Fortran namelist structure.
+           The template file ensures parameters are in the right namelist blocks.
   params: [name1, name2, ...]
   ranges: [[lo1, hi1], [lo2, hi2], ...]
   integer_mask: [true/false, ...]
