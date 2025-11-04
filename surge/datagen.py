@@ -218,8 +218,9 @@ class DataGenerator:
             raise FileExistsError(f"Destination case dir already exists: {dst_case_dir}")
         shutil.copytree(src_case_dir, dst_case_dir)
         target_file = os.path.join(dst_case_dir, inputfilename)
-        # If input file does not exist in the case, try to seed it from template
-        if not os.path.exists(target_file) and template_inpfile and os.path.exists(template_inpfile):
+        # Always use template input file if provided to ensure correct Fortran namelist structure
+        # This ensures parameters are in the right place in the namelist blocks
+        if template_inpfile and os.path.exists(template_inpfile):
             try:
                 shutil.copy2(template_inpfile, target_file)
             except Exception as e:
@@ -629,7 +630,8 @@ class DataGenerator:
                     vals = samples[run_idx]
                     meta = {"case": case, "run": case_run_dir, "params": {}}
                     target_file = os.path.join(case_run_dir, inputfilename)
-                    if not os.path.exists(target_file) and template_inpfile and os.path.exists(template_inpfile):
+                    # Always use template input file if provided to ensure correct Fortran namelist structure
+                    if template_inpfile and os.path.exists(template_inpfile):
                         try:
                             shutil.copy2(template_inpfile, target_file)
                         except Exception as e:
