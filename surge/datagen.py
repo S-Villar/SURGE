@@ -207,8 +207,18 @@ class DataGenerator:
         inpnames,
         values,
         template_inpfile: Optional[str] = None,
+        mesh_filename: Optional[str] = None,
     ):
         """Copy case directory from src to dst and replace variables in input file.
+
+        Args:
+            src_case_dir: Source case directory to copy from
+            dst_case_dir: Destination case directory to create
+            inputfilename: Name of input file to modify (e.g., 'C1input')
+            inpnames: List of parameter names to replace
+            values: List of parameter values (same length as inpnames)
+            template_inpfile: Optional template input file to copy (ensures correct structure)
+            mesh_filename: Optional mesh filename path to set in input file (e.g., '../../mesh/part.smb')
 
         Returns list of warnings/errors encountered (empty on success).
         """
@@ -231,6 +241,23 @@ class DataGenerator:
                     self._call_replace(pname, pval, target_file)
                 except Exception as e:
                     warnings.append((pname, str(e)))
+            # Update mesh_filename if provided
+            if mesh_filename:
+                try:
+                    # Use sed-like replacement via Python
+                    with open(target_file, 'r') as f:
+                        content = f.read()
+                    # Replace mesh_filename line (handles various Fortran namelist formats)
+                    import re
+                    # Match: mesh_filename = '...' or mesh_filename = "..."
+                    pattern = r'(\s*mesh_filename\s*=\s*)[\'"].*?[\'"]'
+                    replacement = f'\\1\'{mesh_filename}\''
+                    new_content = re.sub(pattern, replacement, content, flags=re.IGNORECASE)
+                    if new_content != content:
+                        with open(target_file, 'w') as f:
+                            f.write(new_content)
+                except Exception as e:
+                    warnings.append(("mesh_filename", f"failed to update mesh_filename: {e}"))
         else:
             warnings.append(("missing_input", f"{inputfilename} not found in {dst_case_dir}"))
         return warnings
@@ -510,6 +537,7 @@ class DataGenerator:
         equilibria_mode: str = "fixed",
         seed: Optional[int] = None,
         template_inpfile: Optional[str] = None,
+        mesh_filename: Optional[str] = None,
     ) -> List[dict]:
         """Create run folders from existing equilibria case folders.
 
@@ -597,7 +625,7 @@ class DataGenerator:
                     dst = os.path.join(run_dir, case)
                     try:
                         warns = self._copy_case_and_replace(
-                            src, dst, inputfilename, inpnames, vals, template_inpfile=template_inpfile
+                            src, dst, inputfilename, inpnames, vals, template_inpfile=template_inpfile, mesh_filename=mesh_filename
                         )
                         for w in warns:
                             pname, msg = w
@@ -644,6 +672,20 @@ class DataGenerator:
                                 meta["params"][pname] = {"value": pval, "error": str(e)}
                             else:
                                 meta["params"][pname] = {"value": pval}
+                        # Update mesh_filename if provided
+                        if mesh_filename:
+                            try:
+                                import re
+                                with open(target_file, 'r') as f:
+                                    content = f.read()
+                                pattern = r'(\s*mesh_filename\s*=\s*)[\'"].*?[\'"]'
+                                replacement = f'\\1\'{mesh_filename}\''
+                                new_content = re.sub(pattern, replacement, content, flags=re.IGNORECASE)
+                                if new_content != content:
+                                    with open(target_file, 'w') as f:
+                                        f.write(new_content)
+                            except Exception as e:
+                                meta.setdefault("warnings", []).append(f"mesh_filename update failed: {e}")
                     else:
                         meta.setdefault("warnings", []).append(f"{inputfilename} not found in {case}")
                     created.append(meta)

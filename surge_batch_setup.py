@@ -196,6 +196,9 @@ def run_from_config(config: Dict[str, Any], overrides: Dict[str, Any]) -> str:
 		except Exception as e:
 			print(f"[warn] failed to copy reference input file: {e}")
 
+		# Get mesh_filename from config if provided
+		mesh_filename = cfg.get("mesh_filename")
+		
 		created = gen.generate_runs_from_equilibria(
 			inpnames=params,
 			inputfilename=inputfilename,
@@ -208,6 +211,7 @@ def run_from_config(config: Dict[str, Any], overrides: Dict[str, Any]) -> str:
 			equilibria_mode=equilibria,
 			seed=seed,
 			template_inpfile=inpfile,
+			mesh_filename=mesh_filename,
 		)
 
 		# Save a top-level metadata file
