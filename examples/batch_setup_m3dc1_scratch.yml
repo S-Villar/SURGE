@@ -2,7 +2,10 @@
 # This config generates batches with multiple runs, each containing equilibrium cases
 
 # Where to create the next batch_N directory
-out_root: /global/cfs/projectdirs/mp288/asvillar/proj/mlsurrogate/datasets/SPARC
+# If out_root is not specified and scratch=true (default), batches will be created in $SCRATCH/mp288/jobs
+# Set scratch: false to use the default SURGE/examples/datagen location, or specify out_root explicitly
+# out_root: /global/cfs/projectdirs/mp288/asvillar/proj/mlsurrogate/datasets/SPARC  # Commented out to use scratch
+scratch: true  # Default: true - use $SCRATCH/mp288/jobs if out_root not provided
 
 # Full path to the reference input file (template)
 # This file will be copied into each sparc_* case and modified with parameter values
