@@ -35,6 +35,10 @@ equilibria: fixed
 # Path to the source equilibria (batch_0 contains the equilibrium cases)
 eqsetpath: /global/cfs/projectdirs/mp288/asvillar/proj/mlsurrogate/datasets/SPARC/batch_0
 
+# Mesh filename path to set in all C1input files (relative to each sparc_* case directory)
+# Use '../../mesh/part.smb' to point to a shared mesh folder at batch level
+mesh_filename: '../../mesh/part.smb'
+
 # Use in-Python replacement (no external shell scripts needed)
 use_python_replacement: true
 
