@@ -136,23 +136,52 @@ class DataGenerator:
         if replaced_count == 0:
             raise RuntimeError(f"Variable '{varname}' not found (per matching rules) in {filepath}")
 
-    def _make_samples(self, dim: int, n: int, ranges, integer_mask, method: str, seed: Optional[int] = None):
+    def _make_samples(self, dim: int, n: int, ranges, integer_mask, method: str, seed: Optional[int] = None, log_space: Optional[Sequence[bool]] = None):
         """Create a (n x dim) array of samples using the requested method.
 
         Centralized helper so sampling logic isn't duplicated.
+        
+        Args:
+            dim: Number of dimensions (parameters)
+            n: Number of samples
+            ranges: List of [min, max] for each parameter
+            integer_mask: List of booleans indicating which parameters are integers
+            method: Sampling method ('lhs' or 'random')
+            seed: Random seed
+            log_space: Optional list of booleans indicating which parameters should be sampled in log space
         """
+        if log_space is None:
+            log_space = [False] * dim
+        if len(log_space) != dim:
+            raise ValueError(f"log_space length ({len(log_space)}) must match dim ({dim})")
+        
         rng = np.random.default_rng(seed)
         if method.lower() == "lhs":
             sampler = qmc.LatinHypercube(d=dim)
             s = sampler.random(n=n)
             for i in range(dim):
                 lo, hi = ranges[i][0], ranges[i][1]
-                s[:, i] = s[:, i] * (hi - lo) + lo
+                if log_space[i]:
+                    # Sample in log space, then transform back
+                    # Ensure lo and hi are positive for log space
+                    if lo <= 0 or hi <= 0:
+                        raise ValueError(f"Parameter {i} has log_space=True but range [{lo}, {hi}] contains non-positive values")
+                    log_lo, log_hi = np.log(lo), np.log(hi)
+                    s[:, i] = np.exp(s[:, i] * (log_hi - log_lo) + log_lo)
+                else:
+                    s[:, i] = s[:, i] * (hi - lo) + lo
         elif method.lower() in ("random", "uniform"):
             s = np.empty((n, dim), dtype=float)
             for i in range(dim):
                 lo, hi = ranges[i][0], ranges[i][1]
-                s[:, i] = rng.uniform(lo, hi, size=n)
+                if log_space[i]:
+                    # Sample in log space, then transform back
+                    if lo <= 0 or hi <= 0:
+                        raise ValueError(f"Parameter {i} has log_space=True but range [{lo}, {hi}] contains non-positive values")
+                    log_lo, log_hi = np.log(lo), np.log(hi)
+                    s[:, i] = np.exp(rng.uniform(log_lo, log_hi, size=n))
+                else:
+                    s[:, i] = rng.uniform(lo, hi, size=n)
         else:
             raise ValueError(f"Unknown sampling method: {method}")
         for i, is_int in enumerate(integer_mask):
@@ -207,18 +236,8 @@ class DataGenerator:
         inpnames,
         values,
         template_inpfile: Optional[str] = None,
-        mesh_filename: Optional[str] = None,
     ):
         """Copy case directory from src to dst and replace variables in input file.
-
-        Args:
-            src_case_dir: Source case directory to copy from
-            dst_case_dir: Destination case directory to create
-            inputfilename: Name of input file to modify (e.g., 'C1input')
-            inpnames: List of parameter names to replace
-            values: List of parameter values (same length as inpnames)
-            template_inpfile: Optional template input file to copy (ensures correct structure)
-            mesh_filename: Optional mesh filename path to set in input file (e.g., '../../mesh/part.smb')
 
         Returns list of warnings/errors encountered (empty on success).
         """
@@ -241,23 +260,6 @@ class DataGenerator:
                     self._call_replace(pname, pval, target_file)
                 except Exception as e:
                     warnings.append((pname, str(e)))
-            # Update mesh_filename if provided
-            if mesh_filename:
-                try:
-                    # Use sed-like replacement via Python
-                    with open(target_file, 'r') as f:
-                        content = f.read()
-                    # Replace mesh_filename line (handles various Fortran namelist formats)
-                    import re
-                    # Match: mesh_filename = '...' or mesh_filename = "..."
-                    pattern = r'(\s*mesh_filename\s*=\s*)[\'"].*?[\'"]'
-                    replacement = f'\\1\'{mesh_filename}\''
-                    new_content = re.sub(pattern, replacement, content, flags=re.IGNORECASE)
-                    if new_content != content:
-                        with open(target_file, 'w') as f:
-                            f.write(new_content)
-                except Exception as e:
-                    warnings.append(("mesh_filename", f"failed to update mesh_filename: {e}"))
         else:
             warnings.append(("missing_input", f"{inputfilename} not found in {dst_case_dir}"))
         return warnings
@@ -537,7 +539,7 @@ class DataGenerator:
         equilibria_mode: str = "fixed",
         seed: Optional[int] = None,
         template_inpfile: Optional[str] = None,
-        mesh_filename: Optional[str] = None,
+        log_space: Optional[Sequence[bool]] = None,
     ) -> List[dict]:
         """Create run folders from existing equilibria case folders.
 
@@ -590,31 +592,15 @@ class DataGenerator:
             raise RuntimeError(f"No sparc_ case directories found in {source_run_dir}")
 
         dim = len(inpnames)
-        rng = np.random.default_rng(seed)
-
-        def _make_samples(n):
-            if method.lower() == "lhs":
-                sampler = qmc.LatinHypercube(d=dim)
-                s = sampler.random(n=n)
-                for i in range(dim):
-                    lo, hi = ranges[i][0], ranges[i][1]
-                    s[:, i] = s[:, i] * (hi - lo) + lo
-            elif method.lower() in ("random", "uniform"):
-                s = np.empty((n, dim), dtype=float)
-                for i in range(dim):
-                    lo, hi = ranges[i][0], ranges[i][1]
-                    s[:, i] = rng.uniform(lo, hi, size=n)
-            else:
-                raise ValueError(f"Unknown sampling method: {method}")
-            for i, is_int in enumerate(integer_mask):
-                if is_int:
-                    s[:, i] = np.round(s[:, i]).astype(int)
-            return s
+        if log_space is None:
+            log_space = [False] * dim
+        if len(log_space) != dim:
+            raise ValueError(f"log_space length ({len(log_space)}) must match number of parameters ({dim})")
 
         created = []
 
         if equilibria_mode == "fixed":
-            samples = self._make_samples(dim, n_runs, ranges, integer_mask, method, seed)
+            samples = self._make_samples(dim, n_runs, ranges, integer_mask, method, seed, log_space=log_space)
             for run_idx in range(n_runs):
                 run_dir = os.path.join(out_root, f"run{run_idx+1}")
                 os.makedirs(run_dir, exist_ok=True)
@@ -625,7 +611,7 @@ class DataGenerator:
                     dst = os.path.join(run_dir, case)
                     try:
                         warns = self._copy_case_and_replace(
-                            src, dst, inputfilename, inpnames, vals, template_inpfile=template_inpfile, mesh_filename=mesh_filename
+                            src, dst, inputfilename, inpnames, vals, template_inpfile=template_inpfile
                         )
                         for w in warns:
                             pname, msg = w
@@ -650,7 +636,7 @@ class DataGenerator:
             # For each case, create per-case run folders
             for case in cases:
                 src_case = os.path.join(source_run_dir, case)
-                samples = _make_samples(n_runs)
+                samples = self._make_samples(dim, n_runs, ranges, integer_mask, method, seed, log_space=log_space)
                 for run_idx in range(n_runs):
                     case_run_dir = os.path.join(out_root, case, f"run{run_idx+1}")
                     os.makedirs(os.path.dirname(case_run_dir), exist_ok=True)
@@ -672,20 +658,6 @@ class DataGenerator:
                                 meta["params"][pname] = {"value": pval, "error": str(e)}
                             else:
                                 meta["params"][pname] = {"value": pval}
-                        # Update mesh_filename if provided
-                        if mesh_filename:
-                            try:
-                                import re
-                                with open(target_file, 'r') as f:
-                                    content = f.read()
-                                pattern = r'(\s*mesh_filename\s*=\s*)[\'"].*?[\'"]'
-                                replacement = f'\\1\'{mesh_filename}\''
-                                new_content = re.sub(pattern, replacement, content, flags=re.IGNORECASE)
-                                if new_content != content:
-                                    with open(target_file, 'w') as f:
-                                        f.write(new_content)
-                            except Exception as e:
-                                meta.setdefault("warnings", []).append(f"mesh_filename update failed: {e}")
                     else:
                         meta.setdefault("warnings", []).append(f"{inputfilename} not found in {case}")
                     created.append(meta)
