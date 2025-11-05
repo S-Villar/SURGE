@@ -1,0 +1,52 @@
+# M3DC1 batch configuration for batch_4 (4 runs)
+# Uses equilibria from batch_smallsample
+
+scratch: true  # Generate in $SCRATCH/mp288/jobs
+
+# Full path to the reference input file (template)
+inpfile: /pscratch/sd/a/asvillar/m3dc1_batch/batch_smallsample/run1/sparc_1300/C1input
+
+# Parameters to vary in the M3DC1 simulations
+params: [ntor, pscale, batemanscale]
+
+# Ranges for each parameter (min, max)
+ranges:
+  - [1, 5]          # ntor (integer) - toroidal mode number
+  - [0.5, 2.0]      # pscale (float) - pressure scaling
+  - [0.1, 1.0]      # batemanscale (float) - Bateman scaling
+
+# Whether each parameter is integer
+integer_mask: [true, false, false]
+
+# Number of runs to create (each run contains all equilibria from batch_smallsample)
+nsamples: 4
+
+# Sampling method: lhs | random
+spl: lhs
+
+# Random seed for reproducibility
+seed: 42
+
+# Equilibria mode: fixed means all equilibria in a run share the same parameters
+equilibria: fixed
+
+# Path to the source equilibria (batch_smallsample run1)
+eqsetpath: /pscratch/sd/a/asvillar/m3dc1_batch/batch_smallsample/run1
+
+# Use in-Python replacement (no external shell scripts needed)
+use_python_replacement: true
+
+# Non-interactive mode (don't ask for confirmation)
+confirm_dirs: false
+
+# Save visualization plots of the sampling
+save_plots: true
+
+# Mesh filename for shared mesh (all runs use the same partitioned mesh)
+mesh_filename: '../../mesh/part.smb'
+
+# SLURM resource configuration
+slurm_nodes: 8
+slurm_tasks_per_node: 12
+slurm_cpus_per_task: 1
+slurm_time: "00:20:00"

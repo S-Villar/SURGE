@@ -1,0 +1,55 @@
+# M3DC1 batch configuration for SPARC dataset generation in scratch
+# This config generates 3 runs with 101 equilibria each (303 total simulations)
+# Uses logarithmic LHS sampling for ntor to concentrate samples towards low values
+# Files will be created in pscratch/sd/a/asvillar/m3dc1_batch
+
+# Where to create the next batch_N directory
+out_root: /pscratch/sd/a/asvillar/m3dc1_batch
+
+# Full path to the reference input file (template)
+# This file will be copied into each sparc_* case and modified with parameter values
+inpfile: /global/cfs/projectdirs/mp288/asvillar/proj/mlsurrogate/datasets/SPARC/batch_0/run1/C1input
+
+# Parameters to vary in the M3DC1 simulations
+params: [ntor, pscale, batemanscale]
+
+# Ranges for each parameter (min, max)
+ranges:
+  - [1, 20]         # ntor (integer) - toroidal mode number (log-space sampling)
+  - [0.5, 2.0]      # pscale (float) - pressure scaling
+  - [0.1, 1.0]      # batemanscale (float) - Bateman scaling
+
+# Whether each parameter is integer
+integer_mask: [true, false, false]
+
+# Whether each parameter should be sampled in log space
+# For ntor: true to get more samples at low values (1, 2, 3...)
+log_space: [true, false, false]
+
+# Number of runs to create (each run contains all equilibria from batch_0)
+nsamples: 3
+
+# Sampling method: lhs | random
+spl: lhs
+
+# Random seed for reproducibility
+seed: 42
+
+# Equilibria mode: fixed means all equilibria in a run share the same parameters
+equilibria: fixed
+
+# Path to the source equilibria (batch_0 contains the equilibrium cases)
+eqsetpath: /global/cfs/projectdirs/mp288/asvillar/proj/mlsurrogate/datasets/SPARC/batch_0
+
+# Use in-Python replacement (no external shell scripts needed)
+use_python_replacement: true
+
+# Non-interactive mode (don't ask for confirmation)
+confirm_dirs: false
+
+# Save visualization plots of the sampling
+save_plots: true
+
+# Mesh filename for shared mesh (all runs use the same partitioned mesh)
+# Note: Will use symlink to project directory mesh instead of copying
+mesh_filename: '../../mesh/part.smb'
