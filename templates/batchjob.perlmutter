@@ -1,0 +1,50 @@
+#!/bin/bash
+#SBATCH -N 8
+#SBATCH --ntasks-per-node=12
+#SBATCH --cpus-per-task=1
+#SBATCH --time=00:20:00
+#SBATCH --mail-type=ALL
+#SBATCH --qos=debug
+#SBATCH -L SCRATCH
+#SBATCH --constraint=cpu
+#SBATCH -A mp288
+#SBATCH -o M3DC1log.o%j
+#SBATCH -e M3DC1log.e%j
+#SBATCH --array=1-1
+#SBATCH -J m3dc1_stability
+
+set -e
+
+# Set batch directory - use script location or environment variable
+# Script is located in the batch directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BATCH_DIR="${BATCH_DIR:-$SCRIPT_DIR}"
+
+# If this is the initial submission (array size 1-1), compute array size and resubmit
+# Check if we're in the bootstrap phase by looking at SLURM_ARRAY_TASK_MAX
+if [ -n "$SLURM_ARRAY_TASK_MAX" ] && [ "$SLURM_ARRAY_TASK_MAX" -eq 1 ]; then
+    # Count number of runs
+    RUN_DIRS=($(find "$BATCH_DIR" -maxdepth 1 -type d -name "run[0-9]*" | sort -V))
+    N_RUNS=${#RUN_DIRS[@]}
+    
+    if [ "$N_RUNS" -eq 0 ]; then
+        echo "ERROR: No run directories found in $BATCH_DIR"
+        exit 1
+    fi
+    
+    # Count number of equilibria by checking run1 (first run)
+    RUN1_DIR="${BATCH_DIR}/run1"
+    if [ ! -d "$RUN1_DIR" ]; then
+        echo "ERROR: run1 directory not found in $BATCH_DIR"
+        exit 1
+    fi
+    
+    # Sort equilibria directories numerically by the number part (sparc_XXXX)
+    # This handles cases like sparc_1300, sparc_234321, sparc_1301 correctly
+    # Extract number, sort numerically, then return full paths
+    EQUILIBRIA_DIRS=($(find "$RUN1_DIR" -maxdepth 1 -type d -name "sparc_*" -exec bash -c 'echo "$(basename "$1" | sed "s/sparc_//") $1"' _ {} \; | sort -n | awk '{print $2}'))
+    N_EQUILIBRIA=${#EQUILIBRIA_DIRS[@]}
+    
+    if [ "$N_EQUILIBRIA" -eq 0 ]; then
+        echo "ERROR: No sparc_* equilibrium directories found in $RUN1_DIR"
+        exit 1
