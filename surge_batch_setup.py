@@ -167,6 +167,104 @@ def _derive_source_run_dir(eqsetpath: Optional[str], inpfile: Optional[str]) -> 
 	return None
 
 
+def _copy_batchjob_template(
+	batch_dir: str,
+	slurm_queue: str = "regular",
+	slurm_nodes: Optional[int] = None,
+	slurm_tasks_per_node: Optional[int] = None,
+	slurm_cpus_per_task: Optional[int] = None,
+	slurm_time: Optional[str] = None,
+	dry_run: bool = False,
+) -> None:
+	"""Copy and customize batchjob.perlmutter template for the batch.
+	
+	Args:
+		batch_dir: The batch directory where batchjob.perlmutter should be created
+		slurm_queue: Queue type ("debug" or "regular")
+		slurm_nodes: Number of nodes (default: 8)
+		slurm_tasks_per_node: Tasks per node (default: 12)
+		slurm_cpus_per_task: CPUs per task (default: 1)
+		slurm_time: Time limit (default: "00:20:00")
+		dry_run: If True, don't actually copy/modify files
+	"""
+	surge_root = os.path.dirname(os.path.abspath(__file__))
+	template_path = os.path.join(surge_root, "templates", "batchjob.perlmutter")
+	target_path = os.path.join(batch_dir, "batchjob.perlmutter")
+	
+	if not os.path.exists(template_path):
+		print(f"[warn] Batchjob template not found: {template_path}")
+		print(f"[warn] Skipping batchjob.perlmutter creation")
+		return
+	
+	# Default values
+	if slurm_nodes is None:
+		slurm_nodes = 8
+	if slurm_tasks_per_node is None:
+		slurm_tasks_per_node = 12
+	if slurm_cpus_per_task is None:
+		slurm_cpus_per_task = 1
+	if slurm_time is None:
+		slurm_time = "00:20:00"
+	
+	if dry_run:
+		print(f"[dry-run] would copy and customize {template_path} -> {target_path}")
+		print(f"[dry-run]   queue: {slurm_queue}, nodes: {slurm_nodes}, tasks/node: {slurm_tasks_per_node}")
+		return
+	
+	# Read template
+	with open(template_path, "r", encoding="utf-8") as f:
+		content = f.read()
+	
+	# Customize SLURM directives
+	import re
+	
+	# Replace queue (qos)
+	content = re.sub(
+		r"^#SBATCH --qos=\w+",
+		f"#SBATCH --qos={slurm_queue}",
+		content,
+		flags=re.MULTILINE,
+	)
+	
+	# Replace nodes
+	content = re.sub(
+		r"^#SBATCH -N \d+",
+		f"#SBATCH -N {slurm_nodes}",
+		content,
+		flags=re.MULTILINE,
+	)
+	
+	# Replace tasks per node
+	content = re.sub(
+		r"^#SBATCH --ntasks-per-node=\d+",
+		f"#SBATCH --ntasks-per-node={slurm_tasks_per_node}",
+		content,
+		flags=re.MULTILINE,
+	)
+	
+	# Replace CPUs per task
+	content = re.sub(
+		r"^#SBATCH --cpus-per-task=\d+",
+		f"#SBATCH --cpus-per-task={slurm_cpus_per_task}",
+		content,
+		flags=re.MULTILINE,
+	)
+	
+	# Replace time
+	content = re.sub(
+		r"^#SBATCH --time=[\d:]+",
+		f"#SBATCH --time={slurm_time}",
+		content,
+		flags=re.MULTILINE,
+	)
+	
+	# Write customized template
+	with open(target_path, "w", encoding="utf-8") as f:
+		f.write(content)
+	
+	print(f"[info] Created batchjob.perlmutter in {batch_dir} (queue: {slurm_queue})")
+
+
 def run_from_config(config: Dict[str, Any], overrides: Dict[str, Any]) -> str:
 	# Merge overrides (CLI wins)
 	cfg = {**config, **{k: v for k, v in overrides.items() if v is not None}}
@@ -193,6 +291,9 @@ def run_from_config(config: Dict[str, Any], overrides: Dict[str, Any]) -> str:
 	save_plots: bool = bool(cfg.get("save_plots", True))
 	use_python_replacement: bool = bool(cfg.get("use_python_replacement", True))
 	dry_run: bool = bool(cfg.get("dry_run", False))
+	slurm_queue: str = str(cfg.get("slurm_queue", "regular")).lower()
+	if slurm_queue not in ("debug", "regular"):
+		slurm_queue = "regular"
 
 	if not params or not ranges or not integer_mask:
 		raise ValueError("params, ranges, and integer_mask are required in config or CLI")
@@ -298,6 +399,21 @@ def run_from_config(config: Dict[str, Any], overrides: Dict[str, Any]) -> str:
 					f,
 					indent=2,
 				)
+		
+		# Copy and customize batchjob template
+		slurm_nodes = cfg.get("slurm_nodes")
+		slurm_tasks_per_node = cfg.get("slurm_tasks_per_node")
+		slurm_cpus_per_task = cfg.get("slurm_cpus_per_task")
+		slurm_time = cfg.get("slurm_time")
+		_copy_batchjob_template(
+			batch_dir,
+			slurm_queue=slurm_queue,
+			slurm_nodes=slurm_nodes,
+			slurm_tasks_per_node=slurm_tasks_per_node,
+			slurm_cpus_per_task=slurm_cpus_per_task,
+			slurm_time=slurm_time,
+			dry_run=dry_run,
+		)
 
 		return batch_dir
 
@@ -328,6 +444,21 @@ def run_from_config(config: Dict[str, Any], overrides: Dict[str, Any]) -> str:
 				shutil.copy2(inpfile, dst_ref)
 	except Exception as e:
 		print(f"[warn] failed to copy reference input file: {e}")
+	
+	# Copy and customize batchjob template
+	slurm_nodes = cfg.get("slurm_nodes")
+	slurm_tasks_per_node = cfg.get("slurm_tasks_per_node")
+	slurm_cpus_per_task = cfg.get("slurm_cpus_per_task")
+	slurm_time = cfg.get("slurm_time")
+	_copy_batchjob_template(
+		batch_dir,
+		slurm_queue=slurm_queue,
+		slurm_nodes=slurm_nodes,
+		slurm_tasks_per_node=slurm_tasks_per_node,
+		slurm_cpus_per_task=slurm_cpus_per_task,
+		slurm_time=slurm_time,
+		dry_run=dry_run,
+	)
 
 	return batch_dir
 
@@ -342,6 +473,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
 	p.add_argument("--nsamples", type=int, default=None, help="Number of samples (runs/cases)")
 	p.add_argument("--spl", type=str, default=None, help="Sampling method: lhs | random")
 	p.add_argument("--seed", type=int, default=None, help="Random seed")
+	p.add_argument("--slurm_queue", type=str, default=None, help="SLURM queue: debug | regular")
 	p.add_argument("--equilibria", type=str, default=None, help="fixed | per_case | (omit for none)")
 	p.add_argument("--eqsetpath", type=str, default=None, help="Path to batch_0 or a run folder containing sparc_* cases")
 	p.add_argument("--scratch", type=lambda x: x.lower() in ("true", "yes", "1"), default=None, help="Use $SCRATCH/mp288/jobs as out_root (default: true)")
