@@ -15,10 +15,10 @@
 
 set -e
 
-# Set batch directory - use SLURM_SUBMIT_DIR (where sbatch was run) or environment variable
-# SLURM_SUBMIT_DIR is set by SLURM to the directory where sbatch was executed
-# This is more reliable than using the script location, which may be in /var/spool/slurmd
-BATCH_DIR="${BATCH_DIR:-${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}}"
+# Set batch directory - use script location or environment variable
+# Script is located in the batch directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BATCH_DIR="${BATCH_DIR:-$SCRIPT_DIR}"
 
 # If this is the initial submission (array size 1-1), compute array size and resubmit
 # Check if we're in the bootstrap phase by looking at SLURM_ARRAY_TASK_MAX
@@ -48,3 +48,138 @@ if [ -n "$SLURM_ARRAY_TASK_MAX" ] && [ "$SLURM_ARRAY_TASK_MAX" -eq 1 ]; then
     if [ "$N_EQUILIBRIA" -eq 0 ]; then
         echo "ERROR: No sparc_* equilibrium directories found in $RUN1_DIR"
         exit 1
+    fi
+    
+    TOTAL_CASES=$((N_RUNS * N_EQUILIBRIA))
+    
+    # Determine queue type and set SLURM array limit accordingly
+    # Check SBATCH directive (from script header) or SLURM environment variable
+    QOS="${SLURM_JOB_QOS:-regular}"
+    if grep -q "^#SBATCH.*qos.*debug" "$0" 2>/dev/null || [ "$QOS" = "debug" ]; then
+        MAX_ARRAY_SIZE=5
+        QOS_TYPE="debug"
+    else
+        MAX_ARRAY_SIZE=5000
+        QOS_TYPE="regular"
+    fi
+    
+    ARRAY_SIZE=$TOTAL_CASES
+    if [ "$TOTAL_CASES" -gt "$MAX_ARRAY_SIZE" ]; then
+        ARRAY_SIZE=$MAX_ARRAY_SIZE
+        echo "WARNING: Total cases ($TOTAL_CASES) exceeds SLURM array limit for $QOS_TYPE queue ($MAX_ARRAY_SIZE)"
+        echo "WARNING: Only cases 1-$MAX_ARRAY_SIZE will be submitted"
+        echo "WARNING: Remaining cases ($((TOTAL_CASES - MAX_ARRAY_SIZE))) will NOT be run"
+    fi
+    
+    echo "Batch directory: $BATCH_DIR"
+    echo "Number of runs: $N_RUNS"
+    echo "Number of equilibria per run: $N_EQUILIBRIA"
+    echo "Total cases: $TOTAL_CASES"
+    echo "Queue type: $QOS_TYPE (detected QOS: $QOS)"
+    echo "Array size: $ARRAY_SIZE (SLURM limit for $QOS_TYPE queue: $MAX_ARRAY_SIZE)"
+    echo "Resubmitting with array size: 1-$ARRAY_SIZE"
+    
+    # Resubmit with the correct array size
+    sbatch --array=1-$ARRAY_SIZE "$0"
+    exit 0
+fi
+
+# If we get here, we're running as part of the job array
+# Continue with normal job execution
+
+# Count number of equilibria by checking run1 (first run)
+RUN1_DIR="${BATCH_DIR}/run1"
+# Sort equilibria directories numerically by the number part (sparc_XXXX)
+# This handles cases like sparc_1300, sparc_234321, sparc_1301 correctly
+# Extract number, sort numerically, then return full paths
+EQUILIBRIA_DIRS=($(find "$RUN1_DIR" -maxdepth 1 -type d -name "sparc_*" -exec bash -c 'echo "$(basename "$1" | sed "s/sparc_//") $1"' _ {} \; | sort -n | awk '{print $2}'))
+N_EQUILIBRIA=${#EQUILIBRIA_DIRS[@]}
+
+if [ "$N_EQUILIBRIA" -eq 0 ]; then
+    echo "ERROR: No sparc_* equilibrium directories found in $RUN1_DIR"
+    exit 1
+fi
+
+# Compute run and equilibrium IDs from SLURM_ARRAY_TASK_ID
+# caseID = (runID-1)*n_equilibria + equilibriumID
+# So: runID = ((caseID-1) // n_equilibria) + 1
+#     equilibriumID = ((caseID-1) % n_equilibria) + 1
+CASE_ID=$SLURM_ARRAY_TASK_ID
+RUN_ID=$(( (CASE_ID - 1) / N_EQUILIBRIA + 1 ))
+EQ_ID=$(( (CASE_ID - 1) % N_EQUILIBRIA + 1 ))
+
+# Get equilibrium case name (sorted numerically by sparc number)
+EQ_DIR="${BATCH_DIR}/run${RUN_ID}"
+# Sort equilibria directories numerically by the number part (sparc_XXXX)
+# This ensures consistent ordering: sparc_1300 < sparc_1301 < sparc_234321
+# Extract number, sort numerically, then return full paths
+CASE_DIRS=($(find "$EQ_DIR" -maxdepth 1 -type d -name "sparc_*" -exec bash -c 'echo "$(basename "$1" | sed "s/sparc_//") $1"' _ {} \; | sort -n | awk '{print $2}'))
+
+if [ ${#CASE_DIRS[@]} -eq 0 ]; then
+    echo "ERROR: No sparc_* directories found in $EQ_DIR"
+    exit 1
+fi
+
+if [ ${#CASE_DIRS[@]} -ne "$N_EQUILIBRIA" ]; then
+    echo "WARNING: Run $RUN_ID has ${#CASE_DIRS[@]} equilibria, expected $N_EQUILIBRIA"
+fi
+
+CASE_DIR="${CASE_DIRS[$((EQ_ID - 1))]}"
+
+if [ ! -d "$CASE_DIR" ]; then
+    echo "ERROR: Case directory not found: $CASE_DIR"
+    exit 1
+fi
+
+cd "$CASE_DIR"
+
+echo "Case ID: $CASE_ID, Run: $RUN_ID, Equilibrium: $EQ_ID, Directory: $CASE_DIR"
+echo "pwd: $(pwd)"
+
+touch started
+
+# Partition mesh and place partitions in mesh folder (only on first equilibrium of each run)
+if [ "$EQ_ID" -eq 1 ]; then
+    PARTS=$SLURM_NTASKS
+    MESH_DIR="${BATCH_DIR}/run${RUN_ID}/mesh"
+    mkdir -p "$MESH_DIR"
+    
+    # Find the mesh source file (sparc_fw1-18K*.smb) in the case directory
+    MESH_SRC=$(find "$CASE_DIR" -maxdepth 1 -name "sparc_fw1-18K*.smb" | head -1)
+    if [ -z "$MESH_SRC" ]; then
+        echo "ERROR: Mesh source file (sparc_fw1-18K*.smb) not found in $CASE_DIR"
+        exit 1
+    fi
+    
+    echo "Partitioning mesh: $MESH_SRC -> $MESH_DIR/part.smb (PARTS=$PARTS)"
+    $M3DC1_MPIRUN -n $PARTS split_smb "$MESH_SRC" "$MESH_DIR/part.smb" $PARTS
+    
+    # Verify partitions were created
+    if [ ! -f "$MESH_DIR/part0.smb" ]; then
+        echo "ERROR: Mesh partitioning failed - part0.smb not found"
+        exit 1
+    fi
+    
+    echo "Mesh partitioned successfully. Partitions created in $MESH_DIR"
+    touch "${BATCH_DIR}/run${RUN_ID}/.mesh_ready"
+fi
+
+# Wait for mesh partitions to be ready (other equilibria wait for first one)
+if [ "$EQ_ID" -ne 1 ]; then
+    MESH_READY="${BATCH_DIR}/run${RUN_ID}/.mesh_ready"
+    while [ ! -f "$MESH_READY" ]; do
+        sleep 1
+    done
+fi
+
+# Verify mesh partitions exist
+MESH_DIR="${BATCH_DIR}/run${RUN_ID}/mesh"
+if [ ! -f "$MESH_DIR/part0.smb" ]; then
+    echo "ERROR: Mesh partitions not found in $MESH_DIR"
+    exit 1
+fi
+
+# Run M3D-C1
+$M3DC1_MPIRUN -n $SLURM_NTASKS m3dc1_2d_complex -pc_factor_mat_solver_type mumps
+
+touch finished
