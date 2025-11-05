@@ -143,15 +143,19 @@ class DataGenerator:
         
         Args:
             dim: Number of dimensions (parameters)
-            n: Number of samples
-            ranges: List of [min, max] for each parameter
+            n: Number of samples to generate
+            ranges: List of [min, max] pairs for each parameter
             integer_mask: List of booleans indicating which parameters are integers
             method: Sampling method ('lhs' or 'random')
             seed: Random seed
-            log_space: Optional list of booleans indicating which parameters should be sampled in log space
+            log_space: Optional list of booleans indicating which parameters should be
+                     sampled in log space. For log-space sampling, samples are drawn
+                     uniformly in log space then exponentiated. For integer parameters,
+                     rounding happens after exponentiation.
         """
         if log_space is None:
             log_space = [False] * dim
+        
         if len(log_space) != dim:
             raise ValueError(f"log_space length ({len(log_space)}) must match dim ({dim})")
         
@@ -162,28 +166,31 @@ class DataGenerator:
             for i in range(dim):
                 lo, hi = ranges[i][0], ranges[i][1]
                 if log_space[i]:
-                    # Sample in log space, then transform back
-                    # Ensure lo and hi are positive for log space
-                    if lo <= 0 or hi <= 0:
-                        raise ValueError(f"Parameter {i} has log_space=True but range [{lo}, {hi}] contains non-positive values")
+                    # Sample in log space: uniform in [log(lo), log(hi)]
                     log_lo, log_hi = np.log(lo), np.log(hi)
-                    s[:, i] = np.exp(s[:, i] * (log_hi - log_lo) + log_lo)
+                    s[:, i] = s[:, i] * (log_hi - log_lo) + log_lo
+                    # Exponentiate to get back to original space
+                    s[:, i] = np.exp(s[:, i])
                 else:
+                    # Sample in linear space
                     s[:, i] = s[:, i] * (hi - lo) + lo
         elif method.lower() in ("random", "uniform"):
             s = np.empty((n, dim), dtype=float)
             for i in range(dim):
                 lo, hi = ranges[i][0], ranges[i][1]
                 if log_space[i]:
-                    # Sample in log space, then transform back
-                    if lo <= 0 or hi <= 0:
-                        raise ValueError(f"Parameter {i} has log_space=True but range [{lo}, {hi}] contains non-positive values")
+                    # Sample in log space: uniform in [log(lo), log(hi)]
                     log_lo, log_hi = np.log(lo), np.log(hi)
-                    s[:, i] = np.exp(rng.uniform(log_lo, log_hi, size=n))
+                    log_samples = rng.uniform(log_lo, log_hi, size=n)
+                    # Exponentiate to get back to original space
+                    s[:, i] = np.exp(log_samples)
                 else:
+                    # Sample in linear space
                     s[:, i] = rng.uniform(lo, hi, size=n)
         else:
             raise ValueError(f"Unknown sampling method: {method}")
+        
+        # Apply integer rounding after all sampling (including log-space transformation)
         for i, is_int in enumerate(integer_mask):
             if is_int:
                 s[:, i] = np.round(s[:, i]).astype(int)
@@ -358,7 +365,7 @@ class DataGenerator:
                 n_runs=n_samples,
                 method=method,
                 out_root=batch_root,
-                equilibria_mode=(equilibria_mode or "fixed"),
+                equilibria_mode=(equilibria_mode or "set"),
                 seed=seed,
             )
 
@@ -536,7 +543,7 @@ class DataGenerator:
         n_runs: int = 10,
         method: str = "lhs",
         out_root: Optional[str] = None,
-        equilibria_mode: str = "fixed",
+        equilibria_mode: str = "set",
         seed: Optional[int] = None,
         template_inpfile: Optional[str] = None,
         log_space: Optional[Sequence[bool]] = None,
@@ -544,13 +551,19 @@ class DataGenerator:
         """Create run folders from existing equilibria case folders.
 
         This helper generates parameter samples (LHS or uniform) and builds
-        run folders in the style you described. Two modes are supported:
+        run folders. Three modes are supported:
 
-        - equilibria_mode="fixed": generate `n_runs` samples and for each
+        - equilibria_mode="set": generate `n_runs` samples and for each
           sample create a `run{i}` folder containing all equilibria cases
           copied from `source_run_dir`. Each equilibrium's `inputfilename`
           is modified with the same sample values (i.e. all cases in a run
-          share the same parameters).
+          share the same parameters). This is for testing a set of equilibria
+          with different parameter combinations.
+
+        - equilibria_mode="fixed": generate `n_runs` samples and create
+          `run{i}` folders, but all runs use the SAME single equilibrium
+          (the first one found in `source_run_dir`). Different runs have
+          different parameter combinations but share the same geqdsk file.
 
         - equilibria_mode="per_case": generate `n_runs` samples for each
           case separately and create folders under `out_root/<case>/run{j}`.
@@ -568,17 +581,24 @@ class DataGenerator:
             n_runs: Number of runs to create.
             method: Sampling method: 'lhs' or 'random'.
             out_root: Output directory where run folders (run1..runN) are created.
-            equilibria_mode: 'fixed' (all equilibria share same params per run) or 'per_case'.
+            equilibria_mode: 'set' (all equilibria share same params per run), 'fixed' (single equilibrium for all runs), or 'per_case'.
             seed: RNG seed.
             template_inpfile: Optional full path to a reference input file. If a copied case is
                 missing the required input file, this template will be copied into the case before
                 attempting replacements.
+            log_space: Optional sequence of booleans indicating which parameters should be sampled
+                     in log space. If None, all parameters are sampled in linear space. For 
+                     log-space sampling, samples are drawn uniformly in log space then exponentiated.
+                     For integer parameters, rounding happens after exponentiation.
         """
         if integer_mask is None:
             integer_mask = [False] * len(inpnames)
 
-        if len(inpnames) != len(ranges) or len(inpnames) != len(integer_mask):
-            raise ValueError("Lengths of inpnames, ranges and integer_mask must match")
+        if log_space is None:
+            log_space = [False] * len(inpnames)
+
+        if len(inpnames) != len(ranges) or len(inpnames) != len(integer_mask) or len(inpnames) != len(log_space):
+            raise ValueError("Lengths of inpnames, ranges, integer_mask and log_space must match")
 
         out_root = out_root or os.path.join(os.getcwd(), "runs")
         os.makedirs(out_root, exist_ok=True)
@@ -592,15 +612,12 @@ class DataGenerator:
             raise RuntimeError(f"No sparc_ case directories found in {source_run_dir}")
 
         dim = len(inpnames)
-        if log_space is None:
-            log_space = [False] * dim
-        if len(log_space) != dim:
-            raise ValueError(f"log_space length ({len(log_space)}) must match number of parameters ({dim})")
 
         created = []
 
-        if equilibria_mode == "fixed":
-            samples = self._make_samples(dim, n_runs, ranges, integer_mask, method, seed, log_space=log_space)
+        if equilibria_mode == "set":
+            # Multiple equilibria per run, all share same parameters
+            samples = self._make_samples(dim, n_runs, ranges, integer_mask, method, seed, log_space)
             for run_idx in range(n_runs):
                 run_dir = os.path.join(out_root, f"run{run_idx+1}")
                 os.makedirs(run_dir, exist_ok=True)
@@ -632,11 +649,49 @@ class DataGenerator:
             except Exception as e:
                 print(f"[warn] failed to write samples/README to {out_root}: {e}")
 
+        elif equilibria_mode == "fixed":
+            # Single equilibrium for all runs, different parameters per run
+            if not cases:
+                raise RuntimeError(f"No equilibria cases found in {source_run_dir} for fixed mode")
+            # Use the first equilibrium found
+            fixed_case = cases[0]
+            print(f"[info] Fixed mode: using equilibrium '{fixed_case}' for all runs")
+            samples = self._make_samples(dim, n_runs, ranges, integer_mask, method, seed, log_space)
+            for run_idx in range(n_runs):
+                run_dir = os.path.join(out_root, f"run{run_idx+1}")
+                os.makedirs(run_dir, exist_ok=True)
+                vals = samples[run_idx]
+                meta = {"run": run_dir, "equilibrium": fixed_case, "params": {}}
+                src = os.path.join(source_run_dir, fixed_case)
+                dst = os.path.join(run_dir, fixed_case)
+                try:
+                    warns = self._copy_case_and_replace(
+                        src, dst, inputfilename, inpnames, vals, template_inpfile=template_inpfile
+                    )
+                    for w in warns:
+                        pname, msg = w
+                        meta.setdefault("warnings", []).append(f"{pname}: {msg}")
+                        if pname in inpnames:
+                            meta["params"][pname] = {"value": vals[list(inpnames).index(pname)], "error": msg}
+                    # record successful param assignments
+                    for pname, pval in zip(inpnames, vals):
+                        if pname not in meta["params"]:
+                            meta["params"][pname] = {"value": pval}
+                except Exception as e:
+                    meta.setdefault("errors", []).append(str(e))
+                created.append(meta)
+
+            # Save samples and README at out_root
+            try:
+                self._save_samples_readme(out_root, samples, inpnames, ranges, integer_mask, source_str=source_run_dir)
+            except Exception as e:
+                print(f"[warn] failed to write samples/README to {out_root}: {e}")
+
         elif equilibria_mode == "per_case":
             # For each case, create per-case run folders
             for case in cases:
                 src_case = os.path.join(source_run_dir, case)
-                samples = self._make_samples(dim, n_runs, ranges, integer_mask, method, seed, log_space=log_space)
+                samples = self._make_samples(dim, n_runs, ranges, integer_mask, method, seed, log_space)
                 for run_idx in range(n_runs):
                     case_run_dir = os.path.join(out_root, case, f"run{run_idx+1}")
                     os.makedirs(os.path.dirname(case_run_dir), exist_ok=True)
@@ -675,7 +730,7 @@ class DataGenerator:
                 except Exception as e:
                     print(f"[warn] failed to write per-case samples/README for {case}: {e}")
         else:
-            raise ValueError("equilibria_mode must be 'fixed' or 'per_case'")
+            raise ValueError("equilibria_mode must be one of: 'set', 'fixed', or 'per_case'")
 
         return created
 

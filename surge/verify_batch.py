@@ -138,15 +138,15 @@ def check_parameter_in_file(
     return True, None
 
 
-def verify_fixed_mode_batch(
+def verify_set_mode_batch(
     batch_dir: str,
     meta: Dict[str, Any],
     verbose: bool = False
 ) -> Tuple[int, int]:
-    """Verify a batch in 'fixed' equilibria mode.
+    """Verify a batch in 'set' equilibria mode.
     
-    In fixed mode, all equilibria (sparc_*) in a run should have the same
-    parameter values.
+    In set mode, all equilibria (sparc_*) in a run should have the same
+    parameter values (multiple equilibria per run, all share same params).
     
     Returns:
         (num_errors, num_warnings)
@@ -298,6 +298,112 @@ def verify_fixed_mode_batch(
     return errors, warnings
 
 
+def verify_fixed_mode_batch(
+    batch_dir: str,
+    meta: Dict[str, Any],
+    verbose: bool = False
+) -> Tuple[int, int]:
+    """Verify a batch in 'fixed' equilibria mode.
+    
+    In fixed mode, all runs use the same single equilibrium but with different
+    parameter values per run.
+    
+    Returns:
+        (num_errors, num_warnings)
+    """
+    params = meta.get("params", [])
+    ranges = meta.get("ranges", [])
+    integer_mask = meta.get("integer_mask", [False] * len(params))
+    inputfilename = meta.get("inputfilename")
+    n_runs = meta.get("n_runs", 0)
+    equilibrium = meta.get("equilibrium")  # Should be set in fixed mode
+    
+    # Try to find inputfilename from meta or infer from source_run_dir
+    source_run_dir = meta.get("source_run_dir", "")
+    if not inputfilename:
+        # Try to find input file in source_run_dir
+        if source_run_dir and os.path.isdir(source_run_dir):
+            # Check for common input files
+            common_inputs = ["C1input", "global_ns.py"]
+            for item in os.listdir(source_run_dir):
+                item_path = os.path.join(source_run_dir, item)
+                if os.path.isfile(item_path) and item in common_inputs:
+                    inputfilename = item
+                    break
+                elif os.path.isdir(item_path) and item.startswith("sparc_"):
+                    for inp_file in common_inputs:
+                        inp_path = os.path.join(item_path, inp_file)
+                        if os.path.isfile(inp_path):
+                            inputfilename = inp_file
+                            break
+                    if inputfilename:
+                        break
+    
+    errors = 0
+    warnings = 0
+    
+    # Check each run
+    for run_idx in range(1, n_runs + 1):
+        run_dir = os.path.join(batch_dir, f"run{run_idx}")
+        
+        if not os.path.isdir(run_dir):
+            print(f"[ERROR] Run directory not found: {run_dir}")
+            errors += 1
+            continue
+        
+        if verbose:
+            print(f"Checking run{run_idx}...")
+        
+        # Find equilibrium directory (should be only one in fixed mode)
+        sparc_dirs = find_sparc_dirs(run_dir)
+        
+        if not sparc_dirs:
+            print(f"  [WARNING] No sparc_* directories found in {run_dir}")
+            warnings += 1
+            continue
+        
+        if len(sparc_dirs) != 1:
+            print(f"  [WARNING] Expected 1 equilibrium in fixed mode, found {len(sparc_dirs)}: {sparc_dirs}")
+            warnings += 1
+        
+        # Check the equilibrium matches expected (if specified)
+        if equilibrium and sparc_dirs[0] != equilibrium:
+            print(f"  [WARNING] Expected equilibrium '{equilibrium}', found '{sparc_dirs[0]}'")
+            warnings += 1
+        
+        sparc_dir = sparc_dirs[0]
+        inp_path = os.path.join(run_dir, sparc_dir, inputfilename)
+        
+        # Check input file exists
+        if not check_input_file_exists(run_dir, sparc_dir, inputfilename, verbose):
+            errors += 1
+            continue
+        
+        # Verify parameters are present and valid
+        for param in params:
+            param_idx = params.index(param)
+            is_int = integer_mask[param_idx] if param_idx < len(integer_mask) else False
+            param_range = ranges[param_idx] if param_idx < len(ranges) else None
+            
+            success, msg = check_parameter_in_file(
+                inp_path, param,
+                expected_range=param_range,
+                is_integer=is_int,
+                verbose=verbose
+            )
+            
+            if not success:
+                print(f"  [ERROR] {msg}")
+                errors += 1
+            elif verbose:
+                print(f"    {sparc_dir}/{inputfilename}: {param} ✓")
+        
+        if verbose:
+            print()
+    
+    return errors, warnings
+
+
 def verify_per_case_mode_batch(
     batch_dir: str,
     meta: Dict[str, Any],
@@ -348,7 +454,9 @@ def main(batch_dir: str, verbose: bool = False) -> int:
     
     # Route to appropriate verification function
     if mode == "equilibria":
-        if equilibria_mode == "fixed":
+        if equilibria_mode == "set":
+            errors, warnings = verify_set_mode_batch(batch_dir, meta, verbose)
+        elif equilibria_mode == "fixed":
             errors, warnings = verify_fixed_mode_batch(batch_dir, meta, verbose)
         elif equilibria_mode == "per_case":
             errors, warnings = verify_per_case_mode_batch(batch_dir, meta, verbose)

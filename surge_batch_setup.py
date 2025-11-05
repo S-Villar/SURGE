@@ -4,11 +4,12 @@
 This script orchestrates dataset batch creation using surge.datagen.DataGenerator.
 Configure via a YAML file and/or CLI overrides.
 
-Two modes are supported:
+Three modes are supported:
   1) No equilibria set: creates batchN/case1..caseN and modifies a copied input file
-  2) Equilibria set (fixed or per_case): creates batch_N/run1..runN and copies all
-	 equilibria (sparc_*) directories from a source run into each run, modifying the
-	 input file inside each case.
+  2) Equilibria set (set, fixed, or per_case): 
+     - "set": creates batch_N/run1..runN, each run contains all equilibria with same params
+     - "fixed": creates batch_N/run1..runN, all runs use the same single equilibrium
+     - "per_case": creates batch_N/<equilibrium>/run1..runN, independent params per equilibrium
 
 Example usage:
   python surge_batch_setup.py --config examples/batch_setup.yml
@@ -24,19 +25,55 @@ YAML schema (keys):
   nsamples: 5
   spl: lhs | random
   seed: 42
-  equilibria: null | fixed | per_case
+  equilibria: null | set | fixed | per_case
   eqsetpath: <path to a batch or to a run folder containing sparc_* directories>
   use_python_replacement: true
   confirm_dirs: false
   save_plots: true
+
+Requirements:
+  This script requires numpy, scipy, and optionally yaml.
+  If using a conda environment, activate it first:
+    conda activate surge
+  Or ensure the required packages are installed in your current Python environment.
 """
 
 from __future__ import annotations
 
+import sys
+import os
+
+# Check for required dependencies and provide helpful error messages
+_missing_deps = []
+try:
+	import numpy  # type: ignore
+except ImportError:
+	_missing_deps.append("numpy")
+
+try:
+	import scipy  # type: ignore
+except ImportError:
+	_missing_deps.append("scipy")
+
+if _missing_deps:
+	_surge_env_hint = ""
+	# Check if conda is available and suggest activating surge environment
+	try:
+		import subprocess
+		result = subprocess.run(["conda", "env", "list"], capture_output=True, text=True, timeout=2)
+		if "surge" in result.stdout:
+			_surge_env_hint = "\n  💡 Try activating the surge conda environment:\n     conda activate surge\n"
+	except Exception:
+		pass
+	
+	print("❌ Missing required dependencies:", ", ".join(_missing_deps), file=sys.stderr)
+	print(f"\n  Please install the missing packages:", file=sys.stderr)
+	print(f"     pip install {' '.join(_missing_deps)}", file=sys.stderr)
+	print(_surge_env_hint, file=sys.stderr)
+	sys.exit(1)
+
 import argparse
 import json
-import os
-import sys
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 try:
@@ -44,7 +81,12 @@ try:
 except Exception:
 	yaml = None  # handled later if --config is used
 
-from surge.datagen import DataGenerator
+# Import DataGenerator directly using importlib to bypass __init__.py (which imports torch)
+import importlib.util
+spec = importlib.util.spec_from_file_location("datagen", os.path.join(os.path.dirname(__file__), "surge", "datagen.py"))
+datagen_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(datagen_module)
+DataGenerator = datagen_module.DataGenerator
 
 
 def _load_config(path: Optional[str]) -> Dict[str, Any]:
@@ -194,8 +236,8 @@ def run_from_config(config: Dict[str, Any], overrides: Dict[str, Any]) -> str:
 	# Equilibria mode
 	if equilibria:
 		equilibria = str(equilibria).lower()
-		if equilibria not in ("fixed", "per_case"):
-			raise ValueError("equilibria must be one of: fixed | per_case")
+		if equilibria not in ("fixed", "set", "per_case"):
+			raise ValueError("equilibria must be one of: fixed | set | per_case")
 
 		# Decide the source_run_dir that contains sparc_* folders
 		source_run_dir = _derive_source_run_dir(eqsetpath, inpfile)
@@ -244,7 +286,7 @@ def run_from_config(config: Dict[str, Any], overrides: Dict[str, Any]) -> str:
 				json.dump(
 					{
 						"mode": "equilibria",
-						"equilibria_mode": equilibria,
+						"equilibria_mode": equilibria,  # "set", "fixed", or "per_case"
 						"source_run_dir": source_run_dir,
 						"params": params,
 						"ranges": ranges,
