@@ -19,7 +19,6 @@ set -e
 # SLURM_SUBMIT_DIR is set by SLURM to the directory where sbatch was executed
 # This is more reliable than using the script location, which may be in /var/spool/slurmd
 BATCH_DIR="${BATCH_DIR:-${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}}"
-BATCH_DIR="${BATCH_DIR:-$BATCH_DIR}"
 
 # If this is the initial submission (array size 1-1), compute array size and resubmit
 # Check if we're in the bootstrap phase by looking at SLURM_ARRAY_TASK_MAX
