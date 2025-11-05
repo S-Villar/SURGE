@@ -6,7 +6,7 @@ channels:
 
 dependencies:
   # Python version
-  - python>=3.8,<3.12
+  - python=3.11
   
   # Core scientific computing
   - numpy>=1.20.0
