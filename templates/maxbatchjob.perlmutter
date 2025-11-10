@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH -N 8
-#SBATCH --ntasks-per-node=12
+#SBATCH -N 1
+#SBATCH --ntasks-per-node=8
 #SBATCH --cpus-per-task=1
-#SBATCH --time=00:20:00
+#SBATCH --time=00:30:00
 #SBATCH --mail-type=ALL
 #SBATCH --qos=regular
 #SBATCH -L SCRATCH
@@ -11,9 +11,12 @@
 #SBATCH -o M3DC1log.o%j
 #SBATCH -e M3DC1log.e%j
 #SBATCH --array=1-1
-#SBATCH -J m3dc1_stability
+#SBATCH -J m3dc1_stability_max
 
-set -e
+set -euo pipefail
+
+# Support manual array submission (skips bootstrap resubmit logic).
+MANUAL_ARRAY="${MANUAL_ARRAY:-0}"
 
 # Set M3DC1 MPI runner (srun for SLURM)
 # The -n flag is added separately in the command, so this should just be "srun"
@@ -40,9 +43,22 @@ fi
 # Add batch directory to PATH so split_smb symlink is accessible
 export PATH="${BATCH_DIR}:${PATH}"
 
+# Ensure m3dc1_2d_complex executable is available via symlink
+M3DC1_BIN_SOURCE="/global/homes/a/asvillar/src/M3DC1/unstructured/_perlmutter_cpu_gcc-complex-opt-25/m3dc1_2d_complex"
+M3DC1_BIN_LINK="${BATCH_DIR}/m3dc1_2d_complex"
+if [ ! -e "$M3DC1_BIN_LINK" ] || [ ! -L "$M3DC1_BIN_LINK" ]; then
+    if [ -x "$M3DC1_BIN_SOURCE" ]; then
+        ln -sf "$M3DC1_BIN_SOURCE" "$M3DC1_BIN_LINK"
+        echo "Created symlink: $M3DC1_BIN_LINK -> $M3DC1_BIN_SOURCE"
+    else
+        echo "ERROR: m3dc1_2d_complex not found or not executable at $M3DC1_BIN_SOURCE"
+        exit 1
+    fi
+fi
+
 # If this is the initial submission (array size 1-1), compute array size and resubmit
 # Check if we're in the bootstrap phase by looking at SLURM_ARRAY_TASK_MAX
-if [ -n "$SLURM_ARRAY_TASK_MAX" ] && [ "$SLURM_ARRAY_TASK_MAX" -eq 1 ]; then
+if [ "$MANUAL_ARRAY" != "1" ] && [ -n "${SLURM_ARRAY_TASK_MAX:-}" ] && [ "$SLURM_ARRAY_TASK_MAX" -eq 1 ]; then
     # Count number of runs
     RUN_DIRS=($(find "$BATCH_DIR" -maxdepth 1 -type d -name "run[0-9]*" | sort -V))
     N_RUNS=${#RUN_DIRS[@]}
@@ -79,7 +95,7 @@ if [ -n "$SLURM_ARRAY_TASK_MAX" ] && [ "$SLURM_ARRAY_TASK_MAX" -eq 1 ]; then
         MAX_ARRAY_SIZE=5
         QOS_TYPE="debug"
     else
-        MAX_ARRAY_SIZE=5000
+        MAX_ARRAY_SIZE=4950
         QOS_TYPE="regular"
     fi
     
@@ -87,8 +103,8 @@ if [ -n "$SLURM_ARRAY_TASK_MAX" ] && [ "$SLURM_ARRAY_TASK_MAX" -eq 1 ]; then
     if [ "$TOTAL_CASES" -gt "$MAX_ARRAY_SIZE" ]; then
         ARRAY_SIZE=$MAX_ARRAY_SIZE
         echo "WARNING: Total cases ($TOTAL_CASES) exceeds SLURM array limit for $QOS_TYPE queue ($MAX_ARRAY_SIZE)"
-        echo "WARNING: Only cases 1-$MAX_ARRAY_SIZE will be submitted"
-        echo "WARNING: Remaining cases ($((TOTAL_CASES - MAX_ARRAY_SIZE))) will NOT be run"
+        echo "WARNING: Only cases 1-$MAX_ARRAY_SIZE will be submitted in this launch."
+        echo "WARNING: Use completebatchjob.perlmutter after this array finishes to queue remaining cases."
     fi
     
     echo "Batch directory: $BATCH_DIR"
@@ -158,48 +174,111 @@ echo "pwd: $(pwd)"
 
 touch started
 
-# Partition mesh and place partitions in mesh folder (only on first equilibrium of each run)
-if [ "$EQ_ID" -eq 1 ]; then
-    PARTS=$SLURM_NTASKS
-    MESH_DIR="${BATCH_DIR}/run${RUN_ID}/mesh"
-    mkdir -p "$MESH_DIR"
-    
-    # Find the mesh source file (sparc_fw1-18K*.smb) in the case directory
-    MESH_SRC=$(find "$CASE_DIR" -maxdepth 1 -name "sparc_fw1-18K*.smb" | head -1)
-    if [ -z "$MESH_SRC" ]; then
-        echo "ERROR: Mesh source file (sparc_fw1-18K*.smb) not found in $CASE_DIR"
-        exit 1
-    fi
-    
-    echo "Partitioning mesh: $MESH_SRC -> $MESH_DIR/part.smb (PARTS=$PARTS)"
-    $M3DC1_MPIRUN -n $PARTS split_smb "$MESH_SRC" "$MESH_DIR/part.smb" $PARTS
-    
-    # Verify partitions were created
-    if [ ! -f "$MESH_DIR/part0.smb" ]; then
-        echo "ERROR: Mesh partitioning failed - part0.smb not found"
-        exit 1
-    fi
-    
-    echo "Mesh partitioned successfully. Partitions created in $MESH_DIR"
-    touch "${BATCH_DIR}/run${RUN_ID}/.mesh_ready"
+# Partition mesh and run M3DC1 for this case
+RUN_DIR=$(dirname "$CASE_DIR")
+MESH_DIR="${RUN_DIR}/mesh"
+MESH_READY_FLAG="${RUN_DIR}/.mesh_ready"
+CASE_PREFIX="[case ${CASE_ID} | run ${RUN_ID} | eq ${EQ_ID}]"
+
+mkdir -p "$MESH_DIR"
+
+echo "${CASE_PREFIX} Step 1/3: locating mesh source ..."
+MESH_SRC=$(find "$CASE_DIR" -maxdepth 1 -name "sparc_fw1-18K*.smb" | sort | head -1)
+if [ -z "$MESH_SRC" ]; then
+    echo "${CASE_PREFIX} ERROR: mesh source sparc_fw1-18K*.smb not found in $CASE_DIR"
+    exit 1
+fi
+if [ ! -s "$MESH_SRC" ]; then
+    echo "${CASE_PREFIX} ERROR: mesh source $MESH_SRC exists but is empty"
+    exit 1
 fi
 
-# Wait for mesh partitions to be ready (other equilibria wait for first one)
-if [ "$EQ_ID" -ne 1 ]; then
-    MESH_READY="${BATCH_DIR}/run${RUN_ID}/.mesh_ready"
-    while [ ! -f "$MESH_READY" ]; do
+MESH_FILE=$(basename "$MESH_SRC")
+MESH_BASE="${MESH_FILE%.smb}"
+MESH_BASE=$(echo "$MESH_BASE" | sed 's/[0-9]*$//')
+MESH_BASE_NAME="${MESH_BASE}.smb"
+RUN_MESH_SRC="${RUN_DIR}/${MESH_FILE}"
+RUN_MESH_BASE="${RUN_DIR}/${MESH_BASE_NAME}"
+CASE_MESH_BASE="${CASE_DIR}/${MESH_BASE_NAME}"
+
+echo "${CASE_PREFIX}   mesh file: $MESH_SRC"
+echo "${CASE_PREFIX}   mesh base name: $MESH_BASE_NAME"
+
+echo "${CASE_PREFIX} Step 1a: refreshing mesh symlinks ..."
+if [ ! -f "$RUN_MESH_SRC" ]; then
+    cp -fp "$MESH_SRC" "$RUN_MESH_SRC"
+elif [ "$MESH_SRC" -nt "$RUN_MESH_SRC" ]; then
+    cp -fp "$MESH_SRC" "$RUN_MESH_SRC"
+fi
+ln -sf "$RUN_MESH_SRC" "$RUN_DIR/$MESH_BASE_NAME"
+ln -sf "$RUN_MESH_SRC" "$CASE_DIR/$MESH_FILE"
+ln -sf "$RUN_DIR/$MESH_BASE_NAME" "$CASE_DIR/$MESH_BASE_NAME"
+ls -l "$RUN_MESH_SRC" "$RUN_DIR/$MESH_BASE_NAME" "$CASE_DIR/$MESH_FILE" "$CASE_DIR/$MESH_BASE_NAME"
+
+echo "${CASE_PREFIX} Step 2/3: mesh partitioning ..."
+if [ ! -f "${MESH_DIR}/part0.smb" ] || [ ! -f "$MESH_READY_FLAG" ]; then
+    echo "${CASE_PREFIX}   partition target: $MESH_DIR/part.smb"
+    rm -f "${MESH_DIR}"/part*.smb 2>/dev/null || true
+    pushd "$RUN_DIR" >/dev/null
+    echo "${CASE_PREFIX}   running split_smb with $SLURM_NTASKS ranks"
+    set -x
+    $M3DC1_MPIRUN -n $SLURM_NTASKS split_smb "$MESH_BASE_NAME" "mesh/part.smb" $SLURM_NTASKS
+    set +x
+    popd >/dev/null
+
+    if [ ! -f "${MESH_DIR}/part0.smb" ]; then
+        echo "${CASE_PREFIX} ERROR: partitioning failed; part0.smb missing in $MESH_DIR"
+        ls -l "$MESH_DIR" || true
+        exit 1
+    fi
+    touch "$MESH_READY_FLAG"
+    echo "${CASE_PREFIX}   partitioning finished; parts available in $MESH_DIR"
+else
+    echo "${CASE_PREFIX}   mesh already partitioned; reusing existing parts"
+fi
+
+if [ ! -f "${MESH_DIR}/part0.smb" ]; then
+    echo "${CASE_PREFIX} ERROR: mesh partitions still missing after split_smb"
+    exit 1
+fi
+
+if [ "$EQ_ID" -ne 1 ] && [ ! -f "$MESH_READY_FLAG" ]; then
+    echo "${CASE_PREFIX} waiting for mesh_ready flag ..."
+    while [ ! -f "$MESH_READY_FLAG" ]; do
         sleep 1
     done
 fi
 
-# Verify mesh partitions exist
-MESH_DIR="${BATCH_DIR}/run${RUN_ID}/mesh"
-if [ ! -f "$MESH_DIR/part0.smb" ]; then
-    echo "ERROR: Mesh partitions not found in $MESH_DIR"
-    exit 1
+ls -l "${MESH_DIR}"/part*.smb | head -5
+
+echo "${CASE_PREFIX} Step 3/3: launching M3DC1 ..."
+LOG_OUT="${CASE_DIR}/M3DC1log.o"
+LOG_ERR="${CASE_DIR}/M3DC1log.e"
+rm -f "$LOG_OUT" "$LOG_ERR"
+set -x
+$M3DC1_MPIRUN -n $SLURM_NTASKS m3dc1_2d_complex -pc_factor_mat_solver_type mumps >"$LOG_OUT" 2>"$LOG_ERR"
+set +x
+echo "${CASE_PREFIX} M3DC1 completed"
+
+C1_OUTPUT="${CASE_DIR}/C1.h5"
+if [ -f "$C1_OUTPUT" ]; then
+    echo "${CASE_PREFIX} SUCCESS: found C1.h5 at $C1_OUTPUT"
+    ls -l "$C1_OUTPUT"
+else
+    echo "${CASE_PREFIX} WARNING: C1.h5 not found in $CASE_DIR"
+    ls -l "$CASE_DIR" | head -20
 fi
 
-# Run M3D-C1
-$M3DC1_MPIRUN -n $SLURM_NTASKS m3dc1_2d_complex -pc_factor_mat_solver_type mumps
+ls -l "$CASE_DIR"/time_*.h5 2>/dev/null | head -5 || true
 
 touch finished
+
+STD_SLURM_OUT="${BATCH_DIR}/M3DC1log.o${SLURM_JOB_ID}"
+STD_SLURM_ERR="${BATCH_DIR}/M3DC1log.e${SLURM_JOB_ID}"
+if [ -f "$STD_SLURM_OUT" ]; then
+    mv "$STD_SLURM_OUT" "${CASE_DIR}/"
+fi
+if [ -f "$STD_SLURM_ERR" ]; then
+    mv "$STD_SLURM_ERR" "${CASE_DIR}/"
+fi
+

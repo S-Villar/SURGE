@@ -1,0 +1,259 @@
+#!/bin/bash
+#SBATCH -N 1
+#SBATCH --ntasks-per-node=8
+#SBATCH --cpus-per-task=1
+#SBATCH --time=00:30:00
+#SBATCH --mail-type=ALL
+#SBATCH --qos=regular
+#SBATCH -L SCRATCH
+#SBATCH --constraint=cpu
+#SBATCH -A mp288
+#SBATCH -o M3DC1log.o%j
+#SBATCH -e M3DC1log.e%j
+#SBATCH --array=1-1
+#SBATCH -J m3dc1_stability_range
+
+set -euo pipefail
+
+usage() {
+    cat <<'EOF'
+rangebatchjob.perlmutter
+
+Usage:
+  sbatch --array=4951-5000 templates/rangebatchjob.perlmutter
+  sbatch templates/rangebatchjob.perlmutter [options] 4951-5000 6000-6200
+
+Options (when provided after the script name):
+  -N, --nodes NUM
+  --ntasks-per-node NUM
+  --cpus-per-task NUM
+  -t, --time HH:MM:SS
+  -p, --partition PART
+  --qos QOS
+  -A, --account ACCOUNT
+  -J, --job-name NAME
+  --mail-type TYPE
+  --constraint CONSTRAINT
+  --sbatch-opt "FLAG[=VALUE]"   (repeatable; forwarded to sbatch)
+  --help
+
+If positional ranges are supplied, the script re-submits itself with the
+explicit --array specification and forwards the chosen sbatch options,
+exporting MANUAL_ARRAY=1 so maxbatchjob.perlmutter skips its bootstrap phase.
+EOF
+}
+
+BATCH_DIR="${BATCH_DIR:-${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}}"
+MAX_JOB_SCRIPT="${BATCH_DIR}/maxbatchjob.perlmutter"
+
+if [[ ! -f "$MAX_JOB_SCRIPT" ]]; then
+    echo "ERROR: maxbatchjob.perlmutter not found in $BATCH_DIR" >&2
+    exit 1
+fi
+
+declare -a SBATCH_OPTS=()
+declare -a RANGES=()
+
+args=("$@")
+i=0
+while [[ $i -lt ${#args[@]} ]]; do
+    arg="${args[$i]}"
+    case "$arg" in
+        -N|--nodes)
+            ((i++)); [[ $i -lt ${#args[@]} ]] || { echo "Missing value for $arg" >&2; exit 1; }
+            SBATCH_OPTS+=(--nodes="${args[$i]}")
+            ;;
+        --ntasks-per-node)
+            ((i++)); [[ $i -lt ${#args[@]} ]] || { echo "Missing value for $arg" >&2; exit 1; }
+            SBATCH_OPTS+=(--ntasks-per-node="${args[$i]}")
+            ;;
+        --cpus-per-task)
+            ((i++)); [[ $i -lt ${#args[@]} ]] || { echo "Missing value for $arg" >&2; exit 1; }
+            SBATCH_OPTS+=(--cpus-per-task="${args[$i]}")
+            ;;
+        -t|--time)
+            ((i++)); [[ $i -lt ${#args[@]} ]] || { echo "Missing value for $arg" >&2; exit 1; }
+            SBATCH_OPTS+=(--time="${args[$i]}")
+            ;;
+        -p|--partition)
+            ((i++)); [[ $i -lt ${#args[@]} ]] || { echo "Missing value for $arg" >&2; exit 1; }
+            SBATCH_OPTS+=(--partition="${args[$i]}")
+            ;;
+        --qos)
+            ((i++)); [[ $i -lt ${#args[@]} ]] || { echo "Missing value for $arg" >&2; exit 1; }
+            SBATCH_OPTS+=(--qos="${args[$i]}")
+            ;;
+        -A|--account)
+            ((i++)); [[ $i -lt ${#args[@]} ]] || { echo "Missing value for $arg" >&2; exit 1; }
+            SBATCH_OPTS+=(--account="${args[$i]}")
+            ;;
+        -J|--job-name)
+            ((i++)); [[ $i -lt ${#args[@]} ]] || { echo "Missing value for $arg" >&2; exit 1; }
+            SBATCH_OPTS+=(--job-name="${args[$i]}")
+            ;;
+        --mail-type)
+            ((i++)); [[ $i -lt ${#args[@]} ]] || { echo "Missing value for $arg" >&2; exit 1; }
+            SBATCH_OPTS+=(--mail-type="${args[$i]}")
+            ;;
+        --constraint)
+            ((i++)); [[ $i -lt ${#args[@]} ]] || { echo "Missing value for $arg" >&2; exit 1; }
+            SBATCH_OPTS+=(--constraint="${args[$i]}")
+            ;;
+        --sbatch-opt)
+            ((i++)); [[ $i -lt ${#args[@]} ]] || { echo "Missing value for $arg" >&2; exit 1; }
+            SBATCH_OPTS+=("${args[$i]}")
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --)
+            ((i++))
+            break
+            ;;
+        -*)
+            echo "Unknown option: $arg" >&2
+            usage
+            exit 1
+            ;;
+        *)
+            break
+            ;;
+    esac
+    ((i++))
+done
+
+# Remaining arguments (including after --) treated as ranges.
+RANGES+=("${args[@]:$i}")
+
+if [[ "${RANGE_RESUBMIT:-0}" != "1" && ${#RANGES[@]} -gt 0 ]]; then
+    array_spec=$(IFS=,; printf "%s" "${RANGES[*]}")
+    echo "[rangebatch] Resubmitting with --array=${array_spec}"
+    sbatch --array="$array_spec" \
+        "${SBATCH_OPTS[@]}" \
+        --export=MANUAL_ARRAY=1,RANGE_RESUBMIT=1 \
+        "$BATCH_DIR/templates/rangebatchjob.perlmutter"
+    exit 0
+fi
+
+export MANUAL_ARRAY=1
+
+exec "$MAX_JOB_SCRIPT"
+#!/bin/bash
+#
+# rangebatchjob.perlmutter
+# Helper wrapper to submit specific array ranges for maxbatchjob.perlmutter.
+#
+# Usage:
+#   ./rangebatchjob.perlmutter [options] <range1> [range2 ...]
+#
+# Examples:
+#   ./rangebatchjob.perlmutter 1-4950
+#   ./rangebatchjob.perlmutter -b /pscratch/.../batch_16 4950-5200 6000-6200
+#
+# By default it looks for maxbatchjob.perlmutter inside the batch directory and
+# submits it with --array set to the comma-joined ranges you pass in.
+
+set -euo pipefail
+
+usage() {
+    cat <<'EOF'
+Usage: rangebatchjob.perlmutter [options] <range1> [range2 ...]
+
+Options:
+  -b, --batch-dir DIR   Batch directory (default: current directory or \$BATCH_DIR).
+  -j, --job-script FILE Job script to submit (default: maxbatchjob.perlmutter inside batch dir).
+      --dry-run         Print sbatch command instead of executing.
+      --sbatch-arg ARG  Additional --flag=value argument to pass through to sbatch.
+  -h, --help            Show this help message.
+
+Examples:
+  ./rangebatchjob.perlmutter 1-4950
+  ./rangebatchjob.perlmutter -b /pscratch/.../batch_16 4950-5200 6200-6500
+  ./rangebatchjob.perlmutter --dry-run 4950-5000
+EOF
+}
+
+batch_dir="${BATCH_DIR:-$PWD}"
+job_script=""
+dry_run=false
+sbatch_extra=()
+
+args=("$@")
+i=0
+while [[ $i -lt ${#args[@]} ]]; do
+    arg="${args[$i]}"
+    case "$arg" in
+        -b|--batch-dir)
+            ((i++))
+            [[ $i -lt ${#args[@]} ]] || { echo "Missing value for $arg" >&2; usage; exit 1; }
+            batch_dir="${args[$i]}"
+            ;;
+        -j|--job-script)
+            ((i++))
+            [[ $i -lt ${#args[@]} ]] || { echo "Missing value for $arg" >&2; usage; exit 1; }
+            job_script="${args[$i]}"
+            ;;
+        --dry-run)
+            dry_run=true
+            ;;
+        --sbatch-arg)
+            ((i++))
+            [[ $i -lt ${#args[@]} ]] || { echo "Missing value for $arg" >&2; usage; exit 1; }
+            sbatch_extra+=("${args[$i]}")
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --)
+            ((i++))
+            break
+            ;;
+        -*)
+            echo "Unknown option: $arg" >&2
+            usage
+            exit 1
+            ;;
+        *)
+            break
+            ;;
+    esac
+    ((i++))
+done
+
+ranges=("${args[@]:$i}")
+
+if [[ ${#ranges[@]} -eq 0 ]]; then
+    echo "Error: at least one range must be provided." >&2
+    usage
+    exit 1
+fi
+
+batch_dir="$(realpath "$batch_dir")"
+[[ -d "$batch_dir" ]] || { echo "Batch directory not found: $batch_dir" >&2; exit 1; }
+
+if [[ -z "$job_script" ]]; then
+    job_script="${batch_dir}/maxbatchjob.perlmutter"
+fi
+
+if [[ ! -f "$job_script" ]]; then
+    echo "Job script not found: $job_script" >&2
+    exit 1
+fi
+
+array_spec=$(IFS=,; printf "%s" "${ranges[*]}")
+
+cmd=(sbatch --array="$array_spec" --chdir "$batch_dir")
+for extra in "${sbatch_extra[@]}"; do
+    cmd+=("$extra")
+done
+cmd+=("$job_script")
+
+if [[ "$dry_run" == true ]]; then
+    echo "[dry-run] ${cmd[*]}"
+else
+    echo "Submitting ${job_script} with --array=${array_spec}"
+    "${cmd[@]}"
+fi
+
