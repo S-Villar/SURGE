@@ -1,0 +1,136 @@
+#!/bin/bash
+#SBATCH -N 1
+#SBATCH --ntasks-per-node=32
+#SBATCH --cpus-per-task=4
+#SBATCH --time=00:40:00
+#SBATCH --qos=regular
+#SBATCH -L SCRATCH
+#SBATCH --constraint=cpu
+#SBATCH -A mp288
+#SBATCH -o M3DC1log.o%j
+#SBATCH -e M3DC1log.e%j
+#SBATCH -J m3dc1_single
+
+set -euo pipefail
+
+M3DC1_MPIRUN="${M3DC1_MPIRUN:-srun}"
+CASE_DIR="${SLURM_SUBMIT_DIR:-$(pwd)}"
+cd "$CASE_DIR"
+
+RUN_DIR="$(dirname "$CASE_DIR")"
+BATCH_DIR="$(dirname "$RUN_DIR")"
+
+# Ensure required input files exist
+for f in C1input geqdsk; do
+    if [ ! -f "$CASE_DIR/$f" ]; then
+        echo "ERROR: required file '$f' missing in $CASE_DIR"
+        exit 1
+    fi
+done
+
+MESH_SRC=$(find "$CASE_DIR" -maxdepth 1 -name "sparc_fw1-18K*.smb" | sort | head -1)
+if [ -z "$MESH_SRC" ]; then
+    echo "ERROR: mesh source sparc_fw1-18K*.smb not found in $CASE_DIR"
+    exit 1
+fi
+if [ ! -s "$MESH_SRC" ]; then
+    echo "ERROR: mesh source $MESH_SRC exists but is empty"
+    exit 1
+fi
+
+# Prepare executables in run directory
+SPLIT_SMB_SOURCE="/global/cfs/cdirs/mp288/jinchen/PETSC/core-240527/upgrade-gnu850-pcpu/bin/split_smb"
+SPLIT_SMB_LINK="${RUN_DIR}/split_smb"
+if [ ! -e "$SPLIT_SMB_LINK" ]; then
+    if [ -f "$SPLIT_SMB_SOURCE" ]; then
+        ln -sf "$SPLIT_SMB_SOURCE" "$SPLIT_SMB_LINK"
+        echo "Linked split_smb into $RUN_DIR"
+    else
+        echo "WARNING: split_smb source not found at $SPLIT_SMB_SOURCE; relying on PATH"
+    fi
+fi
+
+M3DC1_BIN_SOURCE="/global/homes/a/asvillar/src/M3DC1/unstructured/_perlmutter_cpu_gcc-complex-opt-25/m3dc1_2d_complex"
+M3DC1_BIN_LINK="${RUN_DIR}/m3dc1_2d_complex"
+if [ ! -e "$M3DC1_BIN_LINK" ]; then
+    if [ -x "$M3DC1_BIN_SOURCE" ]; then
+        ln -sf "$M3DC1_BIN_SOURCE" "$M3DC1_BIN_LINK"
+        echo "Linked m3dc1_2d_complex into $RUN_DIR"
+    else
+        echo "ERROR: m3dc1_2d_complex not found or not executable at $M3DC1_BIN_SOURCE"
+        exit 1
+    fi
+fi
+
+export PATH="${RUN_DIR}:${PATH}"
+
+MESH_DIR="${RUN_DIR}/mesh"
+MESH_READY_FLAG="${RUN_DIR}/.mesh_ready"
+mkdir -p "$MESH_DIR"
+
+MESH_FILE=$(basename "$MESH_SRC")
+MESH_BASE="${MESH_FILE%.smb}"
+MESH_BASE=$(echo "$MESH_BASE" | sed 's/[0-9]*$//')
+MESH_BASE_NAME="${MESH_BASE}.smb"
+RUN_MESH_SRC="${RUN_DIR}/${MESH_FILE}"
+
+# Keep a copy of the mesh in run directory for partitioning reuse
+if [ ! -f "$RUN_MESH_SRC" ] || [ "$MESH_SRC" -nt "$RUN_MESH_SRC" ]; then
+    cp -fp "$MESH_SRC" "$RUN_MESH_SRC"
+fi
+ln -sf "$RUN_MESH_SRC" "$RUN_DIR/$MESH_BASE_NAME"
+ln -sf "$RUN_MESH_SRC" "$CASE_DIR/$MESH_FILE"
+ln -sf "$RUN_DIR/$MESH_BASE_NAME" "$CASE_DIR/$MESH_BASE_NAME"
+
+PARTS=$SLURM_NTASKS
+
+if [ ! -f "${MESH_DIR}/part0.smb" ]; then
+    echo "[mesh] partitioning mesh for run $(basename "$RUN_DIR")"
+    rm -f "${MESH_DIR}"/part*.smb 2>/dev/null || true
+    pushd "$RUN_DIR" >/dev/null
+    set -x
+    $M3DC1_MPIRUN -n $PARTS split_smb "$MESH_BASE_NAME" "mesh/part.smb" $PARTS
+    set +x
+    popd >/dev/null
+    if [ ! -f "${MESH_DIR}/part0.smb" ]; then
+        echo "ERROR: partitioning failed; part0.smb missing in $MESH_DIR"
+        exit 1
+    fi
+    touch "$MESH_READY_FLAG"
+else
+    if [ ! -f "$MESH_READY_FLAG" ]; then
+        touch "$MESH_READY_FLAG"
+    fi
+fi
+
+# Wait for partition if another job is preparing it
+if [ ! -f "$MESH_READY_FLAG" ]; then
+    echo "[mesh] waiting for mesh partition readiness flag..."
+    while [ ! -f "$MESH_READY_FLAG" ]; do
+        sleep 2
+    done
+fi
+
+ls -l "${MESH_DIR}"/part*.smb | head -5
+
+echo "[m3dc1] launching solver in $CASE_DIR"
+rm -f M3DC1log.o M3DC1log.e
+set -x
+$M3DC1_MPIRUN -n $SLURM_NTASKS m3dc1_2d_complex -pc_factor_mat_solver_type mumps
+set +x
+
+touch finished
+rm -f queued 2>/dev/null || true
+
+STD_OUT="${RUN_DIR}/M3DC1log.o${SLURM_JOB_ID}"
+STD_ERR="${RUN_DIR}/M3DC1log.e${SLURM_JOB_ID}"
+if [ -f "$STD_OUT" ]; then
+    mv "$STD_OUT" "$CASE_DIR/"
+fi
+if [ -f "$STD_ERR" ]; then
+    mv "$STD_ERR" "$CASE_DIR/"
+fi
+
+echo "[m3dc1] completed case $CASE_DIR"
+
+

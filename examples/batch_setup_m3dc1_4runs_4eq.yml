@@ -1,0 +1,58 @@
+# M3DC1 batch configuration for demonstration - 4 runs with 4 equilibria each
+# Complete SURGE workflow demonstration
+
+scratch: true  # Generate in $SCRATCH/mp288/jobs
+
+# Full path to the reference input file (template)
+inpfile: /pscratch/sd/a/asvillar/mp288/jobs/batch_7/run1/sparc_1300/C1input
+
+# Parameters to vary in the M3DC1 simulations
+params: [ntor, pscale, batemanscale]
+
+# Ranges for each parameter (min, max)
+ranges:
+  - [1, 10]         # ntor (integer) - toroidal mode number
+  - [0.5, 2.0]      # pscale (float) - pressure scaling
+  - [0.1, 1.0]      # batemanscale (float) - Bateman scaling
+
+# Whether each parameter is integer
+integer_mask: [true, false, false]
+
+# Number of runs to create (each run contains all equilibria from source)
+nsamples: 4
+
+# Sampling method: lhs | random
+spl: lhs
+
+# Random seed for reproducibility
+seed: 42
+
+# Equilibria mode: set means all equilibria in a run share the same parameters
+equilibria: set
+
+# Path to the source equilibria (batch_7 run1 has multiple equilibria)
+# We'll use the first 4 equilibria: sparc_1300, sparc_1301, sparc_1302, sparc_1303
+eqsetpath: /pscratch/sd/a/asvillar/mp288/jobs/batch_7/run1
+
+# Use in-Python replacement (no external shell scripts needed)
+use_python_replacement: true
+
+# Non-interactive mode (don't ask for confirmation)
+confirm_dirs: false
+
+# Save visualization plots of the sampling
+save_plots: true
+
+# Mesh filename for shared mesh
+mesh_filename: '../../mesh/part.smb'
+
+# SLURM configuration
+slurm_queue: regular
+slurm_nodes: 4
+slurm_tasks_per_node: 4
+slurm_cpus_per_task: 1
+slurm_time: "00:25:00"
+
+# Mesh checking feature (new)
+check_mesh: true  # Enable mesh checking before running simulation
+

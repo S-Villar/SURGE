@@ -1,0 +1,39 @@
+scratch: true
+
+# Reference input copied from batch_11
+inpfile: /pscratch/sd/a/asvillar/mp288/jobs/batch_11/run1/sparc_1300/C1input
+
+# Parameters to sample
+params: [ntor, pscale, batemanscale]
+
+# Sampling ranges
+ranges:
+  - [1, 8]        # ntor (integer)
+  - [0.7, 1.8]    # pscale
+  - [0.3, 1.2]    # batemanscale
+
+integer_mask: [true, false, false]
+
+# Create two runs (samples)
+nsamples: 2
+
+spl: lhs
+seed: 314
+
+equilibria: set
+# Use equilibria already present in batch_11/run1 (sparc_1300, sparc_1301)
+eqsetpath: /pscratch/sd/a/asvillar/mp288/jobs/batch_11/run1
+
+use_python_replacement: true
+confirm_dirs: false
+save_plots: false
+
+# Optional metadata for downstream tooling
+mesh_filename: '../../mesh/part.smb'
+slurm_queue: debug
+slurm_nodes: 2
+slurm_tasks_per_node: 8
+slurm_cpus_per_task: 1
+slurm_time: "00:20:00"
+check_mesh: true
+

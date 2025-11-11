@@ -1,0 +1,375 @@
+#!/bin/bash
+#SBATCH -N 1
+#SBATCH --ntasks-per-node=32
+#SBATCH --cpus-per-task=4
+#SBATCH --time=01:00:00
+#SBATCH --qos=regular
+#SBATCH -L SCRATCH
+#SBATCH --constraint=cpu
+#SBATCH -A mp288
+#SBATCH -o M3DC1log.o%j
+#SBATCH -e M3DC1log.e%j
+#SBATCH --array=1-1
+#SBATCH -J m3dc1_runs_subset
+
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Configuration inputs
+#   RUNS : comma/space separated run IDs or ranges (e.g. "1-3,5,7")
+#          default: all run directories in batch.
+#   EQS  : comma/space separated equilibrium indices (1-based) or sparc names.
+#          Example: "1-10,25,42" or "sparc_1355,sparc_1356".
+#          Applies uniformly to every run. If omitted, runs all equilibria.
+# ---------------------------------------------------------------------------
+
+parse_range_list() {
+    local input="$1" result=()
+    input="${input//,/ }"
+    for token in $input; do
+        if [[ "$token" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+            local start="${BASH_REMATCH[1]}"
+            local end="${BASH_REMATCH[2]}"
+            if (( start > end )); then
+                local tmp="$start"; start="$end"; end="$tmp"
+            fi
+            for ((i=start;i<=end;i++)); do
+                result+=("$i")
+            done
+        elif [[ "$token" =~ ^[0-9]+$ ]]; then
+            result+=("$token")
+        elif [[ -n "$token" ]]; then
+            result+=("$token")
+        fi
+    done
+    printf "%s\n" "${result[@]}"
+}
+
+# ---------------------------------------------------------------------------
+
+M3DC1_MPIRUN="${M3DC1_MPIRUN:-srun}"
+BATCH_DIR="${BATCH_DIR:-${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}}"
+
+# Symlink setup
+SPLIT_SMB_SOURCE="/global/cfs/cdirs/mp288/jinchen/PETSC/core-240527/upgrade-gnu850-pcpu/bin/split_smb"
+SPLIT_SMB_LINK="${BATCH_DIR}/split_smb"
+if [ ! -e "$SPLIT_SMB_LINK" ] || [ ! -L "$SPLIT_SMB_LINK" ]; then
+    if [ -f "$SPLIT_SMB_SOURCE" ]; then
+        ln -sf "$SPLIT_SMB_SOURCE" "$SPLIT_SMB_LINK"
+        echo "Created symlink: $SPLIT_SMB_LINK -> $SPLIT_SMB_SOURCE"
+    else
+        echo "WARNING: split_smb source not found at $SPLIT_SMB_SOURCE"
+        echo "WARNING: Will try to use split_smb from PATH"
+    fi
+fi
+export PATH="${BATCH_DIR}:${PATH}"
+
+M3DC1_BIN_SOURCE="/global/homes/a/asvillar/src/M3DC1/unstructured/_perlmutter_cpu_gcc-complex-opt-25/m3dc1_2d_complex"
+M3DC1_BIN_LINK="${BATCH_DIR}/m3dc1_2d_complex"
+if [ ! -e "$M3DC1_BIN_LINK" ] || [ ! -L "$M3DC1_BIN_LINK" ]; then
+    if [ -x "$M3DC1_BIN_SOURCE" ]; then
+        ln -sf "$M3DC1_BIN_SOURCE" "$M3DC1_BIN_LINK"
+        echo "Created symlink: $M3DC1_BIN_LINK -> $M3DC1_BIN_SOURCE"
+    else
+        echo "ERROR: m3dc1_2d_complex not found or not executable at $M3DC1_BIN_SOURCE"
+        exit 1
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Build case map
+
+declare -a RUN_IDS CASE_DIRS CASE_RUN_IDS CASE_EQ_NAMES
+declare -A RUN_FIRST_EQ
+
+if [ -n "${RUNS:-}" ]; then
+    readarray -t RUN_IDS < <(parse_range_list "$RUNS")
+else
+    mapfile -t RUN_IDS < <(find "$BATCH_DIR" -maxdepth 1 -type d -name "run[0-9]*" -printf "%f\n" | sort -V | sed 's/run//')
+fi
+
+if [ "${#RUN_IDS[@]}" -eq 0 ]; then
+    echo "ERROR: No run IDs resolved. Set RUNS or ensure run directories exist." >&2
+    exit 1
+fi
+
+declare -a EQ_FILTER
+USE_EQ_FILTER=0
+if [ -n "${EQS:-}" ]; then
+    readarray -t EQ_FILTER < <(parse_range_list "$EQS")
+    if [ "${#EQ_FILTER[@]}" -gt 0 ]; then
+        USE_EQ_FILTER=1
+    fi
+fi
+
+case_id=0
+for run_token in "${RUN_IDS[@]}"; do
+    if [[ ! "$run_token" =~ ^[0-9]+$ ]]; then
+        echo "WARNING: skipping invalid run identifier '$run_token'" >&2
+        continue
+    fi
+    run_idx="$run_token"
+    run_dir="${BATCH_DIR}/run${run_idx}"
+    if [ ! -d "$run_dir" ]; then
+        echo "WARNING: run directory not found: $run_dir (skipping)" >&2
+        continue
+    fi
+    mapfile -t eq_dirs < <(find "$run_dir" -maxdepth 1 -type d -name "sparc_*" -exec bash -c 'printf "%s\n" "$(basename "$1")"' _ {} \; | sort -t_ -k2n)
+    if [ "${#eq_dirs[@]}" -eq 0 ]; then
+        echo "WARNING: no sparc_* directories in $run_dir (skipping)" >&2
+        continue
+    fi
+
+    declare -a selected_eqs=()
+    if [ "$USE_EQ_FILTER" -eq 1 ]; then
+        for token in "${EQ_FILTER[@]}"; do
+            if [[ "$token" =~ ^[0-9]+$ ]]; then
+                idx="$token"
+                if (( idx >=1 && idx <= ${#eq_dirs[@]} )); then
+                    selected_eqs+=("${eq_dirs[$((idx-1))]}")
+                else
+                    echo "WARNING: equilibrium index $idx out of range for run${run_idx}" >&2
+                fi
+            else
+                # assume sparc_* name
+                match_found=0
+                for eq in "${eq_dirs[@]}"; do
+                    if [ "$eq" = "$token" ]; then
+                        selected_eqs+=("$eq")
+                        match_found=1
+                        break
+                    fi
+                done
+                if [ "$match_found" -eq 0 ]; then
+                    echo "WARNING: equilibrium '$token' not found in run${run_idx}" >&2
+                fi
+            fi
+        done
+    else
+        selected_eqs=("${eq_dirs[@]}")
+    fi
+
+    if [ "${#selected_eqs[@]}" -eq 0 ]; then
+        echo "WARNING: no equilibria selected for run${run_idx}" >&2
+        continue
+    fi
+    RUN_FIRST_EQ["$run_idx"]="${selected_eqs[0]}"
+
+    for eq_name in "${selected_eqs[@]}"; do
+        case_id=$((case_id + 1))
+        CASE_RUN_IDS[$case_id]="$run_idx"
+        CASE_EQ_NAMES[$case_id]="$eq_name"
+        CASE_DIRS[$case_id]="${run_dir}/${eq_name}"
+    done
+done
+
+TOTAL_CASES=$case_id
+
+if [ -n "${CASES:-}" ]; then
+    readarray -t CASE_FILTER < <(parse_range_list "$CASES")
+    if [ "${#CASE_FILTER[@]}" -eq 0 ]; then
+        echo "ERROR: CASES filter provided but resolved to no entries." >&2
+        exit 1
+    fi
+    declare -a TMP_CASE_DIR TMP_CASE_RUN TMP_CASE_EQ
+    declare -A NEW_RUN_FIRST_EQ
+    local_idx=0
+    for cid in "${CASE_FILTER[@]}"; do
+        if [[ ! "$cid" =~ ^[0-9]+$ ]]; then
+            echo "WARNING: invalid case identifier '$cid' ignored." >&2
+            continue
+        fi
+        dir="${CASE_DIRS[$cid]:-}"
+        run="${CASE_RUN_IDS[$cid]:-}"
+        eq="${CASE_EQ_NAMES[$cid]:-}"
+        if [ -z "$dir" ] || [ -z "$run" ] || [ -z "$eq" ]; then
+            echo "WARNING: case ID $cid not found in selected runs/equilibria (ignored)." >&2
+            continue
+        fi
+        local_idx=$((local_idx + 1))
+        TMP_CASE_DIR[$local_idx]="$dir"
+        TMP_CASE_RUN[$local_idx]="$run"
+        TMP_CASE_EQ[$local_idx]="$eq"
+        if [ -z "${NEW_RUN_FIRST_EQ[$run]:-}" ]; then
+            NEW_RUN_FIRST_EQ["$run"]="$eq"
+        fi
+    done
+    if [ "$local_idx" -eq 0 ]; then
+        echo "ERROR: CASES filter excluded all cases." >&2
+        exit 1
+    fi
+    CASE_DIRS=()
+    CASE_RUN_IDS=()
+    CASE_EQ_NAMES=()
+    for ((i=1;i<=local_idx;i++)); do
+        CASE_DIRS[$i]="${TMP_CASE_DIR[$i]}"
+        CASE_RUN_IDS[$i]="${TMP_CASE_RUN[$i]}"
+        CASE_EQ_NAMES[$i]="${TMP_CASE_EQ[$i]}"
+    done
+    TOTAL_CASES=$local_idx
+    RUN_FIRST_EQ=()
+    for run in "${!NEW_RUN_FIRST_EQ[@]}"; do
+        RUN_FIRST_EQ["$run"]="${NEW_RUN_FIRST_EQ[$run]}"
+    done
+fi
+
+if [ "$TOTAL_CASES" -eq 0 ]; then
+    echo "ERROR: No cases selected. Check RUNS/EQS configuration." >&2
+    exit 1
+fi
+
+if [ "${SLURM_ARRAY_TASK_MAX:-1}" -eq 1 ]; then
+    echo "Selected runs: ${RUN_IDS[*]}"
+    if [ "$USE_EQ_FILTER" -eq 1 ]; then
+        echo "Equilibrium filter: ${EQ_FILTER[*]}"
+    else
+        echo "Equilibrium filter: all"
+    fi
+    if [ -n "${CASES:-}" ]; then
+        echo "Case filter: ${CASES}"
+    fi
+    echo "Total cases: $TOTAL_CASES"
+    sbatch --array=1-"$TOTAL_CASES" --export=ALL,RUNS="$RUNS",EQS="$EQS",CASES="$CASES" "$0"
+    exit 0
+fi
+
+if [ -z "${SLURM_ARRAY_TASK_ID:-}" ]; then
+    echo "ERROR: SLURM_ARRAY_TASK_ID not set." >&2
+    exit 1
+fi
+
+CASE_ID="$SLURM_ARRAY_TASK_ID"
+if [ "$CASE_ID" -lt 1 ] || [ "$CASE_ID" -gt "$TOTAL_CASES" ]; then
+    echo "ERROR: CASE_ID $CASE_ID out of range (1-$TOTAL_CASES)" >&2
+    exit 1
+fi
+
+RUN_ID="${CASE_RUN_IDS[$CASE_ID]}"
+EQ_NAME="${CASE_EQ_NAMES[$CASE_ID]}"
+CASE_DIR="${CASE_DIRS[$CASE_ID]}"
+
+if [ -z "$RUN_ID" ] || [ -z "$EQ_NAME" ] || [ -z "$CASE_DIR" ]; then
+    echo "ERROR: Mapping for case $CASE_ID not found." >&2
+    exit 1
+fi
+
+if [ ! -d "$CASE_DIR" ]; then
+    echo "ERROR: Case directory not found: $CASE_DIR" >&2
+    exit 1
+fi
+
+cd "$CASE_DIR"
+
+echo "Case ID: $CASE_ID, Run: $RUN_ID, Equilibrium: $EQ_NAME, Directory: $CASE_DIR"
+echo "pwd: $(pwd)"
+
+touch started
+
+RUN_DIR="$(dirname "$CASE_DIR")"
+MESH_DIR="${RUN_DIR}/mesh"
+MESH_READY_FLAG="${RUN_DIR}/.mesh_ready"
+CASE_PREFIX="[case ${CASE_ID} | run ${RUN_ID} | eq ${EQ_NAME}]"
+
+mkdir -p "$MESH_DIR"
+
+echo "${CASE_PREFIX} Step 1/3: locating mesh source ..."
+MESH_SRC=$(find "$CASE_DIR" -maxdepth 1 -name "sparc_fw1-18K*.smb" | sort | head -1)
+if [ -z "$MESH_SRC" ]; then
+    echo "${CASE_PREFIX} ERROR: mesh source sparc_fw1-18K*.smb not found in $CASE_DIR"
+    exit 1
+fi
+if [ ! -s "$MESH_SRC" ]; then
+    echo "${CASE_PREFIX} ERROR: mesh source $MESH_SRC exists but is empty"
+    exit 1
+fi
+
+MESH_FILE=$(basename "$MESH_SRC")
+MESH_BASE="${MESH_FILE%.smb}"
+MESH_BASE=$(echo "$MESH_BASE" | sed 's/[0-9]*$//')
+MESH_BASE_NAME="${MESH_BASE}.smb"
+RUN_MESH_SRC="${RUN_DIR}/${MESH_FILE}"
+RUN_MESH_BASE="${RUN_DIR}/${MESH_BASE_NAME}"
+CASE_MESH_BASE="${CASE_DIR}/${MESH_BASE_NAME}"
+
+echo "${CASE_PREFIX}   mesh file: $MESH_SRC"
+echo "${CASE_PREFIX}   mesh base name: $MESH_BASE_NAME"
+
+echo "${CASE_PREFIX} Step 1a: refreshing mesh symlinks ..."
+if [ ! -f "$RUN_MESH_SRC" ]; then
+    cp -fp "$MESH_SRC" "$RUN_MESH_SRC"
+elif [ "$MESH_SRC" -nt "$RUN_MESH_SRC" ]; then
+    cp -fp "$MESH_SRC" "$RUN_MESH_SRC"
+fi
+ln -sf "$RUN_MESH_SRC" "$RUN_DIR/$MESH_BASE_NAME"
+ln -sf "$RUN_MESH_SRC" "$CASE_DIR/$MESH_FILE"
+ln -sf "$RUN_DIR/$MESH_BASE_NAME" "$CASE_DIR/$MESH_BASE_NAME"
+ls -l "$RUN_MESH_SRC" "$RUN_DIR/$MESH_BASE_NAME" "$CASE_DIR/$MESH_FILE" "$CASE_DIR/$MESH_BASE_NAME"
+
+echo "${CASE_PREFIX} Step 2/3: mesh partitioning ..."
+if [ ! -f "${MESH_DIR}/part0.smb" ] || [ ! -f "$MESH_READY_FLAG" ]; then
+    echo "${CASE_PREFIX}   partition target: $MESH_DIR/part.smb"
+    rm -f "${MESH_DIR}"/part*.smb 2>/dev/null || true
+    pushd "$RUN_DIR" >/dev/null
+    echo "${CASE_PREFIX}   running split_smb with $SLURM_NTASKS ranks"
+    set -x
+    $M3DC1_MPIRUN -n $SLURM_NTASKS split_smb "$MESH_BASE_NAME" "mesh/part.smb" $SLURM_NTASKS
+    set +x
+    popd >/dev/null
+
+    if [ ! -f "${MESH_DIR}/part0.smb" ]; then
+        echo "${CASE_PREFIX} ERROR: partitioning failed; part0.smb missing in $MESH_DIR"
+        ls -l "$MESH_DIR" || true
+        exit 1
+    fi
+    touch "$MESH_READY_FLAG"
+    echo "${CASE_PREFIX}   partitioning finished; parts available in $MESH_DIR"
+else
+    echo "${CASE_PREFIX}   mesh already partitioned; reusing existing parts"
+fi
+
+if [ ! -f "${MESH_DIR}/part0.smb" ]; then
+    echo "${CASE_PREFIX} ERROR: mesh partitions still missing after split_smb"
+    exit 1
+fi
+
+FIRST_EQ="${RUN_FIRST_EQ[$RUN_ID]:-}"
+if [ -n "$FIRST_EQ" ] && [ "$EQ_NAME" != "$FIRST_EQ" ] && [ ! -f "$MESH_READY_FLAG" ]; then
+    echo "${CASE_PREFIX} waiting for mesh_ready flag ..."
+    while [ ! -f "$MESH_READY_FLAG" ]; do
+        sleep 1
+    done
+fi
+
+ls -l "${MESH_DIR}"/part*.smb | head -5
+
+echo "${CASE_PREFIX} Step 3/3: launching M3DC1 ..."
+LOG_OUT="${CASE_DIR}/M3DC1log.o"
+LOG_ERR="${CASE_DIR}/M3DC1log.e"
+rm -f "$LOG_OUT" "$LOG_ERR"
+set -x
+$M3DC1_MPIRUN -n $SLURM_NTASKS m3dc1_2d_complex -pc_factor_mat_solver_type mumps >"$LOG_OUT" 2>"$LOG_ERR"
+set +x
+echo "${CASE_PREFIX} M3DC1 completed"
+
+C1_OUTPUT="${CASE_DIR}/C1.h5"
+if [ -f "$C1_OUTPUT" ]; then
+    echo "${CASE_PREFIX} SUCCESS: found C1.h5 at $C1_OUTPUT"
+    ls -l "$C1_OUTPUT"
+else
+    echo "${CASE_PREFIX} WARNING: C1.h5 not found in $CASE_DIR"
+    ls -l "$CASE_DIR" | head -20
+fi
+
+ls -l "$CASE_DIR"/time_*.h5 2>/dev/null | head -5 || true
+
+touch finished
+
+STD_SLURM_OUT="${BATCH_DIR}/M3DC1log.o${SLURM_JOB_ID}"
+STD_SLURM_ERR="${BATCH_DIR}/M3DC1log.e${SLURM_JOB_ID}"
+if [ -f "$STD_SLURM_OUT" ]; then
+    mv "$STD_SLURM_OUT" "${CASE_DIR}/"
+fi
+if [ -f "$STD_SLURM_ERR" ]; then
+    mv "$STD_SLURM_ERR" "${CASE_DIR}/"
+fi
+
