@@ -121,7 +121,7 @@ def quick_train(
     # Handle model_type: can be int (legacy) or str (registry key)
     if isinstance(model_type, str):
         # Use model registry
-        from .models import MODEL_REGISTRY
+        from .model import MODEL_REGISTRY
         model_adapter = MODEL_REGISTRY.create(model_type, **model_kwargs)
         # Find model index - add to trainer
         trainer.models.append(model_adapter)
@@ -269,7 +269,7 @@ def train_and_compare(
     for i, (model_type, model_kwargs) in enumerate(zip(model_types, model_kwargs_list)):
         if isinstance(model_type, str):
             # Use model registry
-            from .models import MODEL_REGISTRY
+            from .model import MODEL_REGISTRY
             model_adapter = MODEL_REGISTRY.create(model_type, **model_kwargs)
             trainer.models.append(model_adapter)
             from .engine import ModelSpec

@@ -17,9 +17,10 @@ try:
     gpf.config.set_default_float(np.float64)
     gpf.config.set_default_summary_fmt("notebook")
 
-except ImportError:
+except Exception:
     GPFLOW_AVAILABLE = False
-    print("Warning: GPflow not available. Install with: pip install gpflow")
+    gpf = None
+    print("Warning: GPflow not available or incompatible. Install with: pip install gpflow")
 
 
 class GPflowGPRModel:
