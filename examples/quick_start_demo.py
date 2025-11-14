@@ -123,7 +123,7 @@ print("\n" + "=" * 60)
 print("OPTION 4: Using Model Registry")
 print("=" * 60)
 
-from surge.models import MODEL_REGISTRY
+from surge.model import MODEL_REGISTRY
 
 # List available models
 print("\n📋 Available models:")
