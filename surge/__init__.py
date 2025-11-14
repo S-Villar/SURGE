@@ -3,11 +3,40 @@
 __version__ = "0.1.0"
 __author__ = "Álvaro Sánchez Villar"  # Expose the core classes/functions at package level
 from .metrics import summarize
-from .models import GPFLOW_AVAILABLE, PYTORCH_AVAILABLE, MODEL_REGISTRY
+from .model import GPFLOW_AVAILABLE, PYTORCH_AVAILABLE, MODEL_REGISTRY
 from .engine import SurrogateEngine
 from .dataset import SurrogateDataset
 from .utils import setup_surge_path, get_data_path
 from .datagen import DataGenerator
+
+# Optional dataset utilities
+try:
+    from .datagen.utils import (
+        validate_dataset,
+        get_dataset_summary,
+        dataframe_to_pytorch_dataset,
+        print_validation_report,
+    )
+    DATASET_UTILS_AVAILABLE = True
+except ImportError:
+    DATASET_UTILS_AVAILABLE = False
+
+# Optional M3DC1 loader (now in scripts/m3dc1/)
+try:
+    import sys
+    from pathlib import Path
+    # Add scripts/m3dc1 to path for optional imports
+    scripts_m3dc1 = Path(__file__).parent.parent / "scripts" / "m3dc1"
+    if str(scripts_m3dc1) not in sys.path:
+        sys.path.insert(0, str(scripts_m3dc1))
+    from loader import (
+        load_m3dc1_hdf5,
+        convert_to_dataframe,
+        read_m3dc1_hdf5_structure,
+    )
+    M3DC1_LOADER_AVAILABLE = True
+except ImportError:
+    M3DC1_LOADER_AVAILABLE = False
 
 # Import helper functions for convenience
 try:
@@ -29,6 +58,23 @@ __all__ = [
     "PYTORCH_AVAILABLE",
     "GPFLOW_AVAILABLE",
 ]
+
+# Add dataset utilities if available
+if DATASET_UTILS_AVAILABLE:
+    __all__.extend([
+        "validate_dataset",
+        "get_dataset_summary",
+        "dataframe_to_pytorch_dataset",
+        "print_validation_report",
+    ])
+
+# Add M3DC1 loader if available
+if M3DC1_LOADER_AVAILABLE:
+    __all__.extend([
+        "load_m3dc1_hdf5",
+        "convert_to_dataframe",
+        "read_m3dc1_hdf5_structure",
+    ])
 
 # Backward compatibility aliases
 MLTrainer = SurrogateEngine  # Legacy alias

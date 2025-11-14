@@ -98,9 +98,20 @@ class DataGenerator:
         import re
         import tempfile
 
-        # Convert numpy types
+        # Convert numpy types and ensure integers are written without decimal points
         if isinstance(value, (np.floating, np.integer)):
-            value_to_write = repr(value.item())
+            val = value.item()
+            # If value is an integer (or very close to one), write as integer
+            if isinstance(val, (int, np.integer)) or (isinstance(val, (float, np.floating)) and abs(val - round(val)) < 1e-10):
+                value_to_write = str(int(round(val)))
+            else:
+                value_to_write = repr(val)
+        elif isinstance(value, (int, float)):
+            # Python native types - check if integer
+            if isinstance(value, int) or (isinstance(value, float) and abs(value - round(value)) < 1e-10):
+                value_to_write = str(int(round(value)))
+            else:
+                value_to_write = repr(value)
         else:
             value_to_write = repr(value)
 
