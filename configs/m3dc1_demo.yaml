@@ -1,0 +1,102 @@
+dataset_path: data/datasets/SPARC/sparc-m3dc1-D1.pkl
+dataset_format: auto
+metadata_path: data/datasets/SPARC/m3dc1_metadata.yaml
+notes: >
+  M3D-C1 D1 campaign profiles from SPARC dataset (pickle export).
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: ["train", "val", "test"]
+predictions_format: csv
+output_dir: .
+run_tag: m3dc1_demo
+seed: 13
+sample_rows: 1000
+models:
+  - key: sklearn.random_forest
+    name: random_forest_profiles
+    request_uncertainty: true
+    params:
+      n_estimators: 400
+      max_depth: 18
+      min_samples_leaf: 2
+    hpo:
+      enabled: true
+      n_trials: 8
+      metric: val_rmse
+      direction: minimize
+      search_space:
+        n_estimators:
+          type: int
+          low: 200
+          high: 600
+          step: 50
+        max_depth:
+          type: int
+          low: 6
+          high: 22
+        min_samples_leaf:
+          type: int
+          low: 1
+          high: 4
+  - key: torch.mlp
+    name: torch_mlp_mc_dropout
+    request_uncertainty: true
+    params:
+      hidden_layers: [256, 256, 128]
+      dropout: 0.15
+      epochs: 120
+      batch_size: 64
+      learning_rate: 0.001
+      mc_dropout_passes: 40
+      activation: relu
+    hpo:
+      enabled: true
+      n_trials: 12
+      metric: val_rmse
+      direction: minimize
+      search_space:
+        hidden_layers:
+          type: categorical
+          choices:
+            - [256, 256]
+            - [512, 256]
+            - [256, 256, 128]
+            - [384, 256, 128]
+        dropout:
+          type: float
+          low: 0.0
+          high: 0.4
+        learning_rate:
+          type: loguniform
+          low: 1e-4
+          high: 5e-3
+        batch_size:
+          type: categorical
+          choices: [32, 64, 128]
+        epochs:
+          type: int
+          low: 80
+          high: 180
+  - key: gpflow.gpr
+    name: gpflow_gpr_profiles
+    request_uncertainty: true
+    params:
+      noise_variance: 1e-4
+      maxiter: 150
+    hpo:
+      enabled: true
+      n_trials: 6
+      metric: val_rmse
+      direction: minimize
+      search_space:
+        noise_variance:
+          type: loguniform
+          low: 1e-6
+          high: 1e-3
+        maxiter:
+          type: int
+          low: 100
+          high: 250
+

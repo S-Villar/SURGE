@@ -1,0 +1,19 @@
+inputs:
+  - input_batemanscale
+  - input_ntor
+  - input_pscale
+  - eq_a
+  - eq_R0
+  - eq_kappa
+  - eq_delta
+  - eq_simag
+  - eq_sibry
+  - eq_current
+  - q0
+  - q95
+  - p0
+outputs:
+  - output_gamma
+metadata:
+  campaign: SPARC_M3DC1_D1
+  description: Linear MHD stability growth rate
