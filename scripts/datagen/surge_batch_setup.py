@@ -81,12 +81,8 @@ try:
 except Exception:
 	yaml = None  # handled later if --config is used
 
-# Import DataGenerator directly using importlib to bypass __init__.py (which imports torch)
-import importlib.util
-spec = importlib.util.spec_from_file_location("datagen", os.path.join(os.path.dirname(__file__), "surge", "datagen.py"))
-datagen_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(datagen_module)
-DataGenerator = datagen_module.DataGenerator
+# Import DataGenerator from surge.datagen
+from surge.datagen import DataGenerator
 
 
 def _load_config(path: Optional[str]) -> Dict[str, Any]:
@@ -318,11 +314,13 @@ def run_from_config(config: Dict[str, Any], overrides: Dict[str, Any]) -> str:
 					print(f"Using scratch directory: {out_root}")
 			else:
 				print("[warn] SCRATCH environment variable not set, falling back to default location")
-				surge_root = os.path.dirname(os.path.abspath(__file__))
+				# Go up from scripts/datagen/ to SURGE root
+				surge_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 				out_root = os.path.join(surge_root, "examples", "datagen")
 		else:
 			# default to SURGE/examples/datagen
-			surge_root = os.path.dirname(os.path.abspath(__file__))
+			# Go up from scripts/datagen/ to SURGE root
+			surge_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 			out_root = os.path.join(surge_root, "examples", "datagen")
 	os.makedirs(out_root, exist_ok=True)
 

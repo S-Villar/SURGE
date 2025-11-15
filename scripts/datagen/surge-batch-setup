@@ -25,5 +25,5 @@ if command -v conda &> /dev/null; then
     fi
 fi
 
-# Run the actual script
+# Run the actual script (now in same directory)
 exec python3 "$SCRIPT_DIR/surge_batch_setup.py" "$@"
