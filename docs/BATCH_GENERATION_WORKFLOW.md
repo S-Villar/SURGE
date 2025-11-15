@@ -7,7 +7,7 @@ This document explains how to generate parameterized batches of M3DC1 simulation
 The workflow consists of three main steps:
 
 1. **Configure**: Create a YAML configuration file defining parameters, ranges, and sampling strategy
-2. **Generate**: Use `surge_batch_setup.py` to create batch directories with parameterized simulation cases
+2. **Generate**: Use `scripts/datagen/surge_batch_setup.py` to create batch directories with parameterized simulation cases
 3. **Launch**: Submit SLURM job arrays to run all simulations in parallel
 
 ## Quick Start Example
@@ -15,7 +15,7 @@ The workflow consists of three main steps:
 ```bash
 # 1. Create config file (examples/batch_setup_m3dc1_scratch_logspace.yml)
 # 2. Generate batch
-python surge_batch_setup.py --config examples/batch_setup_m3dc1_scratch_logspace.yml
+python scripts/datagen/surge_batch_setup.py --config examples/batch_setup_m3dc1_scratch_logspace.yml
 
 # 3. Navigate to batch and submit job
 cd ${SURGE_SCRATCH}/m3dc1_batch/batch_N
@@ -92,7 +92,7 @@ save_plots: true
 Run the batch generator:
 
 ```bash
-python surge_batch_setup.py --config examples/batch_setup_m3dc1_scratch_logspace.yml
+python scripts/datagen/surge_batch_setup.py --config examples/batch_setup_m3dc1_scratch_logspace.yml
 ```
 
 **What happens:**
