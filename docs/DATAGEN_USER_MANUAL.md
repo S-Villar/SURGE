@@ -15,7 +15,7 @@ This manual covers how to generate batches of M3DC1 simulation cases and launch 
 
 ### Overview
 
-The batch generator (`surge_batch_setup.py`) creates parameterized simulation batches by:
+The batch generator (`scripts/datagen/surge_batch_setup.py`) creates parameterized simulation batches by:
 - Sampling parameter values using Latin Hypercube Sampling (LHS) or random sampling
 - Creating directories for each run/case
 - Copying template input files and modifying them with sampled parameter values
@@ -24,7 +24,7 @@ The batch generator (`surge_batch_setup.py`) creates parameterized simulation ba
 ### Quick Start
 
 ```bash
-python surge_batch_setup.py --config examples/batch_setup_m3dc1.yml
+python scripts/datagen/surge_batch_setup.py --config examples/batch_setup_m3dc1.yml
 ```
 
 ### Configuration File
@@ -108,7 +108,7 @@ save_plots: true
 You can override any config file option via CLI:
 
 ```bash
-python surge_batch_setup.py \
+python scripts/datagen/surge_batch_setup.py \
     --config examples/batch_setup_m3dc1.yml \
     --nsamples 50 \
     --seed 123 \
@@ -404,7 +404,7 @@ save_plots: true
 
 **Generate:**
 ```bash
-python surge_batch_setup.py --config test_batch.yml
+python scripts/datagen/surge_batch_setup.py --config test_batch.yml
 ```
 
 **Launch:**
@@ -439,7 +439,7 @@ save_plots: true
 
 **Generate:**
 ```bash
-python surge_batch_setup.py --config production_batch.yml
+python scripts/datagen/surge_batch_setup.py --config production_batch.yml
 ```
 
 **Verify:**
@@ -458,7 +458,7 @@ sbatch batchjob.perlmutter
 
 **Generate batch in scratch:**
 ```bash
-python surge_batch_setup.py \
+python scripts/datagen/surge_batch_setup.py \
     --config examples/batch_setup_m3dc1.yml \
     --scratch true
 # Creates batch in $SCRATCH/mp288/jobs/batch_N
@@ -474,7 +474,7 @@ scratch: true  # Default
 
 **Override specific options:**
 ```bash
-python surge_batch_setup.py \
+python scripts/datagen/surge_batch_setup.py \
     --config examples/batch_setup_m3dc1.yml \
     --nsamples 50 \
     --seed 999 \
@@ -516,7 +516,7 @@ python surge_batch_setup.py \
 
 **Dry run to see what would be generated:**
 ```bash
-python surge_batch_setup.py --config my_config.yml --dry-run
+python scripts/datagen/surge_batch_setup.py --config my_config.yml --dry-run
 ```
 
 **Check batch structure:**
@@ -552,6 +552,6 @@ cat M3DC1log.e<job_id>.*
 
 - Example config files: `examples/batch_setup_m3dc1.yml`
 - Verification script: `surge/verify_batch.py`
-- Source code: `surge/datagen.py`, `surge_batch_setup.py`
+- Source code: `surge/datagen/generator.py`, `scripts/datagen/surge_batch_setup.py`
 
 

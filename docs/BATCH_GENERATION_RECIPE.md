@@ -9,7 +9,7 @@ This document provides the minimal workflow for generating batches using SURGE's
 ```bash
 cd /global/homes/a/asvillar/src/SURGE
 conda activate surge
-python surge_batch_setup.py --config examples/batch_setup_m3dc1_5runs.yml
+python scripts/datagen/surge_batch_setup.py --config examples/batch_setup_m3dc1_5runs.yml
 ```
 
 **What this does:**
