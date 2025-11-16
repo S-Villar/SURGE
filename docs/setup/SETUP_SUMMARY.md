@@ -22,7 +22,7 @@ Based on analyzing your SURGE codebase, here's my recommendation:
 **Why?** Your code includes:
 - ✅ PyTorch neural networks (`surge/pytorch_models.py`)
 - ✅ Multiple optimization backends (Optuna, BoTorch, scikit-optimize)
-- ✅ Comprehensive hyperparameter tuning (`test_cv_tuning.py`)
+- ✅ Comprehensive hyperparameter tuning (`scripts/utils/test_cv_tuning.py`)
 - ✅ Random Forest, MLP, and Gaussian Process models
 - ✅ Cross-validation with proper scaling per fold
 - ✅ Resource monitoring and performance tracking
