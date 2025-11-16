@@ -235,7 +235,7 @@ python -c "import surge; print(surge.__file__)"
 python -c "from surge import get_data_path; print(get_data_path('HHFW-NSTX'))"
 
 # Run full diagnostic
-python check_installation.py
+python scripts/utils/check_installation.py
 ```
 
 ## Summary
