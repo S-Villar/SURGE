@@ -75,14 +75,20 @@ if _missing_deps:
 import argparse
 import json
 from typing import Any, Dict, List, Optional, Sequence, Tuple
+from pathlib import Path
 
 try:
 	import yaml  # type: ignore
 except Exception:
 	yaml = None  # handled later if --config is used
 
-# Import DataGenerator from surge.datagen
-from surge.datagen import DataGenerator
+# Ensure SURGE root is on sys.path so we can import surge.datagen normally
+SCRIPT_DIR = Path(__file__).resolve().parent
+SURGE_ROOT = SCRIPT_DIR.parent.parent
+if str(SURGE_ROOT) not in sys.path:
+	sys.path.insert(0, str(SURGE_ROOT))
+
+from surge.datagen import DataGenerator  # type: ignore
 
 
 def _load_config(path: Optional[str]) -> Dict[str, Any]:
@@ -314,13 +320,11 @@ def run_from_config(config: Dict[str, Any], overrides: Dict[str, Any]) -> str:
 					print(f"Using scratch directory: {out_root}")
 			else:
 				print("[warn] SCRATCH environment variable not set, falling back to default location")
-				# Go up from scripts/datagen/ to SURGE root
-				surge_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+				surge_root = os.path.dirname(os.path.abspath(__file__))
 				out_root = os.path.join(surge_root, "examples", "datagen")
 		else:
 			# default to SURGE/examples/datagen
-			# Go up from scripts/datagen/ to SURGE root
-			surge_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+			surge_root = os.path.dirname(os.path.abspath(__file__))
 			out_root = os.path.join(surge_root, "examples", "datagen")
 	os.makedirs(out_root, exist_ok=True)
 

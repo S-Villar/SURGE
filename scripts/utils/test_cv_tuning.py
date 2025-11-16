@@ -25,8 +25,14 @@ from sklearn.model_selection import train_test_split
 # Import SURGE
 import sys
 import os
-# Add SURGE to path (works from any directory)
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
+from pathlib import Path
+
+# Add SURGE root to path (works from any directory)
+SCRIPT_DIR = Path(__file__).resolve().parent
+SURGE_ROOT = SCRIPT_DIR.parent.parent
+if str(SURGE_ROOT) not in sys.path:
+    sys.path.insert(0, str(SURGE_ROOT))
+
 from surge.trainer import MLTrainer
 
 def create_test_dataset():
