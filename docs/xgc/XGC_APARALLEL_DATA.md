@@ -26,6 +26,13 @@ This document describes the OLCF AI Hackathon 2025 XGC dataset used for A_parall
 | `data_nprev5_set2_beta0p5_var_all.npy` | (14,) | Same 14 variable names |
 | `data_nprev5_set2_beta0p5_add_n0.npy` | (14,) bool | Per-variable inclusion mask |
 
+## Variable Structure (14 vars × 4 variants = 56, 4 timesteps)
+
+The 14 base variables may appear in multiple forms: axisymmetric, non-axisymmetric,
+normalized values, and flux-averaged quantities (56 total per slot). With 4 timesteps,
+the layout 196 = 14 × 14 likely encodes 14 vars × 14 slots (space or time). The 5 extra
+columns (196–200) are tied to nprev=5. See `XGC_INPUT_STRUCTURE.md` for details.
+
 ## Variable Names (var_all)
 
 14 variables in order:
@@ -49,15 +56,17 @@ This document describes the OLCF AI Hackathon 2025 XGC dataset used for A_parall
 
 **Decomposition:** 201 = 14 × 14 + 5
 
-- **14 variables × 14 spatial points = 196 columns**  
-  Layout is row-major by spatial point: for each of 14 points, all 14 variables are given in `var_all` order.
+- **14 variables × 14 slots = 196 columns**  
+  Layout is row-major by slot: for each of 14 slots, all 14 variables are given in `var_all` order.
 
-  - Columns 0–13: point 0 (aparh, apars, dBphi, …, iden)
-  - Columns 14–27: point 1
+  - Columns 0–13: slot 0 (aparh, apars, dBphi, …, iden)
+  - Columns 14–27: slot 1
   - …
-  - Columns 182–195: point 13
+  - Columns 182–195: slot 13
 
-- **5 extra columns (196–200):** Likely related to `nprev=5` (5 previous timesteps). Exact semantics not documented in the notebook.
+  **Note:** The 14 slots may be spatial points (14 flux-surface locations) or timesteps (14 time points). If all variables are given at multiple timesteps, the slots could encode time rather than space. See `XGC_INPUT_STRUCTURE.md` for details.
+
+- **5 extra columns (196–200):** Tied to `nprev=5` (5 previous timesteps). Exact semantics not documented in the notebook.
 
 **Column naming convention:** `{var}_{point}` for 0–195, e.g. `aparh_0`, `apars_0`, …, `iden_13`; `extra_0` … `extra_4` for 196–200.
 
