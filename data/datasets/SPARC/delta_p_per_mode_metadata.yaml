@@ -1,0 +1,21 @@
+# Metadata for delta p per-mode surrogate.
+# 12 inputs: R0, a, kappa, delta, q0, q95, qmin, p0, n, m, pscale, batemanscale
+# Outputs: output_p_0..output_p_199 (profile δp_n,m vs psi_N, 200 pts)
+
+inputs:
+  - eq_R0
+  - eq_a
+  - eq_kappa
+  - eq_delta
+  - q0
+  - q95
+  - qmin
+  - p0
+  - n
+  - m
+  - input_pscale
+  - input_batemanscale
+metadata:
+  campaign: M3DC1_delta_p_per_mode
+  description: Per-mode profile surrogate. Given (equilibrium, n, m), predict δp_n,m(ψ_N).
+  psi_norm: "0.0001 to 1.0, 200 points (output_p_0..output_p_199)"
