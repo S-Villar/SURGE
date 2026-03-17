@@ -6,13 +6,25 @@ This document describes the OLCF AI Hackathon 2025 XGC dataset used for A_parall
 
 ## Data Layout
 
+### Set1 (lower beta)
+
 | File | Shape | Description |
 |------|-------|-------------|
 | `data_nprev5_set1_data.npy` | (28994400, 201) | 201 input features |
 | `data_nprev5_set1_target.npy` | (28994400, 2) | 2 output targets |
 | `data_nprev5_set1_tags.npy` | (28994400, 3) | Tags (e.g., mesh indices, timestep) |
 | `data_nprev5_set1_var_all.npy` | (14,) | Variable names |
-| `data_nprev5_set1_add_n0.npy` | — | Additional n0 data |
+| `data_nprev5_set1_add_n0.npy` | (14,) bool | Per-variable inclusion mask |
+
+### Set2 (beta 0.5)
+
+| File | Shape | Description |
+|------|-------|-------------|
+| `data_nprev5_set2_beta0p5_data.npy` | (20296080, 201) | 201 input features |
+| `data_nprev5_set2_beta0p5_target.npy` | (20296080, 2) | 2 output targets |
+| `data_nprev5_set2_beta0p5_tags.npy` | (20296080, 3) | Tags |
+| `data_nprev5_set2_beta0p5_var_all.npy` | (14,) | Same 14 variable names |
+| `data_nprev5_set2_beta0p5_add_n0.npy` | (14,) bool | Per-variable inclusion mask |
 
 ## Variable Names (var_all)
 
