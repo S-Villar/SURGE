@@ -1,0 +1,46 @@
+# Debug run: 5 HPO trials, torch_mlp only, smaller data for fast iteration + profiling.
+# Use with: python -m examples.run_workflow_profiled --spec configs/m3dc1_debug_5trials.yaml --run-tag debug_5trials_profiled
+#
+dataset_path: data/datasets/SPARC/sparc-m3dc1-D1.pkl
+dataset_format: auto
+metadata_path: data/datasets/SPARC/m3dc1_metadata.yaml
+notes: "Debug: 5 HPO trials, torch_mlp only, 2000 samples, short epochs for profiling."
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: ["train", "val", "test"]
+predictions_format: csv
+output_dir: .
+run_tag: debug_5trials
+seed: 13
+sample_rows: 2000
+overwrite_existing_run: true
+models:
+  - key: torch.mlp
+    name: torch_mlp_mc_dropout
+    request_uncertainty: true
+    params:
+      hidden_layers: [256, 128]
+      dropout: 0.2
+      epochs: 20
+      batch_size: 64
+      learning_rate: 0.001
+      mc_dropout_passes: 5
+      activation: relu
+    hpo:
+      enabled: true
+      n_trials: 5
+      metric: val_rmse
+      direction: minimize
+      search_space:
+        hidden_layers:
+          type: categorical
+          choices:
+            - [256, 256]
+            - [256, 128]
+            - [128, 128]
+        dropout: { type: float, low: 0.1, high: 0.3 }
+        learning_rate: { type: loguniform, low: 5e-4, high: 2e-3 }
+        batch_size: { type: categorical, choices: [32, 64] }
+        epochs: { type: int, low: 10, high: 25 }
