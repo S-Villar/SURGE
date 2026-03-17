@@ -125,7 +125,36 @@ df = convert_sdata_complex_v2_to_dataframe(
 df = convert_to_dataframe("myfile.h5", format="sdata_complex_v2")
 ```
 
+## From batch dir (per-run complex_v2)
+
+```python
+from surge import M3DC1Dataset
+from surge.workflow.spec import SurrogateWorkflowSpec
+from surge.workflow.run import run_surrogate_workflow
+
+# Load from batch dir (downsample spectrum for tractable training)
+dataset = M3DC1Dataset.from_batch_dir(
+    "${SURGE_SCRATCH}/mp288/jobs/batch_16",
+    mode_step=4,
+    psi_step=4,
+    include_eigenmodes=True,  # optional, requires m3dc1/fpy
+)
+# Save for workflow
+dataset.df.to_pickle("data/datasets/SPARC/delta_p_batch16.pkl")
+
+spec = SurrogateWorkflowSpec(
+    dataset_path="data/datasets/SPARC/delta_p_batch16.pkl",
+    metadata_path="data/datasets/SPARC/delta_p_spectra_metadata.yaml",
+    output_dir="runs/delta_p_batch16",
+    models=[{"key": "sklearn.random_forest"}, {"key": "torch.mlp"}],
+)
+run_surrogate_workflow(spec)
+```
+
+Or use the CLI: `python scripts/m3dc1/build_delta_p_dataset.py /path/to/batch_16 --out ... --mode-step 4 --psi-step 4`
+
 ## See also
 
 - [scripts/m3dc1/README.md](../../scripts/m3dc1/README.md) — M3DC1 loader overview
+- [BATCH_DIRS_AND_DATA.md](BATCH_DIRS_AND_DATA.md) — Batch locations and eigenmode integration
 - [M3DC1_CAPABILITIES_RESULTS.md](M3DC1_CAPABILITIES_RESULTS.md) — SURGE integration results
