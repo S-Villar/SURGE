@@ -63,8 +63,7 @@ dependencies:
   - pip
   - pip:
       # SURGE package itself (editable install)
-      # Note: Use relative path from envs/ directory to project root
-      - -e ../.
+      - -e .
       
       # Advanced optimization with BoTorch
       - botorch>=0.8.0

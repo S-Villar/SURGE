@@ -19,6 +19,18 @@ Complete surrogate model training workflow:
 - Model training (Random Forest and MLP)
 - Performance evaluation and feature importance
 
+### `delta_p_spectra_demo.ipynb`
+Load, plot, and prepare delta p spectra for surrogate training:
+- Load from `sdata_pertfields_grid.h5` or `sdata_complex_v2.h5`
+- Plot 2D perturbed fields, complex field components, and spectra (m vs psi_N)
+- Convert to DataFrame for SURGE surrogate training
+- Uses `plotting_helpers.py` (adapted from `plot_sdata_pertfields.py`)
+- Optional: `m3dc1_python_code/` for C1.h5-based visualization
+
+### Supporting files
+- **`plotting_helpers.py`** – `_get_mesh_coords`, `_select_time_positions`, `_time_label`, `plot_2d_fields`, `plot_pertfield_complex`, `plot_spectrum`
+- **`m3dc1_python_code/`** – Copied from batch_16 for `plot_field`, `plot_flux_average`, `eigenfunction`, etc.
+
 ## Workflow
 
 1. **Data Analysis** - Run `data_analysis.ipynb` to curate and validate your M3DC1 dataset
@@ -33,6 +45,10 @@ Complete surrogate model training workflow:
 ## Integration
 
 These notebooks demonstrate how to use SURGE framework with M3DC1 data. They can be adapted for other simulators by modifying the data loading sections.
+
+
+
+
 
 
 
