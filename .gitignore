@@ -208,6 +208,19 @@ pscratch/
 !data/logos/surge_logo_panoramic.png
 !data/logos/SURGE_logo_cropped.png
 
+# M3DC1 interface/visualization outputs (explicitly excluded)
+comprehensive_eigenmode*.png
+test_*.png
+eigenmode_*.png
+field_reconstruction*.png
+2d_field_*.png
+
+# M3DC1 interface artifacts directory (generated outputs)
+scripts/m3dc1/interfaces/artifacts/
+
+# M3DC1 Python support code (pulled from external repo; see docs/dev/M3DC1_PYTHON_CODE.md)
+notebooks/m3dc1/m3dc1_python_code/
+
 # Include specific datasets for demos and testing
 # Note: These are relatively large files (~41MB each) but essential for examples
 !data/datasets/HHFW-NSTX/PwE_.pkl
