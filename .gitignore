@@ -196,6 +196,10 @@ examples/datagen/batch*/
 
 # Large datasets and workflow outputs
 runs/
+runs
+
+# Reference runs archive (ai4fusion-dev: local only, not committed)
+data/runs/
 data/datasets/M3DC1/*.csv
 !data/datasets/M3DC1/*_sample.csv
 data/datasets/SPARC/*.pkl
