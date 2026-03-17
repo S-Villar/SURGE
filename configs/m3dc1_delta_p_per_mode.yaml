@@ -1,0 +1,40 @@
+# Delta p per-mode: predict profile δp_n,m(ψ_N) for given (n, m).
+# One row per (case, m). Inputs: eq_*, input_*, n, m. Outputs: 200 profile points.
+#
+# Build dataset:
+#   python scripts/m3dc1/build_delta_p_per_mode.py /pscratch/sd/a/asvillar/mp288/jobs/batch_16 \
+#       --out data/datasets/SPARC/delta_p_per_mode.pkl
+
+dataset_path: data/datasets/SPARC/delta_p_per_mode.pkl
+dataset_format: auto
+metadata_path: data/datasets/SPARC/delta_p_per_mode_metadata.yaml
+notes: >
+  Per-mode: given (equilibrium, n, m), predict δp_n,m(ψ_N) - 200 profile pts.
+  Native resolution. Plot: for n=3, m=-7, amplitude vs psi_N.
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+output_dir: .
+run_tag: m3dc1_delta_p_per_mode
+predictions_format: csv
+seed: 42
+models:
+  - key: sklearn.random_forest
+    name: rf_per_mode
+    params:
+      n_estimators: 100
+      max_depth: 12
+      min_samples_leaf: 2
+    hpo:
+      enabled: false
+  - key: torch.mlp
+    name: mlp_per_mode
+    params:
+      hidden_layers: [128, 64]
+      dropout: 0.1
+      epochs: 50
+      batch_size: 32
+      learning_rate: 0.001
+    hpo:
+      enabled: false

@@ -1,0 +1,35 @@
+# Delta p per-mode: load directly from batch dir (no pre-build step).
+# Uses M3DC1Dataset.from_batch_dir_per_mode.
+#
+# Usage: python -m surge.cli run configs/m3dc1_delta_p_per_mode_from_batch.yaml
+# Requires: batch dir with sdata_pertfields_grid_complex_v2.h5 under run*/sparc_*/
+
+dataset_path: /pscratch/sd/a/asvillar/mp288/jobs/batch_16
+dataset_source: m3dc1_batch_per_mode
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+output_dir: .
+run_tag: m3dc1_per_mode_from_batch
+predictions_format: csv
+seed: 42
+models:
+  - key: sklearn.random_forest
+    name: rf_per_mode
+    params:
+      n_estimators: 100
+      max_depth: 12
+      min_samples_leaf: 2
+    hpo:
+      enabled: false
+  - key: torch.mlp
+    name: mlp_per_mode
+    params:
+      hidden_layers: [128, 64]
+      dropout: 0.1
+      epochs: 50
+      batch_size: 32
+      learning_rate: 0.001
+    hpo:
+      enabled: false
