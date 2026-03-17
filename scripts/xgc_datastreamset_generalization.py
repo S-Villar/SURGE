@@ -32,7 +32,13 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-def _main_use_existing(run_dir: Path, datastreamset_size: int, max_datastreamsets: int, output_dir: Path) -> int:
+def _main_use_existing(
+    run_dir: Path,
+    datastreamset_size: int,
+    max_datastreamsets: int,
+    output_dir: Path,
+    eval_set_name: str | None = None,
+) -> int:
     """Use existing models for datastreamset evaluation."""
     from surge.viz.run_viz import viz_datastreamset_evaluation
 
@@ -42,6 +48,7 @@ def _main_use_existing(run_dir: Path, datastreamset_size: int, max_datastreamset
         output_dir=out,
         datastreamset_size=datastreamset_size,
         max_datastreamsets=max_datastreamsets,
+        eval_set_name=eval_set_name,
     )
     print("Datastreamset evaluation (existing models):")
     print(json.dumps(result, indent=2))
@@ -198,11 +205,21 @@ def main() -> int:
         help="Train RF on datastreamset 0 with HPO, evaluate on datastreamsets 1+",
     )
     parser.add_argument("--hpo-trials", type=int, default=10)
+    parser.add_argument(
+        "--eval-set",
+        type=str,
+        default=None,
+        help="Override set_name for eval (e.g. set2_beta0p5 for cross-set eval)",
+    )
     args = parser.parse_args()
 
     if args.run_dir and args.datastreamset_eval:
         return _main_use_existing(
-            args.run_dir, args.datastreamset_size, args.max_datastreamsets, args.output_dir
+            args.run_dir,
+            args.datastreamset_size,
+            args.max_datastreamsets,
+            args.output_dir,
+            eval_set_name=args.eval_set,
         )
     if args.data_dir and args.train_on_datastreamset:
         return _main_train_on_datastreamset(
