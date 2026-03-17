@@ -164,167 +164,64 @@ def convert_to_dataframe(
     output_features: Optional[List[str]] = None,
     include_equilibrium_features: bool = True,
     include_mesh_features: bool = False,
+    *,
+    format: str = "auto",
+    **kwargs: Any,
 ) -> pd.DataFrame:
     """
     Convert M3DC1 HDF5 dataset to pandas DataFrame ready for ML training.
     
-    This function extracts input parameters (from run_*/input/) and output data
-    (from run_*/output/) and creates a flat DataFrame where each row represents
-    one simulation run.
+    Supports both sdata.h5 and sdata_complex_v2.h5 (delta p spectra). Use
+    format="auto" to auto-detect from filename, or pass format="sdata_complex_v2"
+    explicitly for delta p spectra.
     
     Parameters
     ----------
     file_path : str or Path
-        Path to the sdata.h5 file
+        Path to sdata.h5 or sdata_complex_v2.h5
     input_features : list of str, optional
-        Specific input features to include. If None, includes all available inputs.
-        Common inputs: ['ntor', 'pscale', 'batemanscale', 'runid', 'eqid']
+        Specific input features to include.
     output_features : list of str, optional
-        Specific output features to include. If None, includes all available outputs.
-        Common outputs: ['gamma', 'eignemode']
+        For sdata format: output features (e.g. gamma, eignemode). Ignored for
+        sdata_complex_v2 (delta p spectra are always the output).
     include_equilibrium_features : bool, default=True
-        Whether to include equilibrium-derived features (a, R0, kappa, delta, etc.)
+        Whether to include equilibrium-derived features.
     include_mesh_features : bool, default=False
-        Whether to include mesh features (usually constant, not useful for ML)
+        Whether to include mesh features (sdata only).
+    format : str, default="auto"
+        "auto" (detect from filename), "sdata", or "sdata_complex_v2"
+    **kwargs
+        For sdata_complex_v2: delta_p_key, use_magnitude (see
+        convert_sdata_complex_v2_to_dataframe).
         
     Returns
     -------
     pd.DataFrame
-        DataFrame with one row per simulation run. Columns include:
-        - Input features: ntor, pscale, batemanscale, runid, eqid, and optionally
-          equilibrium features (a, R0, kappa, delta, etc.)
-        - Output features: gamma, eignemode (flattened if multi-dimensional)
-        
-    Examples
-    --------
-    >>> df = convert_to_dataframe('sdata.h5')
-    >>> print(df.head())
-    >>> print(f"Input columns: {[c for c in df.columns if c.startswith('input_')]}")
-    >>> print(f"Output columns: {[c for c in df.columns if c.startswith('output_')]}")
     """
-    # Load the HDF5 data
-    data = load_m3dc1_hdf5(
-        file_path,
-        include_equilibrium=include_equilibrium_features,
-        include_mesh=include_mesh_features,
+    path = Path(file_path)
+    fmt = (format or "auto").lower()
+    if fmt == "auto":
+        name = path.name.lower()
+        if "complex" in name and "v2" in name:
+            fmt = "sdata_complex_v2"
+        else:
+            fmt = "sdata"
+    
+    if fmt == "sdata_complex_v2":
+        return convert_sdata_complex_v2_to_dataframe(
+            path,
+            input_features=input_features,
+            include_equilibrium_features=include_equilibrium_features,
+            **kwargs,
+        )
+    
+    return _convert_sdata_to_dataframe_impl(
+        path,
+        input_features=input_features,
+        output_features=output_features,
+        include_equilibrium_features=include_equilibrium_features,
+        include_mesh_features=include_mesh_features,
     )
-    
-    rows = []
-    
-    for run_data in data['runs']:
-        row = {}
-        
-        # Extract run ID
-        run_id = run_data.get('run_id', '')
-        row['run_id'] = run_id
-        
-        # Extract input features
-        if 'input' in run_data:
-            input_data = run_data['input']
-            
-            # Use specified features or all available
-            input_keys = input_features if input_features else list(input_data.keys())
-            
-            for key in input_keys:
-                if key in input_data:
-                    value = input_data[key]
-                    # Handle arrays by flattening or taking first element
-                    if isinstance(value, np.ndarray):
-                        if value.ndim == 0:  # Scalar array
-                            row[f'input_{key}'] = value.item()
-                        elif value.ndim == 1 and len(value) == 1:  # Single-element array
-                            row[f'input_{key}'] = value[0]
-                        else:
-                            # For multi-element arrays, create separate columns
-                            for i, val in enumerate(value):
-                                row[f'input_{key}_{i}'] = val
-                    else:
-                        row[f'input_{key}'] = value
-        
-        # Extract equilibrium features if available
-        if include_equilibrium_features and data['equilibrium']:
-            eq_id = input_data.get('eqid', None) if 'input' in run_data else None
-            if eq_id is not None:
-                # Find matching equilibrium data
-                for sparc_name, eq_data in data['equilibrium'].items():
-                    if eq_data.get('id', None) == eq_id:
-                        # Add key equilibrium features (shape parameters)
-                        for key in ['a', 'R0', 'kappa', 'delta', 'simag', 'sibry', 'current']:
-                            if key in eq_data:
-                                value = eq_data[key]
-                                if isinstance(value, np.ndarray) and value.ndim == 0:
-                                    row[f'eq_{key}'] = value.item()
-                                elif isinstance(value, np.ndarray) and value.size == 1:
-                                    row[f'eq_{key}'] = value[0]
-                                else:
-                                    row[f'eq_{key}'] = value
-                        
-                        # Extract profile parameters from qpsi and pres profiles
-                        # q0: safety factor at axis (first value of qpsi)
-                        if 'qpsi' in eq_data:
-                            qpsi = eq_data['qpsi']
-                            if isinstance(qpsi, np.ndarray) and len(qpsi) > 0:
-                                row['q0'] = qpsi[0] if qpsi.ndim == 1 else qpsi.flatten()[0]
-                                # q95: safety factor at 95% flux (approximately index 95% of length)
-                                if len(qpsi) > 1:
-                                    idx_95 = int(0.95 * (len(qpsi) - 1))
-                                    row['q95'] = qpsi[idx_95] if qpsi.ndim == 1 else qpsi.flatten()[idx_95]
-                        
-                        # p0: pressure at axis (first value of pres)
-                        if 'pres' in eq_data:
-                            pres = eq_data['pres']
-                            if isinstance(pres, np.ndarray) and len(pres) > 0:
-                                row['p0'] = pres[0] if pres.ndim == 1 else pres.flatten()[0]
-                        
-                        break
-        
-        # Extract output features
-        if 'output' in run_data:
-            output_data = run_data['output']
-            
-            # Use specified features or all available
-            output_keys = output_features if output_features else list(output_data.keys())
-            
-            for key in output_keys:
-                if key in output_data:
-                    value = output_data[key]
-                    # Handle arrays by flattening
-                    if isinstance(value, np.ndarray):
-                        if value.ndim == 0:  # Scalar array
-                            row[f'output_{key}'] = value.item()
-                        elif value.ndim == 1:
-                            if len(value) == 1:
-                                row[f'output_{key}'] = value[0]
-                            else:
-                                # Flatten 1D arrays into separate columns
-                                for i, val in enumerate(value):
-                                    row[f'output_{key}_{i}'] = val
-                        else:
-                            # Flatten multi-dimensional arrays
-                            flat_value = value.flatten()
-                            for i, val in enumerate(flat_value):
-                                row[f'output_{key}_{i}'] = val
-                    else:
-                        row[f'output_{key}'] = value
-        
-        rows.append(row)
-    
-    # Create DataFrame
-    df = pd.DataFrame(rows)
-    
-    print(f"\n✅ Converted to DataFrame: {df.shape[0]} samples, {df.shape[1]} columns")
-    
-    # Print column summary
-    input_cols = [c for c in df.columns if c.startswith('input_')]
-    output_cols = [c for c in df.columns if c.startswith('output_')]
-    eq_cols = [c for c in df.columns if c.startswith('eq_')]
-    
-    print(f"   📥 Input columns: {len(input_cols)}")
-    print(f"   📤 Output columns: {len(output_cols)}")
-    if eq_cols:
-        print(f"   🔄 Equilibrium columns: {len(eq_cols)}")
-    
-    return df
 
 
 def read_m3dc1_hdf5_structure(file_path: Union[str, Path]) -> Dict[str, Any]:
@@ -451,10 +348,343 @@ def read_m3dc1_hdf5_structure(file_path: Union[str, Path]) -> Dict[str, Any]:
     return structure
 
 
+# ---------------------------------------------------------------------------
+# sdata_complex_v2.h5 support (delta p spectra)
+# ---------------------------------------------------------------------------
+
+# Common key names for delta p spectra in sdata_complex_v2.h5 output groups
+DELTA_P_SPECTRUM_KEYS = ('p', 'delta_p', 'p_spectrum', 'eigenmode_p', 'eignemode')
+
+
+def read_sdata_complex_v2_structure(file_path: Union[str, Path]) -> Dict[str, Any]:
+    """
+    Inspect the structure of an sdata_complex_v2.h5 file.
+    
+    Use this to discover the exact keys and shapes before loading.
+    Run from the SURGE repo root:
+        python -c "
+        import sys; sys.path.insert(0, 'scripts/m3dc1')
+        from loader import read_sdata_complex_v2_structure
+        read_sdata_complex_v2_structure('path/to/sdata_complex_v2.h5')
+        "
+    
+    Parameters
+    ----------
+    file_path : str or Path
+        Path to sdata_complex_v2.h5
+        
+    Returns
+    -------
+    dict
+        Structure summary with root groups, run layout, and output keys/shapes
+    """
+    if not H5PY_AVAILABLE:
+        raise ImportError("h5py is required. Install with: pip install h5py")
+    
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+    
+    structure: Dict[str, Any] = {'root_groups': [], 'runs': {}}
+    
+    with h5py.File(file_path, 'r') as f:
+        structure['root_groups'] = list(f.keys())
+        run_keys = [k for k in f.keys() if re.match(r'run_\d+', k)]
+        run_keys.sort(key=lambda x: int(re.search(r'\d+', x).group()))
+        
+        if run_keys:
+            first_run = f[run_keys[0]]
+            structure['runs']['example'] = run_keys[0]
+            if 'input' in first_run:
+                structure['runs']['input_keys'] = list(first_run['input'].keys())
+                structure['runs']['input_shapes'] = {
+                    k: first_run['input'][k].shape for k in first_run['input'].keys()
+                }
+            if 'output' in first_run:
+                out_grp = first_run['output']
+                structure['runs']['output_keys'] = list(out_grp.keys())
+                structure['runs']['output_shapes'] = {
+                    k: (out_grp[k].shape, str(out_grp[k].dtype))
+                    for k in out_grp.keys()
+                }
+    
+    # Print summary for convenience
+    print("=" * 60)
+    print("sdata_complex_v2.h5 structure")
+    print("=" * 60)
+    print(f"Root groups: {structure['root_groups']}")
+    if structure.get('runs'):
+        print(f"Example run: {structure['runs'].get('example', 'N/A')}")
+        print(f"Input keys: {structure['runs'].get('input_keys', [])}")
+        print(f"Output keys: {structure['runs'].get('output_keys', [])}")
+        if 'output_shapes' in structure['runs']:
+            for k, (shp, dt) in structure['runs']['output_shapes'].items():
+                print(f"  {k}: shape={shp}, dtype={dt}")
+    print("=" * 60)
+    return structure
+
+
+def convert_sdata_complex_v2_to_dataframe(
+    file_path: Union[str, Path],
+    *,
+    delta_p_key: Optional[str] = None,
+    use_magnitude: bool = True,
+    input_features: Optional[List[str]] = None,
+    include_equilibrium_features: bool = True,
+) -> pd.DataFrame:
+    """
+    Convert sdata_complex_v2.h5 to a pandas DataFrame for surrogate training.
+    
+    Extracts equilibrium/input parameters as features and delta p spectra as
+    the output target. Complex spectra are converted to magnitude by default.
+    
+    Parameters
+    ----------
+    file_path : str or Path
+        Path to sdata_complex_v2.h5
+    delta_p_key : str, optional
+        Key name for delta p spectra in run_*/output. If None, auto-detect from
+        DELTA_P_SPECTRUM_KEYS (p, delta_p, p_spectrum, eigenmode_p, eignemode).
+    use_magnitude : bool, default=True
+        If True and spectrum is complex, use |z| for each component.
+        If False, use real and imag as separate columns (output_p_0_real, etc.).
+    input_features : list of str, optional
+        Input columns to include. If None, uses equilibrium + input params.
+    include_equilibrium_features : bool, default=True
+        Whether to include eq_R0, eq_a, eq_kappa, eq_delta, q0, q95, qmin, p0.
+        
+    Returns
+    -------
+    pd.DataFrame
+        One row per run. Columns: input_*, eq_*, output_p_0, output_p_1, ...
+        
+    Examples
+    --------
+    >>> df = convert_sdata_complex_v2_to_dataframe('sdata_complex_v2.h5')
+    >>> # Or with explicit key if auto-detect fails:
+    >>> df = convert_sdata_complex_v2_to_dataframe('sdata_complex_v2.h5', delta_p_key='p')
+    """
+    if not H5PY_AVAILABLE:
+        raise ImportError("h5py is required. Install with: pip install h5py")
+    
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"sdata_complex_v2 file not found: {file_path}")
+    
+    # Load base structure (same as sdata.h5)
+    data = load_m3dc1_hdf5(
+        file_path,
+        include_equilibrium=include_equilibrium_features,
+        include_mesh=False,
+    )
+    
+    rows = []
+    for run_data in data['runs']:
+        row = {}
+        row['run_id'] = run_data.get('run_id', '')
+        input_data = run_data.get('input', {})
+        
+        # Input features
+        input_keys = input_features or list(input_data.keys())
+        for key in input_keys:
+            if key in input_data:
+                val = input_data[key]
+                if isinstance(val, np.ndarray):
+                    if val.ndim == 0:
+                        row[f'input_{key}'] = val.item()
+                    elif val.size == 1:
+                        row[f'input_{key}'] = val.flat[0]
+                    else:
+                        for i, v in enumerate(val.flat):
+                            row[f'input_{key}_{i}'] = v
+                else:
+                    row[f'input_{key}'] = val
+        
+        # Equilibrium features
+        if include_equilibrium_features and data['equilibrium']:
+            eq_id = input_data.get('eqid', None)
+            for sparc_name, eq_data in data['equilibrium'].items():
+                if eq_data.get('id', None) == eq_id:
+                    for key in ['a', 'R0', 'kappa', 'delta', 'simag', 'sibry', 'current']:
+                        if key in eq_data:
+                            v = eq_data[key]
+                            if isinstance(v, np.ndarray) and v.ndim == 0:
+                                row[f'eq_{key}'] = v.item()
+                            elif isinstance(v, np.ndarray) and v.size == 1:
+                                row[f'eq_{key}'] = v.flat[0]
+                            else:
+                                row[f'eq_{key}'] = v
+                    if 'qpsi' in eq_data:
+                        qpsi = np.asarray(eq_data['qpsi']).flatten()
+                        if len(qpsi) > 0:
+                            row['q0'] = float(qpsi[0])
+                            if len(qpsi) > 1:
+                                idx95 = int(0.95 * (len(qpsi) - 1))
+                                row['q95'] = float(qpsi[idx95])
+                            row['qmin'] = float(np.min(qpsi))
+                    if 'pres' in eq_data:
+                        pres = np.asarray(eq_data['pres']).flatten()
+                        if len(pres) > 0:
+                            row['p0'] = float(pres[0])
+                    break
+        
+        # Delta p spectra from output
+        output_data = run_data.get('output', {})
+        spectrum = None
+        if delta_p_key and delta_p_key in output_data:
+            spectrum = output_data[delta_p_key]
+        else:
+            for key in DELTA_P_SPECTRUM_KEYS:
+                if key in output_data:
+                    spectrum = output_data[key]
+                    break
+        
+        if spectrum is not None:
+            arr = np.asarray(spectrum)
+            flat = arr.flatten()
+            if np.iscomplexobj(flat) and use_magnitude:
+                flat = np.abs(flat)
+            for i, v in enumerate(flat):
+                row[f'output_p_{i}'] = float(v)
+        else:
+            # Log for first run only
+            if len(rows) == 0:
+                print(
+                    f"⚠ No delta p spectrum found in output. Keys: {list(output_data.keys())}. "
+                    f"Try delta_p_key= with one of these, or run read_sdata_complex_v2_structure() to inspect."
+                )
+        
+        rows.append(row)
+    
+    df = pd.DataFrame(rows)
+    n_out = len([c for c in df.columns if c.startswith('output_p_')])
+    print(f"\n✅ sdata_complex_v2 → DataFrame: {df.shape[0]} samples, {df.shape[1]} columns")
+    print(f"   📤 Delta p spectrum: {n_out} components (output_p_0 .. output_p_{n_out-1})")
+    return df
+
+
+def _convert_sdata_to_dataframe_impl(
+    file_path: Path,
+    input_features: Optional[List[str]] = None,
+    output_features: Optional[List[str]] = None,
+    include_equilibrium_features: bool = True,
+    include_mesh_features: bool = False,
+) -> pd.DataFrame:
+    """Original sdata.h5 conversion logic (extracted for dispatch)."""
+    data = load_m3dc1_hdf5(
+        file_path,
+        include_equilibrium=include_equilibrium_features,
+        include_mesh=include_mesh_features,
+    )
+    
+    rows = []
+    for run_data in data['runs']:
+        row = {}
+        row['run_id'] = run_data.get('run_id', '')
+        input_data = run_data.get('input', {})
+        input_keys = input_features or list(input_data.keys())
+        
+        for key in input_keys:
+            if key in input_data:
+                value = input_data[key]
+                if isinstance(value, np.ndarray):
+                    if value.ndim == 0:
+                        row[f'input_{key}'] = value.item()
+                    elif value.ndim == 1 and len(value) == 1:
+                        row[f'input_{key}'] = value[0]
+                    else:
+                        for i, val in enumerate(value.flat):
+                            row[f'input_{key}_{i}'] = val
+                else:
+                    row[f'input_{key}'] = value
+        
+        if include_equilibrium_features and data['equilibrium']:
+            eq_id = input_data.get('eqid', None)
+            for sparc_name, eq_data in data['equilibrium'].items():
+                if eq_data.get('id', None) == eq_id:
+                    for key in ['a', 'R0', 'kappa', 'delta', 'simag', 'sibry', 'current']:
+                        if key in eq_data:
+                            value = eq_data[key]
+                            if isinstance(value, np.ndarray) and value.ndim == 0:
+                                row[f'eq_{key}'] = value.item()
+                            elif isinstance(value, np.ndarray) and value.size == 1:
+                                row[f'eq_{key}'] = value[0]
+                            else:
+                                row[f'eq_{key}'] = value
+                    if 'qpsi' in eq_data:
+                        qpsi = eq_data['qpsi']
+                        if isinstance(qpsi, np.ndarray) and len(qpsi) > 0:
+                            qflat = qpsi.flatten()
+                            row['q0'] = qflat[0]
+                            if len(qflat) > 1:
+                                idx_95 = int(0.95 * (len(qflat) - 1))
+                                row['q95'] = qflat[idx_95]
+                    if 'pres' in eq_data:
+                        pres = eq_data['pres']
+                        if isinstance(pres, np.ndarray) and len(pres) > 0:
+                            row['p0'] = pres.flatten()[0]
+                    break
+        
+        output_data = run_data.get('output', {})
+        output_keys = output_features or list(output_data.keys())
+        for key in output_keys:
+            if key in output_data:
+                value = output_data[key]
+                if isinstance(value, np.ndarray):
+                    if value.ndim == 0:
+                        row[f'output_{key}'] = value.item()
+                    elif value.ndim == 1 and len(value) == 1:
+                        row[f'output_{key}'] = value[0]
+                    else:
+                        flat_value = value.flatten()
+                        for i, val in enumerate(flat_value):
+                            row[f'output_{key}_{i}'] = val
+                else:
+                    row[f'output_{key}'] = value
+        rows.append(row)
+    
+    df = pd.DataFrame(rows)
+    input_cols = [c for c in df.columns if c.startswith('input_')]
+    output_cols = [c for c in df.columns if c.startswith('output_')]
+    eq_cols = [c for c in df.columns if c.startswith('eq_')]
+    print(f"\n✅ Converted to DataFrame: {df.shape[0]} samples, {df.shape[1]} columns")
+    print(f"   📥 Input columns: {len(input_cols)}")
+    print(f"   📤 Output columns: {len(output_cols)}")
+    if eq_cols:
+        print(f"   🔄 Equilibrium columns: {len(eq_cols)}")
+    return df
+
+
+# Re-export per-run batch loader (same directory)
+try:
+    from dataset_complex_v2 import (
+        build_dataframe_from_batch,
+        find_complex_v2_files,
+        load_complex_v2_for_surge,
+        load_single_complex_v2,
+    )
+    COMPLEX_V2_BATCH_AVAILABLE = True
+except ImportError:
+    build_dataframe_from_batch = None
+    find_complex_v2_files = None
+    load_complex_v2_for_surge = None
+    load_single_complex_v2 = None
+    COMPLEX_V2_BATCH_AVAILABLE = False
+
 __all__ = [
     'load_m3dc1_hdf5',
     'convert_to_dataframe',
+    'convert_sdata_complex_v2_to_dataframe',
     'read_m3dc1_hdf5_structure',
+    'read_sdata_complex_v2_structure',
+    'DELTA_P_SPECTRUM_KEYS',
     'H5PY_AVAILABLE',
 ]
+if COMPLEX_V2_BATCH_AVAILABLE:
+    __all__.extend([
+        'build_dataframe_from_batch',
+        'find_complex_v2_files',
+        'load_complex_v2_for_surge',
+        'load_single_complex_v2',
+    ])
 

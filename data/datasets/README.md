@@ -59,3 +59,10 @@ For a complete demonstration of using these datasets, see:
 ### Data Licensing
 
 These datasets are provided for research and educational purposes. Please cite appropriately if used in publications.
+
+## SPARC M3DC1 Dataset
+
+- **File**: `SPARC/sparc-m3dc1-D1.pkl`
+- **Description**: Curated M3DC1-LRMHD dataset with completeness mask and full equilibrium/profile parameters for 9,891 SPARC cases.
+- **Use Case**: Demonstrates SURGE pipeline on tokamak stability data (data collection → analysis → surrogate training → ONNX inference).
+
