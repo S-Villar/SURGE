@@ -16,11 +16,18 @@ def _load_olcf_npy(
     set_name: str = "set1",
     sample: Optional[int] = None,
     random_state: int = 42,
+    row_range: Optional[tuple[int, int]] = None,
 ) -> tuple[pd.DataFrame, List[str], List[str]]:
     """
     Load OLCF hackathon .npy files into DataFrame.
 
     File naming: data_nprev5_{set_name}_data.npy, _target.npy, _var_all.npy
+
+    Parameters
+    ----------
+    row_range : tuple of (start, end), optional
+        Load rows [start:end] instead of random sample. Use for chunk-based
+        evaluation (e.g. row_range=(50000, 100000) for a held-out chunk).
     """
     data_dir = Path(data_dir)
     prefix = f"data_nprev5_{set_name}"
@@ -42,7 +49,11 @@ def _load_olcf_npy(
     n_samples, n_inputs = data.shape
     _, n_outputs = target.shape
 
-    if sample is not None and 0 < sample < n_samples:
+    if row_range is not None:
+        start, end = row_range
+        data = np.asarray(data[start:end])
+        target = np.asarray(target[start:end])
+    elif sample is not None and 0 < sample < n_samples:
         rng = np.random.default_rng(random_state)
         idx = rng.choice(n_samples, size=sample, replace=False)
         data = np.asarray(data[idx])
