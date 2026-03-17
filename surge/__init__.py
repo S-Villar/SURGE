@@ -47,7 +47,9 @@ try:
     from loader import (
         load_m3dc1_hdf5,
         convert_to_dataframe,
+        convert_sdata_complex_v2_to_dataframe,
         read_m3dc1_hdf5_structure,
+        read_sdata_complex_v2_structure,
     )
     M3DC1_LOADER_AVAILABLE = True
 except ImportError:
@@ -99,7 +101,9 @@ if M3DC1_LOADER_AVAILABLE:
     __all__.extend([
         "load_m3dc1_hdf5",
         "convert_to_dataframe",
+        "convert_sdata_complex_v2_to_dataframe",
         "read_m3dc1_hdf5_structure",
+        "read_sdata_complex_v2_structure",
     ])
 
 # Backward compatibility aliases
