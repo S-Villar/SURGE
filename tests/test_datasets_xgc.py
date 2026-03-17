@@ -104,6 +104,34 @@ def test_xgc_dataset_from_olcf_hackathon_nonexistent_set():
         XGCDataset.from_olcf_hackathon("/tmp", set_name="nonexistent_set")
 
 
+def test_surrogate_dataset_from_path_xgc_format(olcf_mock_dir):
+    """SurrogateDataset.from_path with format=xgc loads OLCF data."""
+    from surge.dataset import SurrogateDataset
+
+    dataset = SurrogateDataset.from_path(
+        olcf_mock_dir,
+        format="xgc",
+        analyzer_kwargs={"hints": {"set_name": "set1"}},
+    )
+    assert dataset.df is not None
+    assert len(dataset.input_columns) == 201
+    assert len(dataset.output_columns) == 2
+    assert len(dataset.df) == 50
+
+
+def test_surrogate_dataset_from_path_xgc_with_sample(olcf_mock_dir):
+    """SurrogateDataset.from_path xgc with sample subsamples."""
+    from surge.dataset import SurrogateDataset
+
+    dataset = SurrogateDataset.from_path(
+        olcf_mock_dir,
+        format="xgc",
+        sample=15,
+        analyzer_kwargs={"hints": {"set_name": "set1"}},
+    )
+    assert len(dataset.df) == 15
+
+
 def test_xgc_dataset_class_inherits_surrogate_dataset():
     """XGCDataset is a subclass of SurrogateDataset."""
     from surge.dataset import SurrogateDataset
