@@ -108,3 +108,43 @@ def test_xgc_dataset_class_inherits_surrogate_dataset():
     """XGCDataset is a subclass of SurrogateDataset."""
     from surge.dataset import SurrogateDataset
     assert issubclass(XGCDataset, SurrogateDataset)
+
+
+def test_xgc_dataset_iter_batches(npy_data):
+    """iter_batches yields numpy batches (framework-agnostic)."""
+    data_path, target_path, n_inputs, n_outputs = npy_data
+    dataset = XGCDataset.from_npy(data_path, target_path)
+    batches = list(dataset.iter_batches(batch_size=16, shuffle=False))
+    assert len(batches) > 0
+    X_batch, y_batch = batches[0]
+    assert X_batch.shape[1] == n_inputs
+    assert y_batch.shape[1] == n_outputs
+    assert X_batch.shape[0] <= 16
+    assert hasattr(X_batch, "shape")  # numpy array
+
+
+def test_xgc_dataset_to_tf_dataset(npy_data):
+    """to_tf_dataset returns tf.data.Dataset with correct batches."""
+    pytest.importorskip("tensorflow")
+    data_path, target_path, n_inputs, n_outputs = npy_data
+    dataset = XGCDataset.from_npy(data_path, target_path)
+    ds = dataset.to_tf_dataset(batch_size=16, shuffle=False)
+    batches = list(ds.take(3))
+    assert len(batches) > 0
+    X_batch, y_batch = batches[0]
+    assert X_batch.shape[1] == n_inputs
+    assert y_batch.shape[1] == n_outputs
+
+
+def test_xgc_dataset_to_dataloader(npy_data):
+    """to_dataloader returns PyTorch DataLoader with correct batches."""
+    pytest.importorskip("torch")
+    data_path, target_path, n_inputs, n_outputs = npy_data
+    dataset = XGCDataset.from_npy(data_path, target_path)
+    loader = dataset.to_dataloader(batch_size=16, shuffle=False)
+    batches = list(loader)
+    assert len(batches) > 0
+    X_batch, y_batch = batches[0]
+    assert X_batch.shape[1] == n_inputs
+    assert y_batch.shape[1] == n_outputs
+    assert X_batch.shape[0] <= 16
