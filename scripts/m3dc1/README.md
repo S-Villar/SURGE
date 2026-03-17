@@ -17,6 +17,14 @@ This directory contains M3DC1-specific scripts and utilities for processing M3DC
   - `build_dataframe_from_batch(batch_dir)` - load all cases into DataFrame
   - `load_complex_v2_for_surge(batch_dir)` - returns (df, input_cols, output_cols) for SurrogateDataset
 
+- **`build_delta_p_dataset.py`** - CLI to build and save delta p DataFrame from batch dir
+  - `python build_delta_p_dataset.py /path/to/batch_16 [--out output.pkl] [--max-cases N]`
+
+- **`build_delta_p_per_mode.py`** - Build per-mode dataset (n, m → profile)
+  - `python build_delta_p_per_mode.py /path/to/batch_16 --out data/datasets/SPARC/delta_p_per_mode.pkl`
+
+- **`train_delta_p_per_mode.slurm`** - SLURM script for Perlmutter (debug queue)
+
 - **`write.py`** - Parallel processing script to convert M3DC1 simulation outputs to HDF5 format
   - Processes run directories and extracts equilibrium, profiles (q, p), growth rates, etc.
   - Supports multiprocessing for large batch processing
@@ -83,6 +91,32 @@ from surge import SurrogateDataset
 # SURGE will automatically try to use M3DC1 loader if available
 dataset = SurrogateDataset()
 dataset.load_from_file('sdata03.h5', auto_detect=True)
+```
+
+## Training delta p per-mode (from scratch)
+
+```bash
+# 1. Build dataset from batch dir (if not already built)
+python scripts/m3dc1/build_delta_p_per_mode.py /pscratch/sd/a/asvillar/mp288/jobs/batch_16 \
+    --out data/datasets/SPARC/delta_p_per_mode.pkl
+
+# 2. Inspect dataset
+python -m surge.cli analyze configs/m3dc1_delta_p_per_mode.yaml
+
+# 3. Train (local)
+python -m surge.cli run configs/m3dc1_delta_p_per_mode.yaml
+```
+
+**On Perlmutter (debug queue, 30 min):**
+```bash
+cd /path/to/SURGE
+sbatch scripts/m3dc1/train_delta_p_per_mode.slurm
+# Output: surge_train_delta_p.<jobid>.log
+```
+
+**Regular queue (longer runs):**
+```bash
+sbatch --qos=regular --time=02:00:00 scripts/m3dc1/train_delta_p_per_mode.slurm
 ```
 
 ## Dependencies
