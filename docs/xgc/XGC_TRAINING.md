@@ -105,3 +105,58 @@ with torch.no_grad():
 ### SURGE model comparison
 
 After training, load SURGE artifacts from `runs/xgc_aparallel_set1/` and compare predictions on the same test indices.
+
+## Cross-Set Evaluation
+
+Evaluate a set1-trained model on set2 chunks (or vice versa):
+
+```bash
+surge viz runs/xgc_aparallel_set1_v3 --datastreamset-eval --datastreamset-eval-set set2_beta0p5
+```
+
+Or with the generalization script:
+
+```bash
+python scripts/xgc_datastreamset_generalization.py \
+    --run-dir runs/xgc_aparallel_set1_v3 \
+    --eval-set set2_beta0p5
+```
+
+**Input range alignment:** The train run's scalers are applied to the eval set. Values outside the training range produce OOD flags (useful for drift detection).
+
+## Fine-Tuning (set1 → set2)
+
+Train on set1, then fine-tune on set2 using the pretrained model:
+
+1. Train on set1: `surge run configs/xgc_aparallel_set1.yaml`
+2. Edit `configs/xgc_aparallel_set2_finetune.yaml` and set `pretrained_run_dir: runs/xgc_aparallel_set1_<timestamp>`
+3. Run: `surge run configs/xgc_aparallel_set2_finetune.yaml`
+
+The workflow loads pretrained scalers and model weights, then continues training on set2 with scaled learning rate (`finetune_lr_scale: 0.1` by default).
+
+## Model Cards
+
+Each trained model produces `model_card_<name>.json` with:
+
+- `n_params`, `file_size_bytes`, `backend`
+- `training_config` (run_tag, dataset, set_name, splits)
+- `created_at` (ISO timestamp)
+
+For AmSC-style auditing.
+
+## MLflow Integration
+
+Optional tracking for runs and model cards:
+
+```bash
+pip install surge[mlflow]
+surge run configs/xgc_aparallel_set1.yaml --mlflow
+surge viz runs/xgc_aparallel_set1_v3 --mlflow
+```
+
+Or enable in spec:
+
+```yaml
+mlflow_tracking: true
+mlflow_experiment: xgc_aparallel
+```

@@ -15,7 +15,7 @@
 - Optuna-based HPO with TPE or BoTorch samplers
 - Standardized artifact layout under `runs/<tag>/` (models, scalers, predictions, metrics, HPO logs, env snapshot, git rev)
 - Visualization helpers (`surge.viz`) for GT vs. prediction density, per-mode scatter, violin/SNR panels, etc.
-- **XGC support**: Datastreamset evaluation, drift detection (OOD inputs/outputs, accuracy drop), SHAP on A_parallel, input range evolution plots.
+- **XGC support**: Datastreamset evaluation, drift detection (OOD inputs/outputs, accuracy drop), SHAP on A_parallel, cross-set eval (set1↔set2), fine-tuning from pretrained, model cards, optional MLflow tracking.
 
 ## 🚀 Getting Started
 
