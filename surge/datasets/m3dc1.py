@@ -59,6 +59,8 @@ class M3DC1Dataset(SurrogateDataset):
         spectrum_time_idx: int = -1,
         use_magnitude: bool = True,
         max_cases: Optional[int] = None,
+        include_eigenmodes: bool = False,
+        target_shape: Optional[tuple] = None,
         verbose: bool = True,
         **kwargs: Any,
     ) -> "M3DC1Dataset":
@@ -81,6 +83,10 @@ class M3DC1Dataset(SurrogateDataset):
             If True, use |spec| for complex spectrum
         max_cases : int, optional
             Limit number of cases (for testing)
+        include_eigenmodes : bool
+            If True, add eigenmode_amp_* from C1.h5 when m3dc1/fpy available
+        target_shape : (n_modes, n_psi), optional
+            If set, resample all cases to this fixed shape (same m-spectrum resolution)
         verbose : bool
             Print progress
         **kwargs
@@ -93,6 +99,53 @@ class M3DC1Dataset(SurrogateDataset):
         """
         load_complex_v2_for_surge, _ = _get_m3dc1_loaders()
         df, input_cols, output_cols = load_complex_v2_for_surge(
+            batch_dir,
+            run_pattern=run_pattern,
+            sparc_pattern=sparc_pattern,
+            spectrum_field=spectrum_field,
+            spectrum_time_idx=spectrum_time_idx,
+            use_magnitude=use_magnitude,
+            max_cases=max_cases,
+            include_eigenmodes=include_eigenmodes,
+            target_shape=target_shape,
+            verbose=verbose,
+            **kwargs,
+        )
+        dataset = cls()
+        dataset.load_from_dataframe(
+            df,
+            input_columns=input_cols,
+            output_columns=output_cols,
+        )
+        dataset.file_path = Path(batch_dir)
+        return dataset
+
+    @classmethod
+    def from_batch_dir_per_mode(
+        cls,
+        batch_dir: Union[str, Path],
+        *,
+        run_pattern: str = "run*",
+        sparc_pattern: str = "sparc_*",
+        spectrum_field: str = "p",
+        spectrum_time_idx: int = -1,
+        use_magnitude: bool = True,
+        max_cases: Optional[int] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> "M3DC1Dataset":
+        """
+        Load in per-mode format: one row per (case, m). Native resolution.
+
+        Each row: inputs (eq_*, input_*, n, m) + outputs (200 profile values).
+        Model learns: given (equilibrium, n, m), predict δp_n,m(ψ_N).
+        """
+        scripts_m3dc1 = Path(__file__).resolve().parent.parent.parent / "scripts" / "m3dc1"
+        if str(scripts_m3dc1) not in sys.path:
+            sys.path.insert(0, str(scripts_m3dc1))
+        from dataset_complex_v2 import load_per_mode_for_surge
+
+        df, input_cols, output_cols = load_per_mode_for_surge(
             batch_dir,
             run_pattern=run_pattern,
             sparc_pattern=sparc_pattern,
@@ -164,7 +217,10 @@ class M3DC1Dataset(SurrogateDataset):
         )
         input_cols = [
             c for c in df.columns
-            if c.startswith("eq_") or c.startswith("input_") or c in ("q0", "q95", "qmin", "p0")
+            if (c.startswith("eq_") and c != "eq_id")
+            or c.startswith("input_")
+            or c.startswith("eigenmode_amp_")
+            or c in ("q0", "q95", "qmin", "p0")
         ]
         output_cols = [c for c in df.columns if c.startswith("output_p_")]
 
