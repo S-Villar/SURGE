@@ -15,6 +15,7 @@
 - Optuna-based HPO with TPE or BoTorch samplers
 - Standardized artifact layout under `runs/<tag>/` (models, scalers, predictions, metrics, HPO logs, env snapshot, git rev)
 - Visualization helpers (`surge.viz`) for GT vs. prediction density, per-mode scatter, violin/SNR panels, etc.
+- **XGC support**: Datastreamset evaluation, drift detection (OOD inputs/outputs, accuracy drop), SHAP on A_parallel, input range evolution plots.
 
 ## 🚀 Getting Started
 
@@ -232,3 +233,85 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 3. **Workflow run** – `python -m examples.m3dc1_workflow --spec ... --run-tag ...`
 4. **Notebook** – `notebooks/M3DC1_demo.ipynb` for visual inspection (switch specs via `spec_path`)
 5. **Artifacts** – `runs/<tag>/` contains everything needed for reproducibility and publication plots
+
+---
+
+## XGC A_parallel Workflow
+
+SURGE supports XGC (XGC-O) A_parallel surrogate training and generalization analysis. Full documentation: [`docs/xgc/XGC_FEATURES_2025-03.md`](docs/xgc/XGC_FEATURES_2025-03.md).
+
+### 1. Train an XGC surrogate
+
+```bash
+surge run configs/xgc_aparallel_set1.yaml --run-tag xgc_aparallel_set1_v3
+```
+
+Artifacts go to `runs/xgc_aparallel_set1_v3/` (models, scalers, `train_data_ranges.json`, etc.).
+
+### 2. Visualization and inference comparison
+
+```bash
+surge viz runs/xgc_aparallel_set1_v3
+```
+
+Produces inference comparison plots (GT vs prediction), HPO convergence, and R² summary.
+
+### 3. SHAP importance (A_parallel)
+
+```bash
+surge viz runs/xgc_aparallel_set1_v3 --shap
+```
+
+SHAP targets **output_1 (A_parallel)** by default. Override with `--shap-output-index 0`. Outputs: `plots/shap_<model>/shap_summary_tree_*.png`, including grouped bar (14 stages + 5 extra columns).
+
+### 4. Datastreamset evaluation and drift detection
+
+Evaluate the trained model on held-out contiguous regions (datastreamsets) of the full dataset:
+
+```bash
+surge viz runs/xgc_aparallel_set1_v3 --datastreamset-eval
+```
+
+**Options:**
+- `--datastreamset-size 50000` – rows per datastreamset (default: 50000)
+- `--datastreamset-max 10` – max datastreamsets to evaluate (default: 10)
+
+**Outputs:**
+- `plots/datastreamset_evaluation_r2_rmse.png` – R², RMSE, in-range bar chart, input range evolution
+- `plots/datastreamset_evaluation_stats.json` – per-model, per-datastreamset metrics and OOD info
+- Drift summary in console (OOD inputs/outputs, accuracy drop)
+
+**Drift policy:** [`docs/xgc/DRIFT_DETECTION_POLICY.md`](docs/xgc/DRIFT_DETECTION_POLICY.md)
+
+### 5. Train-on-datastreamset (generalization analysis)
+
+Train a simple RF on one datastreamset and evaluate on others:
+
+```bash
+python scripts/xgc_datastreamset_generalization.py \
+  --data-dir /path/to/olcf_ai_hackathon_2025 \
+  --train-on-datastreamset --hpo-trials 10 \
+  --datastreamset-size 50000 --max-datastreamsets 10
+```
+
+### 6. Combined viz (SHAP + datastreamset eval)
+
+```bash
+surge viz runs/xgc_aparallel_set1_v3 --shap --datastreamset-eval
+```
+
+### XGC workflow outputs
+
+```
+runs/<tag>/
+├── models/                    # RF, MLP adapters (load_model_compat for version mismatch)
+├── scalers/                   # input/output StandardScaler
+├── train_data_ranges.json     # min/max for in-distribution checks
+├── workflow_summary.json
+└── plots/
+    ├── inference_comparison_*.png
+    ├── hpo_convergence.png
+    ├── datastreamset_evaluation_r2_rmse.png   # R² zoom, input range evolution
+    ├── datastreamset_evaluation_stats.json
+    └── shap_<model>/                          # SHAP on A_parallel
+```
