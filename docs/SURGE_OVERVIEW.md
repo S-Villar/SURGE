@@ -76,6 +76,11 @@ conda run -n surge python -m examples.m3dc1_workflow \
 conda run -n surge python -m examples.m3dc1_workflow \
     --spec configs/m3dc1_demo_augmented.yaml \
     --run-tag m3dc1_demo_full
+
+# Regenerate the R² > 0.88 growth-rate surrogates (same as m3dc1_aug_r75)
+conda run -n surge python -m examples.m3dc1_workflow \
+    --spec configs/m3dc1_aug_r75.yaml \
+    --run-tag m3dc1_aug_r75_rebuild
 ```
 
 ### 3.4 Programmatic workflow execution
@@ -104,6 +109,7 @@ Running a SURGE workflow produces:
   Model: random_forest_profiles
     Test: R²=0.854, RMSE=0.008, MAE=0.004
   ```
+  **Growth-rate surrogates with R² > 0.88** from the full augmented workflow (9,981 samples, 75 HPO trials) are in **`runs/m3dc1_aug_r75/`**: Random Forest test R² ≈ 0.92, Torch MLP and GPflow GPR ≈ 0.88. See `runs/m3dc1_aug_r75/metrics.json` and `workflow_summary.json` for exact values and artifact paths.
 - **Predictions**: `runs/<tag>/predictions/<model>_{train,val,test}.csv` (+ `*_val_uq.json` if UQ enabled)
 - **HPO**: `runs/<tag>/hpo/<model>_hpo.json` (best params, trials, top-5 configs)
 - **Artifacts**: `metrics.json`, `workflow_summary.json`, `spec.yaml`, `scalers/`
@@ -213,6 +219,43 @@ print(f"Models saved to: {summary['artifacts']['root']}/models/")
 print(f"Metrics: {summary['artifacts']['metrics']}")
 ```
 
+### 3.7 Example: Load and use a saved surrogate (e.g. R² > 0.88 run)
+
+Artifacts from a workflow run (e.g. **`runs/m3dc1_aug_r75`**, growth-rate surrogates with test R² > 0.88) can be loaded and used for inference without re-running training:
+
+```python
+import json
+import joblib
+from pathlib import Path
+
+import surge  # ensure adapters are registered
+
+run_dir = Path("runs/m3dc1_aug_r75")
+with open(run_dir / "workflow_summary.json") as f:
+    summary = json.load(f)
+
+# Pick best model by test R² (or choose by name)
+best = max(summary["models"], key=lambda m: m["metrics"]["test"]["r2"])
+model_path = Path(best["artifacts"]["model"])
+print(f"Best model: {best['name']} (test R²={best['metrics']['test']['r2']:.3f})")
+
+# Load scalers (required for correct scaling of inputs/outputs)
+input_scaler = joblib.load(run_dir / "scalers/inputs.joblib")
+output_scaler = joblib.load(run_dir / "scalers/outputs.joblib")
+
+# Load model: use the registry key that produced this artifact (e.g. sklearn.random_forest)
+adapter = surge.registry.MODEL_REGISTRY.create("sklearn.random_forest")
+adapter.load(model_path)
+
+# Predict on new inputs (same columns as training; e.g. 13 inputs for M3DC1 gamma)
+# X_raw shape: (n_samples, n_inputs)
+X_scaled = input_scaler.transform(X_raw)
+y_scaled = adapter.predict(X_scaled)
+y_pred = output_scaler.inverse_transform(y_scaled.reshape(-1, 1)).ravel()
+```
+
+The run **`m3dc1_aug_r75`** was produced by the augmented M3DC1 workflow (full dataset, 75 Optuna trials per model); its models and scalers live under `runs/m3dc1_aug_r75/` (models, scalers, predictions, metrics, HPO, spec, env, git rev).
+
 ---
 
 ## 4. Capabilities Matrix
@@ -265,6 +308,8 @@ runs/<run_tag>/
 
 Use these artifacts to power publication-quality plots, regression dashboards,
 or downstream analysis scripts.
+
+**Reference run (growth-rate surrogates, R² > 0.88):** `runs/m3dc1_aug_r75/` — full augmented workflow (9,981 samples, 75 HPO trials). Load and use example: §3.7 above.
 
 ---
 
