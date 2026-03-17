@@ -120,6 +120,29 @@ dataset = XGCDataset.from_npy("data.npy", "target.npy")
 
 Both return SurrogateDataset-compatible instances (`df`, `input_columns`, `output_columns`) for use with `SurrogateEngine` and `run_surrogate_workflow`.
 
+**Batch iteration (framework-agnostic):**
+
+- `iter_batches(batch_size=32, shuffle=True)` – yields (X_batch, y_batch) as numpy arrays. No PyTorch/TensorFlow dependency. Use with any framework (JAX, sklearn, custom loops, etc.).
+
+**Framework-specific loaders (lazy imports):**
+
+- `to_dataloader()` – PyTorch `DataLoader` (imports torch only when called)
+- `to_tf_dataset()` – TensorFlow `tf.data.Dataset` (imports tf only when called)
+
+The `SurrogateDataset` class in `surge/dataset.py` does not import PyTorch or TensorFlow at module load time. Framework-specific methods use lazy imports, so you can use SURGE datasets in environments without either framework installed.
+
+```python
+# Framework-agnostic (numpy only) – works without torch/tf
+for X_batch, y_batch in dataset.iter_batches(batch_size=32):
+    ...
+
+# PyTorch (imports torch only when called)
+loader = dataset.to_dataloader(batch_size=32, shuffle=True)
+
+# TensorFlow (imports tf only when called)
+ds = dataset.to_tf_dataset(batch_size=32, shuffle=True)
+```
+
 ---
 
 ## Cross-References
