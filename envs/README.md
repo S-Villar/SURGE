@@ -110,6 +110,24 @@ from surge import MLTrainer
 # Should work without ImportError for visualization functions
 ```
 
+## Custom Environment Path
+
+On systems where the `surge` environment is installed at a non-default location (e.g., shared software):
+
+**Current path:** `/global/common/software/m3716/asvillar/envs/surge`
+
+**Activate by path:**
+```bash
+conda activate /global/common/software/m3716/asvillar/envs/surge
+```
+
+**Run commands using the path:**
+```bash
+conda run -p /global/common/software/m3716/asvillar/envs/surge python -m examples.m3dc1_workflow --spec configs/m3dc1_aug_r75.yaml --run-tag m3dc1_aug_r75
+```
+
+Use `-p` (path) instead of `-n` (name) when the environment is not in conda's default envs directory.
+
 ## Notes
 
 - **Visualization is now a core requirement** - all environments include matplotlib
