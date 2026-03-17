@@ -89,7 +89,7 @@ class BaseModelAdapter(ABC):
         return self.name
 
 
-@dataclass(slots=True)
+@dataclass
 class RegistryEntry:
     """Metadata tracked for each registered adapter."""
 
