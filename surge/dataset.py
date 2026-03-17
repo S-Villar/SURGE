@@ -113,9 +113,21 @@ class SurrogateDataset:
         else:
             self.metadata = {}
 
-        self.df = self._read_file(file_path, format=format, **reader_kwargs)
+        # Build reader_kwargs; for xgc format, pass sample and hints
+        _reader_kwargs = dict(reader_kwargs)
+        fmt_lower = (format or "").lower()
+        is_xgc = fmt_lower == "xgc" or (fmt_lower in ("auto", "") and file_path.is_dir())
+        if is_xgc:
+            _reader_kwargs.setdefault("sample", sample)
+            if analyzer_kwargs and "hints" in analyzer_kwargs:
+                _reader_kwargs.update(analyzer_kwargs["hints"])
+
+        self.df = self._read_file(file_path, format=format, **_reader_kwargs)
+
+        # Subsample only if not already done by format-specific loader (e.g. xgc)
         if sample is not None and 0 < sample < len(self.df):
-            self.df = self.df.sample(n=sample, random_state=sample_random_state)
+            if not is_xgc:
+                self.df = self.df.sample(n=sample, random_state=sample_random_state)
 
         self._analyze(
             analyzer_kwargs=analyzer_kwargs,
@@ -376,8 +388,13 @@ class SurrogateDataset:
     def _read_file(self, path: Path, *, format: str, **reader_kwargs: Any) -> pd.DataFrame:
         fmt = (format or "").lower()
         if fmt == "auto" or not fmt:
-            fmt = path.suffix.lower().lstrip(".")
+            if path.is_dir():
+                fmt = "xgc"
+            else:
+                fmt = path.suffix.lower().lstrip(".")
 
+        if fmt == "xgc":
+            return self._read_xgc(path, **reader_kwargs)
         if fmt == "csv":
             return pd.read_csv(path, **reader_kwargs)
         if fmt in ("pkl", "pickle"):
@@ -394,6 +411,25 @@ class SurrogateDataset:
         if fmt in ("nc", "netcdf"):
             return self._read_netcdf(path, **reader_kwargs)
         raise ValueError(f"Unsupported dataset format '{fmt}' for file {path}")
+
+    def _read_xgc(self, path: Path, **reader_kwargs: Any) -> pd.DataFrame:
+        """Load XGC OLCF hackathon .npy files via XGCDataset."""
+        from .datasets.xgc import _load_olcf_npy
+
+        if not path.is_dir():
+            raise ValueError(f"XGC format requires a directory path, got: {path}")
+
+        set_name = reader_kwargs.get("set_name", "set1")
+        sample = reader_kwargs.get("sample")
+        random_state = reader_kwargs.get("random_state", 42)
+
+        df, _input_cols, _output_cols = _load_olcf_npy(
+            path,
+            set_name=set_name,
+            sample=sample,
+            random_state=random_state,
+        )
+        return df
 
     def _read_hdf5(self, path: Path, **reader_kwargs: Any) -> pd.DataFrame:
         if "key" in reader_kwargs:
