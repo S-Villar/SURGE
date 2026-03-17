@@ -41,6 +41,13 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    # Unbuffered stdout so progress lines appear immediately (e.g. under conda run)
+    import sys
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(line_buffering=True)
+    # Ensure workflow progress (steps, HPO) is visible on the command line
+    import logging
+    logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stdout)
     with args.spec.open("r", encoding="utf-8") as handle:
         payload = yaml.safe_load(handle)
     spec = SurrogateWorkflowSpec.from_dict(payload)
