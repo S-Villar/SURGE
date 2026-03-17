@@ -1,0 +1,79 @@
+# Delta p per-mode: scaled-up with HPO for better R².
+# Previous run: R² ~0.5–0.6 with defaults. This config enables HPO and larger models.
+#
+# Run: python -m surge.cli run configs/m3dc1_delta_p_per_mode_hpo.yaml
+# Expect: 20–40 min (HPO adds ~15–30 min). Use Perlmutter for faster runs.
+
+dataset_path: data/datasets/SPARC/delta_p_per_mode.pkl
+dataset_format: auto
+metadata_path: data/datasets/SPARC/delta_p_per_mode_metadata.yaml
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+output_dir: .
+run_tag: m3dc1_delta_p_per_mode_hpo
+predictions_format: csv
+seed: 42
+models:
+  - key: sklearn.random_forest
+    name: rf_per_mode
+    params:
+      n_estimators: 300
+      max_depth: 18
+      min_samples_leaf: 2
+    hpo:
+      enabled: true
+      n_trials: 15
+      metric: val_rmse
+      direction: minimize
+      search_space:
+        n_estimators:
+          type: int
+          low: 150
+          high: 500
+          step: 50
+        max_depth:
+          type: int
+          low: 12
+          high: 24
+        min_samples_leaf:
+          type: int
+          low: 1
+          high: 5
+  - key: torch.mlp
+    name: mlp_per_mode
+    params:
+      hidden_layers: [256, 128, 64]
+      dropout: 0.15
+      max_epochs: 200
+      patience: 20
+      batch_size: 64
+      learning_rate: 0.001
+    hpo:
+      enabled: true
+      n_trials: 30
+      metric: val_rmse
+      direction: minimize
+      search_space:
+        hidden_layers:
+          type: categorical
+          choices:
+            - [256, 128]
+            - [256, 128, 64]
+            - [512, 256, 128]
+        dropout:
+          type: float
+          low: 0.05
+          high: 0.25
+        learning_rate:
+          type: loguniform
+          low: 5e-4
+          high: 5e-2
+        batch_size:
+          type: categorical
+          choices: [32, 64, 128]
+        max_epochs:
+          type: int
+          low: 100
+          high: 300
