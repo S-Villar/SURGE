@@ -1,20 +1,16 @@
-# XGC A_parallel surrogate – Fine-tune set1 model on set2 (beta 0.5%)
-# Data: /global/cfs/projectdirs/m499/olcf_ai_hackathon_2025/
-#
-# Prerequisite: Train on set1 first, e.g. surge run configs/xgc_aparallel_set1.yaml
-# Then: surge run configs/xgc_aparallel_set2_finetune.yaml
-#
-# Set pretrained_run_dir to your set1 run (e.g. runs/xgc_aparallel_set1_<timestamp>)
+# XGC Model12 – fine-tune Model1 (61 cols) on set2
+# Run after: surge run configs/xgc_aparallel_set1_61cols.yaml --run-tag xgc_model1_61cols
+# Then: surge run configs/xgc_model12_finetune.yaml
 
 dataset_path: /global/cfs/projectdirs/m499/olcf_ai_hackathon_2025
 dataset_format: xgc
 metadata_overrides:
   set_name: set2_beta0p5
-pretrained_run_dir: runs/xgc_aparallel_set1_v3  # Update to your set1 run path
+pretrained_run_dir: runs/xgc_model1_61cols
 finetune_lr_scale: 0.1
+n_inputs: 61
 notes: >
-  Fine-tune set1-trained model on set2 (beta 0.5%).
-  Uses pretrained scalers and model weights; continues training with scaled LR.
+  Model12: Fine-tune Model1 (61 cols) on set2. Eval on set2 and set1 datastreamsets.
 test_fraction: 0.2
 val_fraction: 0.1
 standardize_inputs: true
@@ -22,7 +18,7 @@ standardize_outputs: true
 predictions_scope: ["train", "val", "test"]
 predictions_format: csv
 output_dir: .
-run_tag: xgc_aparallel_set2_finetune
+run_tag: xgc_model12_finetune
 overwrite_existing_run: true
 seed: 42
 sample_rows: 50000
@@ -33,14 +29,12 @@ models:
     params:
       hidden_layers: [256, 128, 64]
       dropout: 0.1
-      max_epochs: 500
-      patience: 20
+      max_epochs: 2000
+      patience: 10
       verbose_freq: 10
       batch_size: 256
       learning_rate: 0.001
       activation: relu
-    hpo:
-      enabled: false  # No HPO when fine-tuning
   - key: sklearn.random_forest
     name: xgc_rf_aparallel
     request_uncertainty: false
@@ -48,5 +42,3 @@ models:
       n_estimators: 200
       max_depth: 20
       min_samples_leaf: 2
-    hpo:
-      enabled: false  # RF retrains from scratch; no fine-tuning

@@ -1,17 +1,15 @@
-# XGC A_parallel surrogate – OLCF hackathon set1
+# XGC Model1 – train on first 61 columns only (current timestep)
 # Data: /global/cfs/projectdirs/m499/olcf_ai_hackathon_2025/
-# Prior work: /global/u2/a/asvillar/AI_OCLF/
-#
-# Run: surge run configs/xgc_aparallel_set1.yaml
+# Run: surge run configs/xgc_aparallel_set1_61cols.yaml --run-tag xgc_model1_61cols
 
 dataset_path: /global/cfs/projectdirs/m499/olcf_ai_hackathon_2025
 dataset_format: xgc
 metadata_overrides:
   set_name: set1
+n_inputs: 61
 notes: >
-  XGC A_parallel surrogate on OLCF hackathon set1 (lower beta).
-  201 inputs, 2 outputs (output_1 = A_parallel).
-  Subsample for quick runs; remove sample_rows for full training.
+  Model1: XGC A_parallel surrogate on first 61 columns only (current timestep).
+  Eval on set1 and set2 datastreamsets; then fine-tune with set2 -> Model12.
 test_fraction: 0.2
 val_fraction: 0.1
 standardize_inputs: true
@@ -19,10 +17,10 @@ standardize_outputs: true
 predictions_scope: ["train", "val", "test"]
 predictions_format: csv
 output_dir: .
-run_tag: xgc_aparallel_set1
+run_tag: xgc_model1_61cols
 overwrite_existing_run: true
 seed: 42
-sample_rows: 50000  # Subsample; set to null for full ~29M samples
+sample_rows: 50000
 models:
   - key: torch.mlp
     name: xgc_mlp_aparallel
