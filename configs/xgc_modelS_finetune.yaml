@@ -1,0 +1,69 @@
+# XGC ModelS finetune – fine-tune ModelS (SHAP top 20) on set2
+# Run after: surge run configs/xgc_aparallel_set1_shap20.yaml --run-tag xgc_modelS_shap20
+# Then: surge run configs/xgc_modelS_finetune.yaml
+
+dataset_path: /global/cfs/projectdirs/m499/olcf_ai_hackathon_2025
+dataset_format: xgc
+metadata_overrides:
+  set_name: set2_beta0p5
+pretrained_run_dir: runs/xgc_modelS_shap20
+finetune_lr_scale: 0.1
+input_columns:
+  - input_0
+  - input_61
+  - input_117
+  - input_89
+  - input_14
+  - input_145
+  - input_19
+  - input_20
+  - input_173
+  - input_17
+  - input_42
+  - input_25
+  - input_21
+  - input_27
+  - input_45
+  - input_9
+  - input_16
+  - input_26
+  - input_8
+  - input_44
+notes: >
+  ModelS finetune: Fine-tune ModelS (SHAP top 20) on set2.
+  Eval on set2 and set1 datastreamsets.
+test_fraction: 0.2
+val_fraction: 0.1
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: ["train", "val", "test"]
+predictions_format: csv
+output_dir: .
+run_tag: xgc_modelS_finetune
+overwrite_existing_run: true
+seed: 42
+sample_rows: 50000
+models:
+  - key: torch.mlp
+    name: xgc_mlp_aparallel
+    request_uncertainty: false
+    params:
+      hidden_layers: [128, 64]
+      dropout: 0.1
+      max_epochs: 2000
+      patience: 10
+      verbose_freq: 10
+      batch_size: 256
+      learning_rate: 0.001
+      activation: relu
+    hpo:
+      enabled: false
+  - key: sklearn.random_forest
+    name: xgc_rf_aparallel
+    request_uncertainty: false
+    params:
+      n_estimators: 200
+      max_depth: 20
+      min_samples_leaf: 2
+    hpo:
+      enabled: false
