@@ -60,7 +60,7 @@ models:
           choices: [128, 256, 512]
   - key: sklearn.random_forest
     name: xgc_rf_aparallel
-    request_uncertainty: true
+    request_uncertainty: false
     params:
       n_estimators: 200
       max_depth: 20
