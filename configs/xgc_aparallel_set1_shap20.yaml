@@ -1,17 +1,36 @@
-# XGC A_parallel surrogate – OLCF hackathon set1
+# XGC ModelS – train on top 20 SHAP features
 # Data: /global/cfs/projectdirs/m499/olcf_ai_hackathon_2025/
-# Prior work: /global/u2/a/asvillar/AI_OCLF/
-#
-# Run: surge run configs/xgc_aparallel_set1.yaml
+# Run: surge run configs/xgc_aparallel_set1_shap20.yaml --run-tag xgc_modelS_shap20
+# SHAP ranking from runs/xgc_aparallel_set1_v3/plots/shap_xgc_rf_aparallel/shap_summary_tree_dot.png
 
 dataset_path: /global/cfs/projectdirs/m499/olcf_ai_hackathon_2025
 dataset_format: xgc
 metadata_overrides:
   set_name: set1
+input_columns:
+  - input_0
+  - input_61
+  - input_117
+  - input_89
+  - input_14
+  - input_145
+  - input_19
+  - input_20
+  - input_173
+  - input_17
+  - input_42
+  - input_25
+  - input_21
+  - input_27
+  - input_45
+  - input_9
+  - input_16
+  - input_26
+  - input_8
+  - input_44
 notes: >
-  XGC A_parallel surrogate on OLCF hackathon set1 (lower beta).
-  201 inputs, 2 outputs (output_1 = A_parallel).
-  Subsample for quick runs; remove sample_rows for full training.
+  ModelS: XGC A_parallel surrogate on top 20 SHAP features.
+  Eval on set1; fine-tune with set2.
 test_fraction: 0.2
 val_fraction: 0.1
 standardize_inputs: true
@@ -19,16 +38,16 @@ standardize_outputs: true
 predictions_scope: ["train", "val", "test"]
 predictions_format: csv
 output_dir: .
-run_tag: xgc_aparallel_set1
+run_tag: xgc_modelS_shap20
 overwrite_existing_run: true
 seed: 42
-sample_rows: 50000  # Subsample; set to null for full ~29M samples
+sample_rows: 50000
 models:
   - key: torch.mlp
     name: xgc_mlp_aparallel
     request_uncertainty: false
     params:
-      hidden_layers: [256, 128, 64]
+      hidden_layers: [128, 64]
       dropout: 0.1
       max_epochs: 2000
       patience: 10
@@ -38,16 +57,16 @@ models:
       activation: relu
     hpo:
       enabled: true
-      n_trials: 50
+      n_trials: 30
       metric: val_rmse
       direction: minimize
       search_space:
         hidden_layers:
           type: categorical
           choices:
+            - [64, 32]
+            - [128, 64]
             - [256, 128]
-            - [256, 128, 64]
-            - [512, 256, 128]
         dropout:
           type: float
           low: 0.0
@@ -56,9 +75,6 @@ models:
           type: loguniform
           low: 1e-4
           high: 5e-3
-        batch_size:
-          type: categorical
-          choices: [128, 256, 512]
   - key: sklearn.random_forest
     name: xgc_rf_aparallel
     request_uncertainty: false
