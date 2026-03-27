@@ -211,6 +211,7 @@ pscratch/
 !data/logos/SURGE.png
 !data/logos/surge_logo_panoramic.png
 !data/logos/SURGE_logo_cropped.png
+!m3dc1/figures/*.png
 
 # M3DC1 interface/visualization outputs (explicitly excluded)
 comprehensive_eigenmode*.png
