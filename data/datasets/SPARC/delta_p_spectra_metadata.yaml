@@ -1,6 +1,8 @@
 # Metadata for delta p spectra surrogate training from sdata_complex_v2.h5
 # Adjust inputs to match your DataFrame columns after convert_sdata_complex_v2_to_dataframe()
 # Outputs (output_p_0, output_p_1, ...) are auto-detected as a profile group.
+#
+# When using include_eigenmodes=True, add eigenmode_amp_0..eigenmode_amp_19 to inputs.
 
 inputs:
   - eq_R0
@@ -14,6 +16,7 @@ inputs:
   - input_ntor
   - input_pscale
   - input_batemanscale
+  # eigenmode_amp_0 .. eigenmode_amp_19  # uncomment when include_eigenmodes=True
 metadata:
   campaign: M3DC1_delta_p_spectra
   description: Delta p eigenmode spectrum surrogate from sdata_complex_v2.h5

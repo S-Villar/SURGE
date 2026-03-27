@@ -1,0 +1,40 @@
+# Delta p profile surrogate: predict amplitude vs psiN for mode 0 (dominant).
+# Output: 50 values (delta_p at each psi point) for the selected mode.
+#
+# Build dataset first:
+#   python scripts/m3dc1/build_profile_dataset.py /pscratch/sd/a/asvillar/mp288/jobs/batch_16 \
+#       --mode 0 --out data/datasets/SPARC/delta_p_profile_mode0.pkl
+
+dataset_path: data/datasets/SPARC/delta_p_profile_mode0.pkl
+dataset_format: auto
+metadata_path: data/datasets/SPARC/delta_p_spectra_metadata.yaml
+notes: >
+  Profile surrogate: delta_p(psiN) for mode 0.
+  50 output points (psi_step=4).
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+output_dir: .
+run_tag: m3dc1_delta_p_profile_mode0
+predictions_format: csv
+seed: 42
+models:
+  - key: sklearn.random_forest
+    name: rf_profile_mode0
+    params:
+      n_estimators: 100
+      max_depth: 8
+      min_samples_leaf: 2
+    hpo:
+      enabled: false
+  - key: torch.mlp
+    name: mlp_profile_mode0
+    params:
+      hidden_layers: [64, 32]
+      dropout: 0.1
+      epochs: 80
+      batch_size: 32
+      learning_rate: 0.001
+    hpo:
+      enabled: false

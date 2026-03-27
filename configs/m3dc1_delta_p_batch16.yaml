@@ -1,0 +1,41 @@
+# Delta p spectra surrogate from batch_16 (per-run sdata_pertfields_grid_complex_v2.h5).
+#
+# Build dataset first (fixed resolution for all cases):
+#   python scripts/m3dc1/build_delta_p_dataset.py /pscratch/sd/a/asvillar/mp288/jobs/batch_16 \
+#       --out data/datasets/SPARC/delta_p_batch16.pkl --target-shape 50,50
+
+dataset_path: data/datasets/SPARC/delta_p_batch16.pkl
+dataset_format: auto
+metadata_path: data/datasets/SPARC/delta_p_spectra_metadata.yaml
+notes: >
+  Delta p spectrum surrogate from batch_16.
+  ~31 samples, mode_step=4, psi_step=4 → ~2500 output components.
+  Small dataset – use for pipeline validation; add more batches for real training.
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: ["train", "val", "test"]
+predictions_format: csv
+output_dir: runs
+run_tag: m3dc1_delta_p_batch16
+seed: 42
+models:
+  - key: sklearn.random_forest
+    name: rf_delta_p
+    params:
+      n_estimators: 100
+      max_depth: 8
+      min_samples_leaf: 2
+    hpo:
+      enabled: false
+  - key: torch.mlp
+    name: mlp_delta_p
+    params:
+      hidden_layers: [64, 32]
+      dropout: 0.1
+      epochs: 50
+      batch_size: 32
+      learning_rate: 0.001
+    hpo:
+      enabled: false

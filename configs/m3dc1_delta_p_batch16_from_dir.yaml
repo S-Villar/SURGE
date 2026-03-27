@@ -1,0 +1,40 @@
+# Delta p spectra from batch dir – load directly (no pre-build step).
+# Uses M3DC1Dataset.from_batch_dir with mode_step/psi_step to downsample spectrum.
+# PyTorch MLP uses DataLoader with batch_size=32.
+
+dataset_path: /pscratch/sd/a/asvillar/mp288/jobs/batch_16
+dataset_source: m3dc1_batch
+batch_dir_target_shape: [50, 50]   # fixed resolution: all cases same m-spectrum (50x50=2500)
+batch_dir_include_eigenmodes: false
+metadata_path: data/datasets/SPARC/delta_p_spectra_metadata.yaml
+notes: >
+  Delta p spectrum from batch_16, loaded directly.
+  target_shape [50,50] → 2500 outputs, same resolution for all cases. batch_size=32.
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: ["train", "val", "test"]
+predictions_format: csv
+output_dir: .
+run_tag: m3dc1_delta_p_batch16
+seed: 42
+models:
+  - key: sklearn.random_forest
+    name: rf_delta_p
+    params:
+      n_estimators: 100
+      max_depth: 8
+      min_samples_leaf: 2
+    hpo:
+      enabled: false
+  - key: torch.mlp
+    name: mlp_delta_p
+    params:
+      hidden_layers: [64, 32]
+      dropout: 0.1
+      epochs: 50
+      batch_size: 32
+      learning_rate: 0.001
+    hpo:
+      enabled: false
