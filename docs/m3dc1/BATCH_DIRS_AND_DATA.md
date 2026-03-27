@@ -34,7 +34,10 @@ Each `sdata_pertfields_grid_complex_v2.h5` contains:
 |-------|------------------|-------|
 | batch_1 | 0 | No postprocessed files |
 | batch_2 | 0 | No postprocessed files |
-| batch_16 | 31 | Has run1/sparc_*/sdata_pertfields_grid_complex_v2.h5 |
+| batch_16 | 31 | **Only run1** has sdata_pertfields_grid_complex_v2.h5; run2..run120 have C1.h5 but postprocessing not run |
+| batch_14 | 0 | ~9900 run dirs; C1.h5 present, complex_v2 not run |
+
+See `docs/m3dc1/M3DC1_DATA_MAPPING.md` for full mapping and how to get ~9800 delta p cases.
 
 ## Usage
 
