@@ -1,0 +1,21 @@
+# Single ψ_N point for GPflow GPR (standard GP is one latent output; full 200-profile δp
+# would require a different formulation). Use HPO on kernel / noise hyperparameters.
+
+inputs:
+  - eq_R0
+  - eq_a
+  - eq_kappa
+  - eq_delta
+  - q0
+  - q95
+  - qmin
+  - p0
+  - n
+  - m
+  - input_pscale
+  - input_batemanscale
+outputs:
+  - output_p_0
+metadata:
+  campaign: M3DC1_delta_p_per_mode_CFS_GPR_single_psi
+  description: δp at first normalized ψ grid point only — for Linear+Matern52+BoTorch HPO demos.
