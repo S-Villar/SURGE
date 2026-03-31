@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -17,6 +18,7 @@ from surge.workflow.spec import SurrogateWorkflowSpec
 # Fixtures: fake M3DC1 batch dir with minimal complex_v2 HDF5
 # ---------------------------------------------------------------------------
 COMPLEX_V2_FILENAME = "sdata_pertfields_grid_complex_v2.h5"
+SDATA_COMPLEX_V2_FILENAME = "sdata_complex_v2.h5"
 
 
 def _write_fake_complex_v2_h5(
@@ -68,6 +70,15 @@ def fake_m3dc1_batch_dir(tmp_path: Path) -> Path:
     """Create a minimal batch dir with one complex_v2 file."""
     run_dir = tmp_path / "run1" / "sparc_1300"
     h5_path = run_dir / COMPLEX_V2_FILENAME
+    _write_fake_complex_v2_h5(h5_path, n_m=4, n_psi=5)
+    return tmp_path
+
+
+@pytest.fixture
+def fake_m3dc1_batch_dir_sdata_complex(tmp_path: Path) -> Path:
+    """Batch dir with sdata_complex_v2.h5 (same layout as pertfields complex_v2)."""
+    run_dir = tmp_path / "run1" / "sparc_1300"
+    h5_path = run_dir / SDATA_COMPLEX_V2_FILENAME
     _write_fake_complex_v2_h5(h5_path, n_m=4, n_psi=5)
     return tmp_path
 
@@ -132,9 +143,14 @@ def _make_spec_from_batch(batch_dir: Path, tmp_path: Path) -> SurrogateWorkflowS
     })
 
 
-def _make_spec_from_batch_per_mode(batch_dir: Path, tmp_path: Path) -> SurrogateWorkflowSpec:
+def _make_spec_from_batch_per_mode(
+    batch_dir: Path,
+    tmp_path: Path,
+    *,
+    batch_dir_filename: Optional[str] = None,
+) -> SurrogateWorkflowSpec:
     """Build spec for mode C: dataset from batch dir (per-mode format)."""
-    return SurrogateWorkflowSpec.from_dict({
+    payload: dict = {
         "dataset_path": str(batch_dir),
         "dataset_source": "m3dc1_batch_per_mode",
         "test_fraction": 0.2,
@@ -153,7 +169,10 @@ def _make_spec_from_batch_per_mode(batch_dir: Path, tmp_path: Path) -> Surrogate
                 "hpo": {"enabled": False},
             }
         ],
-    })
+    }
+    if batch_dir_filename is not None:
+        payload["batch_dir_filename"] = batch_dir_filename
+    return SurrogateWorkflowSpec.from_dict(payload)
 
 
 # ---------------------------------------------------------------------------
@@ -276,6 +295,18 @@ class TestWorkflowModeFromBatchDirPerMode:
         summary = run_surrogate_workflow(spec)
         assert summary["dataset"]["n_rows"] == 16
         assert summary["splits"]["train"] > 0
+
+    def test_run_from_batch_dir_per_mode_sdata_complex_v2_filename(
+        self, fake_m3dc1_batch_dir_sdata_complex: Path, tmp_path: Path
+    ) -> None:
+        """CFS-style leaf name sdata_complex_v2.h5 via batch_dir_filename."""
+        spec = _make_spec_from_batch_per_mode(
+            fake_m3dc1_batch_dir_sdata_complex,
+            tmp_path,
+            batch_dir_filename=SDATA_COMPLEX_V2_FILENAME,
+        )
+        summary = run_surrogate_workflow(spec)
+        assert summary["dataset"]["n_rows"] == 4
 
 
 # ---------------------------------------------------------------------------

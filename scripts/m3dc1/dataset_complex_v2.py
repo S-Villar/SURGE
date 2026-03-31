@@ -1,8 +1,12 @@
 """
-Dataset generator and loader for per-run sdata_pertfields_grid_complex_v2.h5 files.
+Dataset generator and loader for per-run M3DC1 HDF5 files with runs/*/spectrum/p.
+
+Default leaf name is ``sdata_pertfields_grid_complex_v2.h5`` (pertfields grid).
+On CFS bulk trees, use ``filename="sdata_complex_v2.h5"``: same ``runs`` layout
+and ``spectrum/p`` (float or complex); δp is not mirror-symmetrized in |m|.
 
 Each run directory (run1/sparc_1300, run2/sparc_1305, etc.) contains its own
-sdata_pertfields_grid_complex_v2.h5 with:
+sdata_pertfields_grid_complex_v2.h5 (or sdata_complex_v2.h5) with:
 - spectrum/p: delta p modes spectrum (m_modes x psi_norm, complex)
 - miller: R0, a, kappa, delta (equilibrium inputs)
 - parset: ntor, pscale, batemanscale (run inputs)
@@ -33,8 +37,10 @@ except ImportError:
     H5PY_AVAILABLE = False
 
 
-# Default filename for per-run complex v2 HDF5
+# Default filename for per-run complex v2 HDF5 (pertfields grid)
 COMPLEX_V2_FILENAME = "sdata_pertfields_grid_complex_v2.h5"
+# Canonical bulk tree (e.g. amsc007 CFS): per-case nonsymmetric δp spectrum
+SDATA_COMPLEX_V2_FILENAME = "sdata_complex_v2.h5"
 
 
 def _decode(value: Any) -> Any:
@@ -527,4 +533,5 @@ __all__ = [
     "build_dataframe_from_batch",
     "load_complex_v2_for_surge",
     "COMPLEX_V2_FILENAME",
+    "SDATA_COMPLEX_V2_FILENAME",
 ]
