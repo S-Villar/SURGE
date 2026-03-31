@@ -1,0 +1,70 @@
+# MLP only — CFS per-mode Parquet, flexible HPO (continuous / variable depth) + BoTorch sampler.
+#
+# Run:
+#   python -m surge.cli run configs/m3dc1_delta_p_per_mode_cfs_mlp_hpo_flexible.yaml
+# Batch:
+#   sbatch scripts/m3dc1/train_delta_p_per_mode_cfs_mlp_hpo.slurm
+
+dataset_path: data/datasets/SPARC/delta_p_per_mode_cfs_sdata_complex_v2.parquet
+dataset_format: auto
+metadata_path: data/datasets/SPARC/delta_p_per_mode_cfs_metadata.yaml
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+output_dir: .
+run_tag: m3dc1_delta_p_per_mode_cfs_mlp_hpo_flexible
+predictions_format: csv
+seed: 42
+models:
+  - key: torch.mlp
+    name: mlp_per_mode
+    params:
+      dropout: 0.12
+      max_epochs: 120
+      patience: 15
+      batch_size: 128
+      learning_rate: 0.001
+      hidden_layers: [256, 128, 64]
+    hpo:
+      enabled: true
+      n_trials: 40
+      metric: val_rmse
+      direction: minimize
+      sampler: botorch
+      search_space:
+        hidden_layers:
+          type: variable_list
+          num_layers_name: mlp_num_hidden_layers
+          num_layers:
+            type: int
+            low: 2
+            high: 5
+          element:
+            type: int
+            low: 64
+            high: 512
+            step: 32
+        dropout:
+          type: float
+          low: 0.0
+          high: 0.45
+        learning_rate:
+          type: loguniform
+          low: 1.0e-4
+          high: 3.0e-2
+        batch_size:
+          type: int
+          low: 64
+          high: 512
+          step: 32
+        max_epochs:
+          type: int
+          low: 40
+          high: 200
+          step: 10
+        patience:
+          type: int
+          low: 5
+          high: 35
+          step: 5

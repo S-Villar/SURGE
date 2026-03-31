@@ -1,0 +1,71 @@
+# GPflow GPR with fixed kernel Linear + Matern52; HPO tunes variances, lengthscale, noise (BoTorch).
+#
+# Important:
+# - Standard GP is O(n³). Use sample_rows so n is modest (default 12_000).
+# - Only one output (output_p_0) — see metadata. Full 200-point δp profile is not a single GP.
+#
+# Requires: pip install gpflow tensorflow
+#
+# Run:
+#   python -m surge.cli run configs/m3dc1_delta_p_per_mode_cfs_gpr_linear_matern52_botorch.yaml
+# Batch:
+#   sbatch train_delta_p_per_mode_cfs_gpr_hpo.slurm
+
+dataset_path: data/datasets/SPARC/delta_p_per_mode_cfs_sdata_complex_v2.parquet
+dataset_format: auto
+metadata_path: data/datasets/SPARC/delta_p_per_mode_cfs_gpr_single_output_metadata.yaml
+sample_rows: 12000
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+output_dir: .
+run_tag: m3dc1_delta_p_per_mode_cfs_gpr_lin_m52_botorch
+predictions_format: csv
+seed: 42
+models:
+  - key: gpflow.gpr
+    name: gpr_lin_matern52
+    params:
+      kernel_combinations:
+        - linear
+        - matern52
+      add_linear: false
+      lengthscales: 1.0
+      variance: 1.0
+      linear_variance: 0.5
+      noise_variance: 0.01
+      optimize: true
+      maxiter: 500
+    hpo:
+      enabled: true
+      n_trials: 35
+      metric: val_rmse
+      direction: minimize
+      sampler: botorch
+      search_space:
+        lengthscales:
+          type: float
+          low: 0.15
+          high: 6.0
+          log: true
+        variance:
+          type: float
+          low: 0.05
+          high: 8.0
+          log: true
+        linear_variance:
+          type: float
+          low: 1.0e-3
+          high: 5.0
+          log: true
+        noise_variance:
+          type: float
+          low: 1.0e-4
+          high: 1.0
+          log: true
+        maxiter:
+          type: int
+          low: 200
+          high: 2000
+          step: 100

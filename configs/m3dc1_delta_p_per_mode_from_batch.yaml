@@ -2,7 +2,9 @@
 # Uses M3DC1Dataset.from_batch_dir_per_mode.
 #
 # Usage: python -m surge.cli run configs/m3dc1_delta_p_per_mode_from_batch.yaml
-# Requires: batch dir with sdata_pertfields_grid_complex_v2.h5 under run*/sparc_*/
+# Requires: HDF5 under run*/sparc_* (default leaf: sdata_pertfields_grid_complex_v2.h5).
+# For CFS bulk: set dataset_path to e.g. .../amsc007/data/m3dc1 and uncomment:
+# batch_dir_filename: sdata_complex_v2.h5
 
 dataset_path: /pscratch/sd/a/asvillar/mp288/jobs/batch_16
 dataset_source: m3dc1_batch_per_mode

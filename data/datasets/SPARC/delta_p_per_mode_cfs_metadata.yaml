@@ -1,0 +1,26 @@
+# Per-mode δp from CFS bulk: sdata_complex_v2.h5 under .../amsc007/data/m3dc1/run*/sparc_*.
+# Built via (Parquet recommended for full CFS bulk):
+#   python scripts/m3dc1/build_delta_p_per_mode.py /global/cfs/projectdirs/amsc007/data/m3dc1 \
+#     --out data/datasets/SPARC/delta_p_per_mode_cfs_sdata_complex_v2.parquet \
+#     --filename sdata_complex_v2.h5
+
+inputs:
+  - eq_R0
+  - eq_a
+  - eq_kappa
+  - eq_delta
+  - q0
+  - q95
+  - qmin
+  - p0
+  - n
+  - m
+  - input_pscale
+  - input_batemanscale
+metadata:
+  campaign: M3DC1_delta_p_per_mode_CFS_sdata_complex_v2
+  description: >
+    Per-mode profile surrogate from ~9.8k cases; |δp| from spectrum/p (nonsymmetric +m/−m).
+  data_root: /global/cfs/projectdirs/amsc007/data/m3dc1
+  hdf5_leaf: sdata_complex_v2.h5
+  psi_norm: "0.0001 to 1.0, 200 points (output_p_0..output_p_199)"

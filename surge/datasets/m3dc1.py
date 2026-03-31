@@ -90,7 +90,7 @@ class M3DC1Dataset(SurrogateDataset):
         verbose : bool
             Print progress
         **kwargs
-            Passed to build_dataframe_from_batch
+            Passed to build_dataframe_from_batch (e.g. filename="sdata_complex_v2.h5")
 
         Returns
         -------
@@ -139,6 +139,9 @@ class M3DC1Dataset(SurrogateDataset):
 
         Each row: inputs (eq_*, input_*, n, m) + outputs (200 profile values).
         Model learns: given (equilibrium, n, m), predict δp_n,m(ψ_N).
+
+        **kwargs are passed to load_per_mode_for_surge (e.g. filename for
+        sdata_complex_v2.h5 on CFS batch trees).
         """
         scripts_m3dc1 = Path(__file__).resolve().parent.parent.parent / "scripts" / "m3dc1"
         if str(scripts_m3dc1) not in sys.path:

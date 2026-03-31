@@ -22,7 +22,7 @@ PSI_NORM = np.linspace(0.0001, 1.0, 200)
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Plot δp_n,m(ψ_N) profile")
-    parser.add_argument("path", type=Path, help="Dataset .pkl or predictions CSV")
+    parser.add_argument("path", type=Path, help="Dataset .pkl / .parquet or predictions CSV")
     parser.add_argument("--n", type=float, required=True, help="Toroidal mode n")
     parser.add_argument("--m", type=int, required=True, help="Poloidal mode m")
     parser.add_argument("--out", "-o", type=Path, default=None, help="Output plot path")
@@ -34,8 +34,11 @@ def main() -> int:
         print(f"Not found: {path}", file=sys.stderr)
         return 1
 
-    if path.suffix.lower() in (".pkl", ".pickle"):
+    suf = path.suffix.lower()
+    if suf in (".pkl", ".pickle"):
         df = pd.read_pickle(path)
+    elif suf in (".parquet", ".pq"):
+        df = pd.read_parquet(path)
     else:
         df = pd.read_csv(path)
 
