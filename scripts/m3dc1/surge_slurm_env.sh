@@ -15,6 +15,10 @@
 SURGE_CONDA_PREFIX_DEFAULT="/global/cfs/projectdirs/m3716/software/asvillar/envs/surge"
 
 surge_slurm_setup_python() {
+  # Conda/env activate.d hooks (e.g. Intel MKL) sometimes expand unset vars; Slurm scripts use `set -u`.
+  export MKL_INTERFACE_LAYER="${MKL_INTERFACE_LAYER:-GNU,LP64}"
+  export MKL_THREADING_LAYER="${MKL_THREADING_LAYER:-GNU}"
+
   # Perlmutter: always load the conda module when `module` exists unless skipped.
   # Batch jobs often have no usable conda until this runs (even if a stale `conda` is on PATH).
   if [[ "${SURGE_SKIP_MODULE_CONDA:-0}" != "1" ]] && command -v module &>/dev/null; then
