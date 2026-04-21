@@ -18,6 +18,7 @@ This folder contains documentation for **development status**, **modification tr
 | [POSTER_REVIEW.md](POSTER_REVIEW.md) | Poster review notes |
 | [COMPARISON_WITH_OTHER_TOOLS.md](COMPARISON_WITH_OTHER_TOOLS.md) | Comparison with other surrogate/ML tools |
 | [MULTIMODAL_DIFFUSION_GUIDE.md](MULTIMODAL_DIFFUSION_GUIDE.md) | Guide for multimodal diffusion (potential feature) |
+| [FNO_INTEGRATION_GUIDE.md](FNO_INTEGRATION_GUIDE.md) | Guide for integrating Fourier Neural Operators / neural operators (potential feature) |
 
 ## Main Documentation
 
