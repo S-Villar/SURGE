@@ -71,7 +71,8 @@ def find_complex_v2_files(
     Parameters
     ----------
     batch_dir : str or Path
-        Root batch directory (e.g. /pscratch/.../batch_16)
+        Root batch directory containing `run*/sparc_*/` subtrees
+        (e.g. `/path/to/m3dc1/batch_16`).
     run_pattern : str
         Glob for run directories (default: run*)
     sparc_pattern : str
