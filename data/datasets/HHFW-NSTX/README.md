@@ -1,5 +1,9 @@
 # HHFW-NSTX Dataset
 
+> **Public source releases** do not include `*.pkl` binaries. This README describes
+> the layout for developers who hold the data under the appropriate collaboration
+> or data-use terms. Place approved files locally if you use them.
+
 ## Overview
 
 This dataset contains High Harmonic Fast Wave (HHFW) heating simulation results for NSTX (National Spherical Torus Experiment) plasma scenarios. The data represents power deposition profiles computed using the TORIC RF heating code for various plasma conditions and antenna configurations.
