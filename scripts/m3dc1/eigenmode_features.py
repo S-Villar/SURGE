@@ -22,8 +22,14 @@ except ImportError:
     pass
 
 _m1_src = Path(__file__).resolve().parent.parent.parent / "M3DC1" / "unstructured" / "python"
+# Optional fallback: users on shared HPC filesystems can point M3DC1_PYTHON_PATH
+# at their own unstructured/python checkout. There is no longer a hardcoded
+# default — the public repo is portable.
 if not _m1_src.exists():
-    _m1_src = Path("${M3DC1_PYTHON_PATH}/../unstructured/python")
+    import os as _os
+    _env = _os.environ.get("M3DC1_PYTHON_PATH")
+    if _env:
+        _m1_src = Path(_env)
 if _m1_src.exists():
     import sys
     if str(_m1_src) not in sys.path:
