@@ -414,8 +414,8 @@ class SurrogateDataset:
         raise ValueError(f"Unsupported dataset format '{fmt}' for file {path}")
 
     def _read_xgc(self, path: Path, **reader_kwargs: Any) -> pd.DataFrame:
-        """Load XGC OLCF hackathon .npy files via XGCDataset."""
-        from .datasets.xgc import _load_olcf_npy
+        """Load stacked-directory .npy layout via XGCDataset (see ``surge.datasets.xgc``)."""
+        from .datasets.xgc import _load_stacked_npy
 
         if not path.is_dir():
             raise ValueError(f"XGC format requires a directory path, got: {path}")
@@ -425,7 +425,7 @@ class SurrogateDataset:
         random_state = reader_kwargs.get("random_state", 42)
         row_range = reader_kwargs.get("row_range")
 
-        df, _input_cols, _output_cols = _load_olcf_npy(
+        df, _input_cols, _output_cols = _load_stacked_npy(
             path,
             set_name=set_name,
             sample=sample,
