@@ -87,8 +87,9 @@ python -m examples.quickstart --dataset diabetes --model rf --infer --viz
 # 6b. California housing + PyTorch MLP (~90 s), inference + plots.
 python -m examples.quickstart --dataset california --model mlp --infer --viz
 
-# 6c. Optional: add a short Optuna HPO sweep (MLP only).
-python -m examples.quickstart --dataset california --model mlp --n-trials 20 --viz
+# 6c. Optional: short Optuna HPO sweep (5 trials × 50 epochs each,
+#     ~1-2 min on CPU). Each trial prints its own epoch loss history.
+python -m examples.quickstart --dataset california --model mlp --n-trials 5 --viz
 ```
 
 `--viz` calls `surge.viz.viz_run`, which reads the per-split parquet
