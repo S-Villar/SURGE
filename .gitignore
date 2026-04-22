@@ -218,12 +218,10 @@ runs
 
 # Reference runs archive (ai4fusion-dev: local only, not committed)
 data/runs/
-data/datasets/M3DC1/*.csv
-!data/datasets/M3DC1/*_sample.csv
-data/datasets/SPARC/*.pkl
-!data/datasets/SPARC/*_sample.pkl
-# CFS bulk δp Parquet (~GB; build via scripts/m3dc1/build_delta_p_per_mode.py)
-data/datasets/SPARC/delta_p_per_mode_cfs_sdata_complex_v2.parquet
+
+# internal/ is the local sandbox for proprietary datasets, Slurm templates,
+# and anything else we don't redistribute. Nothing under it is tracked.
+internal/
 # Local Slurm launch logs (job IDs, tmp copies)
 logs/
 pscratch/

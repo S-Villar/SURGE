@@ -194,23 +194,3 @@ def test_get_statistics(sample_dataframe):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-
-
-def test_load_sparc_dataset():
-    """Ensure the SPARC dataset can be loaded."""
-    data_path = Path('data/datasets/SPARC/sparc-m3dc1-D1.pkl')
-    assert data_path.exists(), "SPARC dataset missing"
-
-    dataset = SurrogateDataset()
-    inputs = ['eq_R0', 'eq_a', 'eq_kappa', 'eq_delta', 'q0', 'q95', 'output_qmin', 'p0']
-    outputs = ['gamma']
-    detected_inputs, detected_outputs = dataset.load_from_file(
-        data_path,
-        input_cols=inputs,
-        output_cols=outputs,
-        auto_detect=False,
-    )
-
-    assert detected_inputs == inputs
-    assert detected_outputs == outputs
-    assert dataset.df is not None and len(dataset.df) > 1000
