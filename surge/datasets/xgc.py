@@ -1,4 +1,4 @@
-"""XGC dataset loader for SURGE."""
+"""Stacked .npy directory loader (optional format `xgc` in SurrogateDataset)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import pandas as pd
 from ..dataset import SurrogateDataset
 
 
-def _load_olcf_npy(
+def _load_stacked_npy(
     data_dir: Union[str, Path],
     set_name: str = "set1",
     sample: Optional[int] = None,
@@ -19,7 +19,7 @@ def _load_olcf_npy(
     row_range: Optional[tuple[int, int]] = None,
 ) -> tuple[pd.DataFrame, List[str], List[str]]:
     """
-    Load OLCF hackathon .npy files into DataFrame.
+    Load a conventional stacked-.npy directory into a DataFrame.
 
     File naming: data_nprev5_{set_name}_data.npy, _target.npy, _var_all.npy
 
@@ -37,8 +37,8 @@ def _load_olcf_npy(
 
     if not data_path.exists():
         raise FileNotFoundError(
-            f"OLCF hackathon data not found: {data_path}. "
-            f"Expected set_name like 'set1' or 'set2_beta0p5'."
+            f"Expected data file not found: {data_path}. "
+            f"Check set_name (e.g. 'set1' or 'set2_beta0p5')."
         )
     if not target_path.exists():
         raise FileNotFoundError(f"Target file not found: {target_path}")
@@ -77,13 +77,17 @@ def _load_olcf_npy(
     return df, input_cols, output_cols
 
 
+# Backward-compatible name used by some notebooks and tests.
+_load_olcf_npy = _load_stacked_npy
+
+
 class XGCDataset(SurrogateDataset):
     """
-    XGC-specific dataset loader for A_parallel and related surrogates.
+    Stacked .npy directory layout (``format="xgc"`` in ``SurrogateDataset``).
 
-    Subclasses SurrogateDataset and provides constructors for:
-    - from_olcf_hackathon: OLCF AI hackathon .npy files (data, target, var_all)
-    - from_npy: generic .npy inputs and targets
+    Constructors:
+    - ``from_olcf_hackathon``: directory with ``data_nprev5_*`` naming (legacy name, kept for API stability)
+    - ``from_npy``: explicit path to input and target arrays
     """
 
     @classmethod
@@ -96,12 +100,12 @@ class XGCDataset(SurrogateDataset):
         random_state: int = 42,
     ) -> "XGCDataset":
         """
-        Load XGC dataset from OLCF AI hackathon directory.
+        Load from a directory that follows the ``data_nprev5_*`` file naming convention.
 
         Parameters
         ----------
         data_dir : str or Path
-            Path to OLCF hackathon directory (e.g. olcf_ai_hackathon_2025)
+            Path to the directory containing the .npy stacks
         set_name : str
             Dataset set name: "set1" (lower beta) or "set2_beta0p5"
         sample : int, optional
@@ -114,7 +118,7 @@ class XGCDataset(SurrogateDataset):
         XGCDataset
             Loaded dataset with input_0..input_200, output_0, output_1
         """
-        df, input_cols, output_cols = _load_olcf_npy(
+        df, input_cols, output_cols = _load_stacked_npy(
             data_dir,
             set_name=set_name,
             sample=sample,
