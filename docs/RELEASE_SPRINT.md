@@ -320,8 +320,10 @@ green.
 - New public GitHub repo.
 - `git remote set-url public <url>` (or add as second remote).
 - `git push public main --tags`.
-- Replace `REPLACE_ORG` placeholders in `pyproject.toml`, `README.md`,
-  `CITATION.cff`.
+- **(Done in T1.5/T1.6)** URLs in `pyproject.toml`, `README.md`,
+  `CITATION.cff`, `CONTRIBUTING.md`, and the issue-template config now
+  point at `https://github.com/S-Villar/SURGE`. If Night 3 chooses a
+  different handle, sweep those five files before pushing.
 
 ### T3.4 — DOE CODE submission
 - Submit repo URL + required metadata.

@@ -106,14 +106,14 @@ runner does not fail.
 ### Q4 — Public repo org / name
 **Context:** Night 3 T3.3 replaces `REPLACE_ORG` everywhere.
 **Resolution (2026-04-21):** Night 3 target is **personal GitHub account**
-(user: `asvillar`, confirm handle before push). Longer-term target org is
-`PrincetonUniversity` — plan the move as a v0.1.1 follow-up via
-GitHub's "Transfer ownership" flow (keeps stars/issues/PRs intact). Leave
-`REPLACE_ORG` placeholders in `pyproject.toml`/`README.md`/`CITATION.cff`
-until the exact handle is confirmed on Night 3.
-
-**Sub-question Q4a (blocks Night 3, not Night 1):** confirm GitHub
-username is `asvillar`, or provide the correct one.
+`S-Villar` (confirmed via `git remote -v` on the NERSC checkout:
+`origin = git@github.com:S-Villar/SURGE.git`). All five URL sites
+(`pyproject.toml`, `README.md`, `CITATION.cff`, `CONTRIBUTING.md`, and
+`.github/ISSUE_TEMPLATE/config.yml`) were updated early during T1.6 so the
+local repo already matches the intended push target. Longer-term target
+org remains `PrincetonUniversity` — plan the move as a v0.1.1 follow-up
+via GitHub's "Transfer ownership" flow (keeps stars/issues/PRs intact);
+when it happens, sweep those same five files.
 
 ### Q5 — History rewrite decision
 **Context:** Night 3 T3.2. Decided **by the Night 1 audit output**, not
