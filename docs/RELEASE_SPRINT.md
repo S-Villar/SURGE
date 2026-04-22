@@ -93,6 +93,58 @@ Target: at end of the night, you could privately toggle the repo to
 **public** and nothing bad happens. No announcement yet, but it would not
 disclose anything.
 
+### Night 1 outcome — **completed**
+
+All six Night-1 tasks landed. Actual commit trail (read top-to-bottom):
+
+```
+313b3b0 chore(release): remove XGC/HHFW/ml_utils content for open-source release
+3c2e80b feat(release): BSD-3-Clause license, NOTICE, pyproject.toml, public README
+fb5cfac refactor(surge): genericize XGC-era code paths and docstrings
+fe33fb3 docs(release): open-source release planning set
+fc76f8e ci(release): 3-job workflow (tests, E2E, lint) + sample-CSV smoke test
+74c0f16 fix(surge): remove sys.path hack from __init__; skip legacy pre-refactor tests (T1.2)
+41969ef feat(hpc): ResourceSpec + [surge.fit] banner + resources_used provenance (T1.3)
+9fa96e1 feat(engine): model_size_bytes + inference_ms_per_sample + parameter_count (T1.4)
+<HEAD>   docs(release): repo face — CITATION, SECURITY, CONTRIBUTING, issue/PR templates (T1.5)
+<HEAD>   docs(release): freshness pass after T1.2–T1.5 landings (T1.6)
+```
+
+Deltas vs. the Night-1 plan:
+
+- **Code of Conduct deferred** per maintainer request — all other
+  presentable-face files landed (`CITATION.cff`, `SECURITY.md`,
+  `CONTRIBUTING.md`, `.github/ISSUE_TEMPLATE/{bug_report, feature_request, config}`,
+  `.github/pull_request_template.md`).
+- **Skipped legacy tests added** — pre-refactor tests that called the
+  old `SurrogateEngine(dataframe=...)` signature are now module-level
+  `pytest.mark.skip` with a reason pointing at
+  `docs/REFACTORING_PLAN.md` §1.9. `pytest -q tests/` → *51 passed,
+  38 skipped, 0 failed* on Python 3.13 (the scheduled matrix is 3.10
+  and 3.11, via CI).
+- **History rewrite not executed tonight** — deferred to Night 3 by
+  design; the working tree is safe to toggle public, but git history
+  still contains the removed paths. The scope of
+  `git filter-repo --path ...` is already fully specified in
+  `docs/PUBLIC_OPEN_SOURCE_PLAN.md`.
+- **`CHANGELOG.md` not landed** — covered de facto by the commit
+  messages above; a proper `CHANGELOG.md` can be generated at tag time
+  by running `git log --pretty=format:"- %s" v0.0.x..v0.1.0`.
+
+Acceptance check (disclosure-safety bar from the previous section):
+
+- ✓ No absolute NERSC paths in tracked source (code + tests).
+- ✓ No mentions of removed modules / `ml_utils.py` / XGC pipelines in
+  tracked docs, except in audit / history / filter-repo docs where such
+  mentions are intentional.
+- ✓ `pytest -q tests/` is green.
+- ✓ `LICENSE`, `NOTICE`, `README.md`, `CITATION.cff`, `SECURITY.md`,
+  `CONTRIBUTING.md` all present.
+
+Night 2 can now begin (regression suite over open-source datasets + HPO
+best-config), or the repo can be flipped private-to-unlisted-public for
+a soft preview without public announcement.
+
 ### T1.1 — History & working-tree audit (read-only, 30 min)
 - `rg -i 'xgc|hhfw|c1input|olcf' -- ':(exclude)docs/PUBLIC_OPEN_SOURCE_PLAN.md' ':(exclude)docs/REFACTORING_PLAN.md' ':(exclude)docs/RELEASE_SPRINT.md'`
 - `rg -i '/global/homes|/pscratch|asvillar' -- ':(exclude)docs/*'`
