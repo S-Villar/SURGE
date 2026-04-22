@@ -69,6 +69,9 @@ drop-in replacement; downstream `uv pip install` calls become plain
 
 ## 3. Editable install with `torch + onnx + dev` extras
 
+The `dev` extra includes `pytest`, `ruff`, and **`h5py`** (HDF5 /
+M3DC1 batch tests).
+
 ```bash
 cd "$TEST_DIR/SURGE"
 uv pip install -e ".[torch,onnx,dev]"
@@ -96,12 +99,10 @@ and harmless — GPflow is an optional backend.
 pytest -q
 ```
 
-Current steady state on a clean install: **~47 passed, ~41 skipped** in
-under 10 s. The skipped tests target a pre-refactor API that is being
-migrated (see `docs/REFACTORING_PLAN.md` §1.9); the passing set covers
-the public API users actually touch (`SurrogateEngine`,
-`SurrogateWorkflowSpec`, `run_surrogate_workflow`, the model registry,
-ONNX round-trip, HPO).
+Current steady state with `.[torch,onnx,dev]` (which pulls **`h5py`**
+for M3DC1 tests): **52 passed, 1 skipped** in under 30 s. The skip is a
+legacy visualization scaffold in `test_model_comparison.py` pending
+migration to `surge.viz`.
 
 ## 6. End-to-end CLI quickstart
 
