@@ -103,30 +103,32 @@ pip install -e ".[dev]"
 After installing an environment, verify visualization is available:
 
 ```python
+import surge
 import matplotlib.pyplot as plt
-print(f"✅ Matplotlib version: {plt.__version__}")
+print(f"SURGE {surge.__version__}")
+print(f"matplotlib {plt.__version__}")
 
-from surge import MLTrainer
-# Should work without ImportError for visualization functions
+from surge import SurrogateWorkflowSpec, run_surrogate_workflow  # workflow API
+from surge.hpc import ResourceSpec                                # resource spec
 ```
 
 ## Custom Environment Path
 
-On systems where the `surge` environment is installed at a non-default location (e.g., shared software):
+On shared systems where the ``surge`` environment is installed at a
+non-default location, activate it by path:
 
-**Current path:** `/global/common/software/m3716/asvillar/envs/surge`
-
-**Activate by path:**
 ```bash
-conda activate /global/common/software/m3716/asvillar/envs/surge
+conda activate "$SURGE_CONDA_ENV"   # or the absolute path on your site
 ```
 
-**Run commands using the path:**
+Then run the bundled quickstart to sanity-check the install:
+
 ```bash
-conda run -p /global/common/software/m3716/asvillar/envs/surge python -m examples.m3dc1_workflow --spec configs/m3dc1_aug_r75.yaml --run-tag m3dc1_aug_r75
+conda run -p "$SURGE_CONDA_ENV" python -m examples.quickstart --dataset diabetes
 ```
 
-Use `-p` (path) instead of `-n` (name) when the environment is not in conda's default envs directory.
+Use ``-p`` (path) instead of ``-n`` (name) when the environment is not in
+conda's default envs directory.
 
 ## Notes
 
