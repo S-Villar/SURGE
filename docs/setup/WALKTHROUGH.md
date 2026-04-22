@@ -81,15 +81,21 @@ tree (`--output-dir` defaults to the repo root).
 ```bash
 cd "$TEST_DIR/SURGE"
 
-# 6a. Diabetes + random forest (~5 s), with inference round-trip.
-python -m examples.quickstart --dataset diabetes --model rf --infer
+# 6a. Diabetes + random forest (~5 s), with inference round-trip and plots.
+python -m examples.quickstart --dataset diabetes --model rf --infer --viz
 
-# 6b. California housing + PyTorch MLP (~90 s), with inference round-trip.
-python -m examples.quickstart --dataset california --model mlp --infer
+# 6b. California housing + PyTorch MLP (~90 s), inference + plots.
+python -m examples.quickstart --dataset california --model mlp --infer --viz
 
 # 6c. Optional: add a short Optuna HPO sweep (MLP only).
-python -m examples.quickstart --dataset california --model mlp --n-trials 20
+python -m examples.quickstart --dataset california --model mlp --n-trials 20 --viz
 ```
+
+`--viz` calls `surge.viz.viz_run`, which reads the per-split parquet
+predictions and writes a 2D-density "regression map" per output
+(`plots/inference_comparison_output_<i>.png`) plus a combined grid
+(`plots/inference_comparison_grid.png`). Each subplot includes the R²
+annotation and the diagonal reference.
 
 Expected tail of (6b):
 
@@ -101,28 +107,58 @@ Expected tail of (6b):
   model       = 133.3 KB, parameter count n/a
   inference   = 0.04 ms/sample
 
+[viz] parity plots (predictions vs ground truth):
+        plots/inference_comparison_output_0.png
+        plots/inference_comparison_grid.png
+
+[artifacts] runs/california_mlp
+  ├── hpo/
+  ├── models/
+  │   └── pytorch.mlp.joblib                  50.6 KB
+  ├── plots/
+  │   ├── inference_comparison_grid.png       61.4 KB
+  │   └── inference_comparison_output_0.png   61.4 KB
+  ├── predictions/
+  │   ├── pytorch.mlp_test.parquet            63.4 KB
+  │   ├── pytorch.mlp_train.parquet          201.3 KB
+  │   └── pytorch.mlp_val.parquet             33.6 KB
+  ├── scalers/
+  │   └── inputs.joblib                         775 B
+  ├── env.txt                                   355 B  — pip freeze at run time
+  ├── git_rev.txt                                41 B  — repo HEAD or 'unknown'
+  ├── metrics.json                             1.1 KB  — per-model train/val/test + timings
+  ├── model_card_pytorch.mlp.json               619 B  — data + model provenance card
+  ├── run.log                                   180 B  — stdout capture
+  ├── spec.yaml                                1.2 KB  — workflow spec (re-runnable)
+  ├── train_data_ranges.json                    778 B  — canonical input column order + min/max
+  ├── training_history_pytorch.mlp.json       38.4 KB  — per-epoch loss / metric curves
+  ├── training_progress_pytorch.mlp.jsonl     32.3 KB  — streaming JSONL progress log
+  └── workflow_summary.json                    4.5 KB  — metrics + profile + resources_used
+
 [infer] round-trip inference on the first 5 rows:
         model  : pytorch.mlp.joblib  (pytorch)
         inputs : ['AveBedrms','AveOccup','AveRooms','HouseAge',
                   'Latitude','Longitude','MedInc','Population']
         y_true : [4.53 3.58 3.52 3.41 3.42]
-        y_hat  : [3.99 4.48 4.02 2.62 2.57]
+        y_hat  : [3.86 4.26 3.85 2.85 2.74]
 ```
 
 ## 7. Inspect the artifacts
 
-```bash
-ls runs/california_mlp/
-#   spec.yaml  env.txt  git_rev.txt  run.log  workflow_summary.json
-#   metrics.json  train_data_ranges.json  model_card_pytorch.mlp.json
-#   scalers/inputs.joblib
-#   models/pytorch.mlp.joblib  models/pytorch.mlp.onnx
-#   predictions/{pytorch.mlp_train.parquet,..._val.parquet,..._test.parquet}
-#   hpo/                              # populated only when --n-trials > 0
+`examples.quickstart` already prints the annotated tree shown above at
+the end of each run. For a quick summary of test-set metrics:
 
+```bash
 python -c "import json; \
            d = json.load(open('runs/california_mlp/metrics.json')); \
            print(json.dumps(d['pytorch.mlp']['test'], indent=2))"
+```
+
+To (re)generate or refresh the parity plots for an existing run
+without retraining, you can call the packaged CLI:
+
+```bash
+python -m surge.cli viz --run-dir runs/california_mlp
 ```
 
 ## Notes and gotchas
