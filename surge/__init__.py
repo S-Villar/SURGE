@@ -37,24 +37,16 @@ try:
 except ImportError:
     DATASET_UTILS_AVAILABLE = False
 
-# Optional M3DC1 loader (now in scripts/m3dc1/)
-try:
-    import sys
-    from pathlib import Path
-    # Add scripts/m3dc1 to path for optional imports
-    scripts_m3dc1 = Path(__file__).parent.parent / "scripts" / "m3dc1"
-    if str(scripts_m3dc1) not in sys.path:
-        sys.path.insert(0, str(scripts_m3dc1))
-    from loader import (
-        load_m3dc1_hdf5,
-        convert_to_dataframe,
-        convert_sdata_complex_v2_to_dataframe,
-        read_m3dc1_hdf5_structure,
-        read_sdata_complex_v2_structure,
-    )
-    M3DC1_LOADER_AVAILABLE = True
-except ImportError:
-    M3DC1_LOADER_AVAILABLE = False
+# M3DC1 HDF5 loaders live in scripts/m3dc1/loader.py and are NOT part of
+# the installable wheel: they are application-specific HDF5 readers that
+# depend on the scripts/m3dc1 tree alongside a working SURGE checkout.
+# `M3DC1Dataset` (exported below) imports them lazily when a dataset is
+# actually constructed, so pip-installed users get a clean `import surge`
+# and a clear ImportError only if they try to use the M3DC1 loader
+# without the scripts/ tree on sys.path. Prior versions attempted an
+# eager sys.path injection here; that silently failed for wheel installs
+# and polluted sys.path from import time, so it was removed.
+M3DC1_LOADER_AVAILABLE = False
 
 # Import helper functions for convenience
 try:
@@ -99,15 +91,9 @@ if DATASET_UTILS_AVAILABLE:
         "print_validation_report",
     ])
 
-# Add M3DC1 loader if available
-if M3DC1_LOADER_AVAILABLE:
-    __all__.extend([
-        "load_m3dc1_hdf5",
-        "convert_to_dataframe",
-        "convert_sdata_complex_v2_to_dataframe",
-        "read_m3dc1_hdf5_structure",
-        "read_sdata_complex_v2_structure",
-    ])
+# M3DC1 HDF5 loader functions are intentionally NOT exported: they are
+# application-specific and live under scripts/m3dc1/. Use `M3DC1Dataset`
+# from `surge.datasets.m3dc1` (exported below) which imports them lazily.
 
 # Backward compatibility aliases
 MLTrainer = SurrogateEngine  # Legacy alias
