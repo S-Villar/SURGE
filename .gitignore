@@ -230,10 +230,8 @@ scripts/m3dc1/interfaces/artifacts/
 # M3DC1 Python support code (pulled from external repo; see docs/dev/M3DC1_PYTHON_CODE.md)
 notebooks/m3dc1/m3dc1_python_code/
 
-# Include specific datasets for demos and testing
-# Note: These are relatively large files (~41MB each) but essential for examples
-!data/datasets/HHFW-NSTX/PwE_.pkl
-!data/datasets/HHFW-NSTX/PwIF_.pkl
+# HHFW pickles: not shipped in public releases; keep local only under policy.
+data/datasets/HHFW-NSTX/*.pkl
 
 # Specific notebook files
 notebooks/Test_Botorch_Pe_NSTX_Compare.ipynb
