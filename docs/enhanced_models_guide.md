@@ -224,23 +224,10 @@ for name, result in results.items():
     print(f"{name}: R² = {result['r2_mean']:.4f} ± {result['r2_std']:.4f}")
 ```
 
-## Integration with ml_utils.py
+## Use the unified engine
 
-The enhanced models integrate seamlessly with your existing `ml_utils.py` workflow:
-
-```python
-# Import both SURGE and ml_utils
-from surge import SurrogateTrainer
-from scripts.ml_utils import MLTrainer
-
-# Use SURGE for quick prototyping
-surge_trainer = SurrogateTrainer(model_type="pytorch_mlp")
-surge_trainer.fit(X, y)
-
-# Use ml_utils for advanced workflows
-ml_trainer = MLTrainer(X, y)
-# ... custom ml_utils workflow
-```
+Prefer ``SurrogateEngine`` and ``run_surrogate_workflow`` for all new work; the legacy
+``scripts/ml_utils.py`` script has been removed from the tree.
 
 ## Performance Tips
 
