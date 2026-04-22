@@ -19,10 +19,41 @@ mkdir -p "$TEST_DIR" && cd "$TEST_DIR"
 git clone git@github.com:S-Villar/SURGE.git
 ```
 
-## 2. Create a clean Python 3.11 venv *next to* the checkout
+## 2. Install `uv` (one-time) and create a Python 3.11 venv
 
 Putting the venv alongside (not inside) the repo keeps `git status`
 noise-free and lets you nuke the venv without touching the source tree.
+We use [`uv`](https://github.com/astral-sh/uv) because the
+`torch + onnx + dev` extras resolve in ~30 s under `uv` vs 3-5 min
+with bare `pip`, which matters a lot when `$SCRATCH` gets purged and
+you have to rebuild the env.
+
+### 2a. Install `uv` (skip if `uv --version` already works)
+
+`uv` isn't on NERSC login nodes by default. Either of the two paths
+below drops the binary in `~/.local/bin`, which is on the default
+login-node `PATH`:
+
+```bash
+# Primary — the Astral installer script (fast, self-updating).
+curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
+
+# Fallback — if curl is blocked on the login node during maintenance.
+# python3.11 -m pip install --user uv
+# export PATH="$HOME/.local/bin:$PATH"
+
+# Make it survive new login shells (only append if not already there).
+grep -qxF 'export PATH="$HOME/.local/bin:$PATH"' ~/.bashrc \
+    || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+
+uv --version            # -> uv 0.x.y
+```
+
+`$HOME` is shared across Perlmutter login nodes, so this install is a
+one-time cost per user account, not per session.
+
+### 2b. Create and activate the venv
 
 ```bash
 uv venv --python 3.11 .venv
@@ -32,8 +63,9 @@ python --version      # -> Python 3.11.x
 which python          # -> $TEST_DIR/.venv/bin/python
 ```
 
-If `uv` is not available, plain `python3.11 -m venv .venv` is
-equivalent; pip install times are just slower.
+If you really can't install `uv`, `python3.11 -m venv .venv` is a
+drop-in replacement; downstream `uv pip install` calls become plain
+`pip install`.
 
 ## 3. Editable install with `torch + onnx + dev` extras
 
