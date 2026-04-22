@@ -78,51 +78,42 @@ Each spatial location corresponds to a specific radial position in the plasma, a
 
 ```python
 import pandas as pd
-from surge import SurrogateTrainer
 
-# Load electron heating data
-trainer = SurrogateTrainer()
-inputs, outputs = trainer.load_dataset_pickle('data/datasets/HHFW-NSTX/PwE_.pkl')
-
-print(f"Input features: {len(inputs)}")
-print(f"Output profiles: {len(outputs)}")
+df = pd.read_pickle('data/datasets/HHFW-NSTX/PwE_.pkl')
+print(f"shape: {df.shape}")
+print(df.columns.tolist())
 ```
 
 ### Surrogate Model Training
 
+Convert the pickle to CSV (or pass the DataFrame directly via the spec's
+``dataset`` field) and drive the standard SURGE workflow:
+
 ```python
-from surge import MLTrainer
+import pandas as pd
+from surge import SurrogateWorkflowSpec, run_surrogate_workflow
+from surge.hpc import ResourceSpec
 
-# Load and prepare data
-trainer = SurrogateTrainer()
-inputs, outputs = trainer.load_dataset_pickle('data/datasets/HHFW-NSTX/PwE_.pkl')
+df = pd.read_pickle('data/datasets/HHFW-NSTX/PwE_.pkl')
+df.to_csv('hhfw_pwe.csv', index=False)
 
-# Get the underlying MLTrainer
-ml_trainer = trainer.get_trainer()
-
-# Load data into ML framework
-ml_trainer.load_df_dataset(trainer.df, inputs, outputs)
-ml_trainer.train_test_split(test_split=0.2)
-ml_trainer.standardize_data()
-
-# Train surrogate model
-ml_trainer.init_model(0)  # Random Forest
-ml_trainer.train(0)
-ml_trainer.predict_output(0)
-
-print(f"Model R² score: {ml_trainer.R2:.4f}")
+spec = SurrogateWorkflowSpec(
+    dataset_path='hhfw_pwe.csv',
+    models=[{'key': 'sklearn.random_forest',
+             'params': {'n_estimators': 200}}],
+    resources=ResourceSpec(device='cpu', num_workers=4),
+    output_dir='.', run_tag='hhfw_pwe',
+    overwrite_existing_run=True,
+)
+summary = run_surrogate_workflow(spec)
+print(summary['models'][0]['metrics']['test'])
 ```
 
 ### Hyperparameter Optimization
 
-```python
-# Optimize model hyperparameters
-results = ml_trainer.tune(
-    method='optuna_botorch',
-    n_trials=50
-)
-print(f"Best R² after tuning: {results['best_r2']:.4f}")
-```
+Add an ``hpo`` block to any model entry; see
+[`examples/quickstart.py`](../../../examples/quickstart.py) for a worked
+Optuna-driven MLP example, or `docs/quickstart.rst` for the YAML form.
 
 ## Data Statistics
 
@@ -158,6 +149,5 @@ If you use this dataset in research, please cite:
 
 ## Related Files
 
-- `../../../notebooks/RF_Heating_Surrogate_Demo.ipynb`: Complete demonstration workflow
-- `../../../examples/`: Additional analysis scripts
+- `../../../examples/quickstart.py`: Public quickstart CLI (generic datasets)
 - `../README.md`: General datasets overview
