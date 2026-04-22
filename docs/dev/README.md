@@ -13,6 +13,8 @@ This folder contains documentation for **development status**, **modification tr
 
 | Document | Description |
 |----------|-------------|
+| [EXTENDED_ROADMAP.md](EXTENDED_ROADMAP.md) | Maintainer planning: DDStore, resource validation, ezpz prior art (see also [PUBLIC_OPEN_SOURCE_PLAN.md](../PUBLIC_OPEN_SOURCE_PLAN.md)) |
+| [../PUBLIC_OPEN_SOURCE_PLAN.md](../PUBLIC_OPEN_SOURCE_PLAN.md) | **Single file:** public URL, `filter-repo` exclusions, what was removed from the tree, release checklist |
 | [UNSTAGED_CHANGES_SUMMARY.md](UNSTAGED_CHANGES_SUMMARY.md) | Summary of modifications not yet committed; use before creating commits |
 | [M3DC1_PYTHON_CODE.md](M3DC1_PYTHON_CODE.md) | How to obtain `m3dc1_python_code` from external repo (placeholder) |
 | [POSTER_REVIEW.md](POSTER_REVIEW.md) | Poster review notes |
