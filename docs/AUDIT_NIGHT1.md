@@ -1,10 +1,55 @@
-# Night 1 disclosure audit — partial (blocked by disk quota)
+# Night 1 / Night 2-morning disclosure audit — CLOSED
 
-**Status:** INCOMPLETE. Home filesystem is at 109.3% quota; git cannot
-write its index. See `docs/OPEN_QUESTIONS.md` top entry for unblock steps.
+**Status:** CLOSED as of 2026-04-21 (commits 864d464 / ead0177 / 053389a
+on `ai4fusion-dev`, CI green on all three). The disk-quota block that
+halted Night 1 was cleared; the subsequent §1.2 + §2.1 passes were
+executed in one sweep as part of Night 2 morning.
 
-This report captures what was possible from read-only scans before the
-sprint halted.
+### Closing metrics (post-sweep)
+- Tracked files containing NERSC absolute paths
+  (`/global/homes/`, `/pscratch/`, `/global/cfs/`):
+  **85 → 6**. All 6 remaining are intentional false-positives:
+  - `docs/AUDIT_NIGHT1.md` (this file),
+    `docs/OPEN_QUESTIONS.md`,
+    `docs/RELEASE_SPRINT.md` — release-plan docs that *discuss*
+    the removal;
+  - `.github/pull_request_template.md`,
+    `CONTRIBUTING.md` — contributor checklists that say
+    "no new `/global/homes/...` paths" (anti-pattern warnings);
+  - `scripts/m3dc1/surge_slurm_env.sh` — documented
+    `SURGE_CONDA_ENV` default override point.
+- Tracked files total: **338 → 214** (−124).
+- M3D-C1 experiment tree (27 configs, 15 Slurm training scripts, 13
+  batch-setup YAMLs, 19 auxiliary `.py` scripts, 5 HPC templates,
+  3 notebooks, 9 research figures, 13 internal docs) moved to
+  gitignored `docs/internal/`, `scripts/m3dc1/internal/`,
+  `configs/internal/`, `examples/internal/`, `templates/internal/`,
+  `notebooks/m3dc1/internal/`, `data/internal/`.
+- Public-facing dataset API preserved: `XGCDataset`, `M3DC1Dataset`,
+  `SurrogateDataset` still import cleanly; 3 kept-public
+  `scripts/m3dc1/*.py` (`dataset_complex_v2`, `eigenmode_features`,
+  `loader`) are the lazy-import dependencies.
+- Two evidence-based internal reference docs drafted from the 27
+  historical runs (gitignored, local-only):
+  `docs/internal/M3DC1_RECIPES_AND_LESSONS.md`,
+  `docs/internal/SURGE_SLURM_BEST_PRACTICES.md`.
+- `.gitignore:190` blanket `models/` footgun (the one that caused
+  the fresh-clone CI import error in commit 6f33d89) narrowed to
+  `runs/**/models/` + `data/**/models/`, with `/surge/models/`
+  explicitly ignored to preserve the `surge/models.py` canonical module.
+
+### Remaining for Night 3
+- Night 3 T3.1 `git filter-repo` on a fresh clone — strip the
+  pre-sweep NERSC paths out of git history entirely (the sweep above
+  only protects HEAD going forward).
+- Night 3 T3.2 DOE-CODE registration + optional PyPI publish.
+
+---
+
+## Historical audit snapshot (as taken at Night 1 halt)
+
+Everything below this line is the Night 1 scan as captured before
+the sweep; kept for provenance.
 
 ---
 
