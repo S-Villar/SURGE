@@ -1,0 +1,21 @@
+# sklearn MLP on SPARC M3DC1 subset.
+dataset_path: workspace/sparc_m3dc1_active_learning.parquet
+dataset_format: auto
+metadata_path: ../../data/datasets/M3DC1/sparc_m3dc1_D1_metadata.yaml
+test_fraction: 0.2
+val_fraction: 0.15
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: ["val"]
+predictions_format: csv
+output_dir: .
+run_tag: rose_m3dc1_mlp
+seed: 42
+overwrite_existing_run: true
+models:
+  - key: sklearn.mlp
+    name: mlp_m3dc1
+    params:
+      hidden_layer_sizes: [64, 64]
+      max_iter: 800
+      random_state: 42

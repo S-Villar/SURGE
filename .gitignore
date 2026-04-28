@@ -246,6 +246,7 @@ notebooks/m3dc1/m3dc1_python_code/
 
 # HHFW pickles: not shipped in public releases; keep local only under policy.
 data/datasets/HHFW-NSTX/*.pkl
+data/datasets/M3DC1/*.pkl
 
 # Specific notebook files
 notebooks/Test_Botorch_Pe_NSTX_Compare.ipynb
