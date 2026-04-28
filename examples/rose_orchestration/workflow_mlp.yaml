@@ -1,0 +1,21 @@
+# Scikit-learn MLPRegressor (surge key sklearn.mlp) — second training flavor.
+dataset_path: workspace/synthetic_active_learning.parquet
+dataset_format: auto
+metadata_path: synthetic_demo_metadata.yaml
+test_fraction: 0.2
+val_fraction: 0.15
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: ["val"]
+predictions_format: csv
+output_dir: .
+run_tag: rose_demo_mlp
+seed: 42
+overwrite_existing_run: true
+models:
+  - key: sklearn.mlp
+    name: mlp_demo
+    params:
+      hidden_layer_sizes: [32, 32]
+      max_iter: 500
+      random_state: 42

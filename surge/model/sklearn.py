@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.neural_network import MLPRegressor
@@ -79,6 +80,46 @@ class MLPModel(SklearnRegressorAdapter):
         "max_iter": 800,
         "random_state": 42,
     }
+
+    def _build_model(self, **kwargs: Any) -> Any:
+        params = dict(self.default_params)
+        params.update(kwargs)
+        self.ensemble_n = max(1, int(params.pop("ensemble_n", 1)))
+        if self.ensemble_n == 1:
+            return MLPRegressor(**params)
+
+        base_seed = params.get("random_state", 42)
+        models = []
+        for idx in range(self.ensemble_n):
+            member_params = dict(params)
+            if base_seed is not None:
+                member_params["random_state"] = int(base_seed) + idx
+            models.append(MLPRegressor(**member_params))
+        return models
+
+    def fit(self, X: Any, y: Any) -> Any:
+        if isinstance(self._model, list):
+            for member in self._model:
+                member.fit(X, y)
+            return self
+        return super().fit(X, y)
+
+    def predict(self, X: Any) -> Any:
+        if isinstance(self._model, list):
+            preds = np.stack([np.asarray(member.predict(X)) for member in self._model], axis=0)
+            return preds.mean(axis=0)
+        return super().predict(X)
+
+    def predict_with_uncertainty(self, X: Any) -> Any:
+        if not isinstance(self._model, list):
+            raise NotImplementedError("Set ensemble_n > 1 for sklearn.mlp uncertainty.")
+        preds = np.stack([np.asarray(member.predict(X)) for member in self._model], axis=0)
+        return {
+            "mean": preds.mean(axis=0),
+            "std": preds.std(axis=0, ddof=0),
+            "variance": preds.var(axis=0, ddof=0),
+            "n_members": self.ensemble_n,
+        }
 
 
 class GPRModel(SklearnRegressorAdapter):

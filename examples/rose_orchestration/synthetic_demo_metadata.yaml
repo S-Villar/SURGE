@@ -1,0 +1,8 @@
+# Minimal metadata for the synthetic parquet used in ROSE + SURGE demos.
+inputs:
+  - x0
+  - x1
+outputs:
+  - y
+metadata:
+  description: Synthetic regression for ROSE orchestration demos

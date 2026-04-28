@@ -1,0 +1,8 @@
+# Install SURGE from this checkout and ROSE from a sibling/local clone:
+#   pip install -e .
+#   pip install -e /path/to/ROSE
+-r requirements.txt
+
+# ROSE/Rhapsody helper dependencies that may not be present in a base SURGE env.
+pydantic>=2.0
+typeguard

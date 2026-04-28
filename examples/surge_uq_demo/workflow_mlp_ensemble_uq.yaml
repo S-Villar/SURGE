@@ -1,0 +1,23 @@
+# SURGE-only deep ensemble UQ (sklearn.mlp ensemble_n > 1).
+dataset_path: workspace/synthetic_active_learning.parquet
+dataset_format: auto
+metadata_path: synthetic_demo_metadata.yaml
+test_fraction: 0.2
+val_fraction: 0.15
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: ["val"]
+predictions_format: csv
+output_dir: .
+run_tag: surge_uq_ensemble_demo
+seed: 42
+overwrite_existing_run: true
+models:
+  - key: sklearn.mlp
+    name: mlp_ens_demo
+    request_uncertainty: true
+    params:
+      hidden_layer_sizes: [32, 32]
+      max_iter: 300
+      random_state: 42
+      ensemble_n: 5
