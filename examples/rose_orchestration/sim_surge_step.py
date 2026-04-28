@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import argparse
-import json
 
 import pandas as pd
 
-from dataset_utils import build_training_parquet, workspace_dir
+from dataset_utils import build_training_parquet, training_row_plan, workspace_dir, write_json_atomic
 
 
 def main() -> int:
@@ -19,15 +18,28 @@ def main() -> int:
 
     path = build_training_parquet(args.iteration, dataset=args.dataset)
     n = pd.read_parquet(path).shape[0]
+    plan = training_row_plan(args.iteration, dataset=args.dataset)
 
-    meta = {"step": "simulation", "iteration": args.iteration, "n_rows": int(n), "dataset": str(path)}
+    meta = {
+        "step": "simulation",
+        "iteration": args.iteration,
+        "n_rows": int(n),
+        "n_rows_requested": plan["n_rows_requested"],
+        "n_rows_total": plan["n_rows_total"],
+        "row_policy": plan["row_policy"],
+        "dataset": str(path),
+    }
     ws = workspace_dir()
-    with (ws / "last_simulation.json").open("w", encoding="utf-8") as f:
-        json.dump(meta, f, indent=2)
+    write_json_atomic(ws / "last_simulation.json", meta)
 
     if args.verbose:
         print("=" * 72, flush=True)
-        print(f"[SIM] dataset={args.dataset}  iteration={args.iteration}  rows={n}", flush=True)
+        print(
+            f"[SIM] dataset={args.dataset}  iteration={args.iteration}  "
+            f"rows={n} total_available={plan['n_rows_total'] or 'generated'}",
+            flush=True,
+        )
+        print(f"[SIM] row_policy={plan['row_policy']}", flush=True)
         print(f"[SIM] path={path}", flush=True)
         print("=" * 72, flush=True)
     return 0

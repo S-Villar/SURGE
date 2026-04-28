@@ -36,12 +36,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from dataset_utils import build_training_parquet, workspace_dir
+from dataset_utils import build_training_parquet, training_row_plan, workspace_dir, write_json_atomic
 from demo_common import add_demo_cli, add_reporting_cli, mlp_search_task_kwargs
 from orch_report import (
     RunTimer,
     print_run_header,
     print_run_report,
+    print_iteration_progress,
     progress_label,
     snapshot_iteration,
 )
@@ -119,17 +120,27 @@ async def _demo(
         it = int(kwargs.get("iteration", 0))
         seed = int(kwargs.get("base_seed", base_seed))
         if not quiet:
+            plan = training_row_plan(it, dataset=dataset)
             print(
                 f"{progress_label(it, max_iter, 'sim')} base_seed={seed}  "
-                f"grow Parquet ({dataset})",
+                f"grow Parquet ({dataset}); training_rows={plan['n_rows']} "
+                f"total_available={plan['n_rows_total'] or 'generated'}",
                 flush=True,
             )
         path = build_training_parquet(it, dataset=dataset)
         n = pd.read_parquet(path).shape[0]
-        meta = {"iteration": it, "n_rows": n, "dataset": str(path), "base_seed": seed}
+        plan = training_row_plan(it, dataset=dataset)
+        meta = {
+            "iteration": it,
+            "n_rows": n,
+            "n_rows_requested": plan["n_rows_requested"],
+            "n_rows_total": plan["n_rows_total"],
+            "row_policy": plan["row_policy"],
+            "dataset": str(path),
+            "base_seed": seed,
+        }
         workspace_dir()
-        with (workspace_dir() / "last_simulation.json").open("w", encoding="utf-8") as f:
-            json.dump(meta, f, indent=2)
+        write_json_atomic(workspace_dir() / "last_simulation.json", meta)
         if not quiet:
             print(
                 f"{progress_label(it, max_iter, 'sim')} wrote {n} rows -> {path.name}",
@@ -196,6 +207,14 @@ async def _demo(
     report_rows: list[dict] = []
     async for state in acl.start(max_iter=max_iter, initial_config=initial):
         report_rows.append(snapshot_iteration(workspace_dir(), state.iteration))
+        print_iteration_progress(
+            report_rows,
+            max_iter=max_iter,
+            score_metric="val_r2",
+            higher_is_better=True,
+            threshold=r2_threshold,
+            threshold_operator=r2_operator,
+        )
         if not quiet:
             print(
                 f"\n{progress_label(state.iteration, max_iter, 'ORCHESTRATION')} "

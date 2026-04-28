@@ -9,6 +9,26 @@ Branch **`radical-integration`**: Examples 1–3 share **`demo_common`** (CLI, s
 
 **ROSE** schedules: simulation → SURGE training → active-learning placeholder → criterion.
 
+## What "source", "rows", and the handoff mean
+
+The integration keeps the roles deliberately separate:
+
+| Layer | What it owns in these examples |
+|-------|--------------------------------|
+| **Source data** | The labeled table that SURGE trains on. For `synthetic`, the demo generates it. For `m3dc1`, the source is `data/datasets/M3DC1/sparc-m3dc1-D1.pkl` plus `sparc_m3dc1_D1_metadata.yaml`. |
+| **Simulation step** | Creates the current iteration's training Parquet under `examples/rose_orchestration/workspace/`. In a real campaign this would be where new simulation labels are acquired or ingested. |
+| **SURGE training** | Reads the Parquet through the YAML workflow (`workflow_*.yaml`), trains the surrogate, writes artifacts under `runs/rose_*`, and emits metrics. |
+| **ROSE criterion** | Reads `workspace/last_surge_metrics.json` and decides whether to continue or stop. |
+| **Rhapsody / Radical Asyncflow** | Execute the ROSE task graph using threads (Examples 1/3) or subprocesses (Example 2). |
+
+The **`rows`** column is the number of training cases used by SURGE in that ROSE iteration, not the full size of the source dataset. This is intentional: the examples mimic an active-learning/campaign loop where more labels become available over time.
+
+- Synthetic mode starts at **50** rows and adds **30** rows per iteration.
+- M3DC1 mode starts at **600** rows from a shuffled complete-case pool and adds **600** rows per iteration, capped by the number of complete rows in the PKL.
+- In Example 3, each random MLP architecture is trained on the current iteration's growing table. It is therefore a campaign/search demonstration, not a controlled HPO benchmark where every architecture sees the exact same full dataset.
+
+For a fixed-data HPO comparison, change `build_m3dc1_parquet()` / `build_synthetic_parquet()` to always write the same row count for every iteration, then let only the architecture or model settings vary.
+
 ## Demo details: what each example does and which functions it uses
 
 All three examples use the same **ROSE** high-level object, **`rose.al.active_learner.SequentialActiveLearner`**, and the same **outer loop**: build a **Radical Asyncflow** `WorkflowEngine` on top of a **Rhapsody** `rhapsody.backends.ConcurrentExecutionBackend`, then drive **`async for state in acl.start(max_iter=..., initial_config=...)`** until ROSE stops or the iteration cap is reached. They differ in **how each stage is executed** (Python callables vs shell commands) and in **SURGE training** (fixed RF/MLP alternation vs random MLP search) and **stop criterion** (MSE with a zero threshold vs validation R² with a user threshold).

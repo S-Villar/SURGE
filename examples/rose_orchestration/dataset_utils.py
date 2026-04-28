@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
+import os
 
 import numpy as np
 import pandas as pd
@@ -36,6 +38,16 @@ def workspace_dir() -> Path:
     d = example_dir() / "workspace"
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def write_json_atomic(path: Path, payload: dict) -> None:
+    """Write JSON handoff files atomically for ROSE/SURGE stages."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    with tmp.open("w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+        f.write("\n")
+    tmp.replace(path)
 
 
 def m3dc1_pkl_path() -> Path:
@@ -112,6 +124,28 @@ def build_m3dc1_parquet(iteration: int) -> Path:
     path = workspace_dir() / "sparc_m3dc1_active_learning.parquet"
     chunk.to_parquet(path, index=False)
     return path
+
+
+def training_row_plan(iteration: int, *, dataset: str) -> dict:
+    """Return row-count context for the current demo iteration."""
+    if dataset == "m3dc1":
+        pool = _load_m3dc1_pool()
+        requested = M3DC1_N_BASE + iteration * M3DC1_N_STEP
+        return {
+            "n_rows_requested": requested,
+            "n_rows": min(requested, len(pool)),
+            "n_rows_total": len(pool),
+            "row_policy": f"prefix of shuffled complete M3DC1 pool; +{M3DC1_N_STEP} rows/iteration",
+        }
+    if dataset == "synthetic":
+        n = SYN_N_BASE + iteration * SYN_N_STEP
+        return {
+            "n_rows_requested": n,
+            "n_rows": n,
+            "n_rows_total": None,
+            "row_policy": f"fresh synthetic sample; +{SYN_N_STEP} rows/iteration",
+        }
+    raise ValueError(f"Unknown dataset mode {dataset!r}; use 'synthetic' or 'm3dc1'.")
 
 
 def build_training_parquet(iteration: int, *, dataset: str) -> Path:
