@@ -3,7 +3,7 @@ dataset_path: workspace/synthetic_active_learning.parquet
 dataset_format: auto
 metadata_path: synthetic_demo_metadata.yaml
 test_fraction: 0.2
-val_fraction: 0.15
+val_fraction: 0.2
 standardize_inputs: true
 standardize_outputs: false
 predictions_scope: ["val"]

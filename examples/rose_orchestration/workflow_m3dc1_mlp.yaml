@@ -3,7 +3,7 @@ dataset_path: workspace/sparc_m3dc1_active_learning.parquet
 dataset_format: auto
 metadata_path: ../../data/datasets/M3DC1/sparc_m3dc1_D1_metadata.yaml
 test_fraction: 0.2
-val_fraction: 0.15
+val_fraction: 0.2
 standardize_inputs: true
 standardize_outputs: true
 predictions_scope: ["val"]

@@ -11,19 +11,21 @@ DEFAULT_MAX_ITER = 3
 DEFAULT_POOL_WORKERS = 4
 
 
-def workflow_for_iteration(iteration: int, dataset: str) -> str:
+def canonical_workflow(dataset: str, family: str = "rf") -> str:
     if dataset == "m3dc1":
-        return "m3dc1_rf" if iteration % 2 == 0 else "m3dc1_mlp"
-    return "rf" if iteration % 2 == 0 else "mlp"
+        return f"m3dc1_{family}"
+    return family
 
 
-def inprocess_task_kwargs(max_iter: int, dataset: str) -> dict[int, dict]:
-    return {i: {"iteration": i, "workflow": workflow_for_iteration(i, dataset)} for i in range(max_iter)}
+def inprocess_task_kwargs(max_iter: int, dataset: str, workflow_family: str = "rf") -> dict[int, dict]:
+    workflow = canonical_workflow(dataset, workflow_family)
+    return {i: {"iteration": i, "workflow": workflow} for i in range(max_iter)}
 
 
-def shell_task_kwargs(max_iter: int, dataset: str) -> dict[int, dict]:
+def shell_task_kwargs(max_iter: int, dataset: str, workflow_family: str = "rf") -> dict[int, dict]:
+    workflow = canonical_workflow(dataset, workflow_family)
     return {
-        i: {"--iteration": str(i), "--workflow": workflow_for_iteration(i, dataset)}
+        i: {"--iteration": str(i), "--workflow": workflow}
         for i in range(max_iter)
     }
 
@@ -36,8 +38,13 @@ def add_dataset_cli(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--dataset",
         choices=("synthetic", "m3dc1"),
-        default="synthetic",
-        help="Training table: built-in synthetic (default) or SPARC M3DC1 PKL.",
+        default="m3dc1",
+        help="Training table: SPARC M3DC1 PKL (default) or built-in synthetic.",
+    )
+    parser.add_argument(
+        "--growing-pool",
+        action="store_true",
+        help="Use the staged campaign pool-growth policy instead of the full available dataset.",
     )
 
 
@@ -47,10 +54,26 @@ def add_reporting_cli(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Less per-step printing; summary table when supported.",
     )
+    parser.add_argument(
+        "--no-live-progress",
+        action="store_true",
+        help="Disable refreshing progress bars and print normal line-oriented output.",
+    )
+    parser.add_argument(
+        "--log-file",
+        default=None,
+        help="Write detailed ROSE/SURGE output to this log file.",
+    )
 
 
 def add_demo_cli(parser: argparse.ArgumentParser) -> None:
     add_dataset_cli(parser)
+    parser.add_argument(
+        "--workflow-family",
+        choices=("rf", "mlp"),
+        default="rf",
+        help="SURGE workflow family for campaign examples (default rf).",
+    )
     parser.add_argument(
         "--max-iter",
         type=int,

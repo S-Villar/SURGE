@@ -2,22 +2,19 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
-from pathlib import Path
+
+from dataset_utils import read_iteration_state, write_iteration_state
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--iteration", type=int, default=0)
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
-
-    p = Path(__file__).resolve().parent / "workspace" / "last_surge_metrics.json"
-    if not p.exists():
-        raise SystemExit(f"Missing {p} — run training step first.")
-
-    data = json.loads(p.read_text(encoding="utf-8"))
+    data = read_iteration_state(args.iteration, "surge_metrics")
     mse = float(data["val_mse"])
+    write_iteration_state(args.iteration, "criterion", {"iteration": args.iteration, "metric": "val_mse", "value": mse})
     if args.verbose:
         # ROSE shell tasks parse stdout as a single float; keep logs on stderr.
         print(
