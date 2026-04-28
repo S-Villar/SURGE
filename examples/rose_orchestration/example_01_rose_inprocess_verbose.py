@@ -29,7 +29,7 @@ from dataset_utils import (
     workspace_dir,
     write_iteration_state,
 )
-from demo_common import add_demo_cli, add_reporting_cli, inprocess_task_kwargs
+from demo_common import add_demo_cli, add_reporting_cli, inprocess_task_kwargs, workflow_fixed_rows
 from live_report import LiveProgress, capture_output_to_log, default_log_path, reset_log_file
 from orch_report import (
     RunTimer,
@@ -114,8 +114,14 @@ async def _demo(
     async def simulation(*args, **kwargs):
         it = int(kwargs.get("iteration", 0))
         wf = kwargs.get("workflow", "rf")
-        use_full_dataset = dataset == "m3dc1" and not growing_pool
-        plan = training_row_plan(it, dataset=dataset, use_full_dataset=use_full_dataset)
+        fixed_rows = workflow_fixed_rows(dataset, wf, growing_pool=growing_pool)
+        use_full_dataset = dataset == "m3dc1" and not growing_pool and fixed_rows is None
+        plan = training_row_plan(
+            it,
+            dataset=dataset,
+            fixed_rows=fixed_rows,
+            use_full_dataset=use_full_dataset,
+        )
         if not quiet and not live_progress:
             print_phase_progress(
                 rose_iter=it,
@@ -125,7 +131,12 @@ async def _demo(
                 phase_name="prepare dataset slice",
                 detail=f"next workflow={wf}; {plan['n_rows']} samples selected",
             )
-        path = build_training_parquet(it, dataset=dataset, use_full_dataset=use_full_dataset)
+        path = build_training_parquet(
+            it,
+            dataset=dataset,
+            fixed_rows=fixed_rows,
+            use_full_dataset=use_full_dataset,
+        )
         n = pd.read_parquet(path).shape[0]
         meta = {
             "iteration": it,

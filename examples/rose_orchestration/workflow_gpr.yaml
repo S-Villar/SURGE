@@ -1,0 +1,22 @@
+# Scikit-learn GaussianProcessRegressor.
+dataset_path: workspace/synthetic_active_learning.parquet
+dataset_format: auto
+metadata_path: synthetic_demo_metadata.yaml
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: ["val"]
+predictions_format: csv
+output_dir: .
+run_tag: rose_demo_gpr
+seed: 42
+overwrite_existing_run: true
+models:
+  - key: sklearn.gpr
+    name: gpr_demo
+    request_uncertainty: true
+    params:
+      alpha: 1.0e-4
+      normalize_y: true
+      random_state: 42

@@ -23,7 +23,7 @@ from dataset_utils import (
     workspace_dir,
     write_iteration_state,
 )
-from demo_common import add_dataset_cli, add_reporting_cli, canonical_workflow
+from demo_common import add_dataset_cli, add_reporting_cli, canonical_workflow, workflow_fixed_rows
 from live_report import LiveProgress, capture_output_to_log, default_log_path, reset_log_file
 from orch_report import RunTimer, print_run_header, progress_bar
 
@@ -107,11 +107,19 @@ async def _demo(
         it = int(kwargs.get("iteration", 0))
         label = str(kwargs["learner_label"])
         ns = f"example_04/{label}"
-        use_full_dataset = dataset == "m3dc1" and not growing_pool
-        plan = training_row_plan(it, dataset=dataset, use_full_dataset=use_full_dataset)
+        workflow = str(kwargs["workflow"])
+        fixed_rows = workflow_fixed_rows(dataset, workflow, growing_pool=growing_pool)
+        use_full_dataset = dataset == "m3dc1" and not growing_pool and fixed_rows is None
+        plan = training_row_plan(
+            it,
+            dataset=dataset,
+            fixed_rows=fixed_rows,
+            use_full_dataset=use_full_dataset,
+        )
         path = build_training_parquet(
             it,
             dataset=dataset,
+            fixed_rows=fixed_rows,
             use_full_dataset=use_full_dataset,
             namespace=ns,
         )
@@ -119,7 +127,7 @@ async def _demo(
         meta = {
             "iteration": it,
             "learner_label": label,
-            "workflow": kwargs["workflow"],
+            "workflow": workflow,
             "dataset": str(path),
             "n_rows": n,
             "n_rows_total": plan["n_rows_total"],
@@ -282,13 +290,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Parallel ROSE/Rhapsody orchestration of SURGE candidates.")
     add_dataset_cli(parser)
     add_reporting_cli(parser)
-    parser.add_argument("--candidates", default="rf,mlp", help="Comma-separated model families: rf,mlp.")
+    parser.add_argument(
+        "--candidates",
+        default="rf,mlp",
+        help="Comma-separated model families: rf,mlp,gpr,gpflow_gpr.",
+    )
     parser.add_argument("--max-iter", type=int, default=1)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--r2-threshold", type=float, default=0.95)
     args = parser.parse_args()
     candidates = [x.strip() for x in args.candidates.split(",") if x.strip()]
-    invalid = sorted(set(candidates) - {"rf", "mlp"})
+    invalid = sorted(set(candidates) - {"rf", "mlp", "gpr", "gpflow_gpr"})
     if invalid:
         raise ValueError(f"Unsupported candidates: {invalid}; use rf and/or mlp.")
     if len(candidates) < 2:

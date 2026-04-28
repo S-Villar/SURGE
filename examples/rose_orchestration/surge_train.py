@@ -22,8 +22,12 @@ def _ensure_surge_on_path() -> Path:
 _WORKFLOW_FILES: dict[str, str] = {
     "rf": "workflow_rf.yaml",
     "mlp": "workflow_mlp.yaml",
+    "gpr": "workflow_gpr.yaml",
+    "gpflow_gpr": "workflow_gpflow_gpr.yaml",
     "m3dc1_rf": "workflow_m3dc1_rf.yaml",
     "m3dc1_mlp": "workflow_m3dc1_mlp.yaml",
+    "m3dc1_gpr": "workflow_m3dc1_gpr.yaml",
+    "m3dc1_gpflow_gpr": "workflow_m3dc1_gpflow_gpr.yaml",
 }
 
 

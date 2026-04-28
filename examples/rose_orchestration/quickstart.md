@@ -54,6 +54,8 @@ Example 1:
 
 ```bash
 python example_01_rose_inprocess_verbose.py --max-iter 2
+python example_01_rose_inprocess_verbose.py --workflow-family gpr --dataset synthetic --max-iter 1
+python example_01_rose_inprocess_verbose.py --workflow-family gpflow_gpr --dataset synthetic --max-iter 1
 ```
 
 Example 2:
@@ -72,6 +74,7 @@ Example 4:
 
 ```bash
 python example_04_parallel_model_race.py --max-iter 1 --candidates rf,mlp
+python example_04_parallel_model_race.py --dataset synthetic --max-iter 1 --candidates gpr,gpflow_gpr
 ```
 
 Example 5:
@@ -90,6 +93,7 @@ python example_05_uq_guided_mlp_ensemble.py --max-iter 1 --ensemble-n 3
 - Example 5 uses ROSE's UQ learner flow to monitor SURGE MLP ensemble uncertainty.
 - `m3dc1` is the default dataset. Use `--dataset synthetic` for faster smoke tests.
 - Examples 1 and 2 use the full M3DC1 pool by default. Use `--growing-pool` for staged campaign growth.
+- For `gpr` and `gpflow_gpr` on `m3dc1`, the examples cap the default dataset slice at 600 rows; full-row Gaussian-process training is not the default.
 - All local workflow YAMLs use a 60/20/20 train/val/test split through SURGE.
 
 ## Slurm Launch

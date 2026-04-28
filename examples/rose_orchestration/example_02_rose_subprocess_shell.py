@@ -89,7 +89,8 @@ async def _demo(
         it = kwargs.get("--iteration", "0")
         iit = int(it)
         gp = " --growing-pool" if growing_pool else ""
-        cmd = f"{py} {ex / 'sim_surge_step.py'} --iteration {it} --dataset {dataset}{gp}{vb}"
+        wf = kwargs.get("--workflow", "rf")
+        cmd = f"{py} {ex / 'sim_surge_step.py'} --iteration {it} --dataset {dataset} --workflow {wf}{gp}{vb}"
         if not quiet:
             print_phase_progress(
                 rose_iter=iit,
@@ -97,7 +98,7 @@ async def _demo(
                 phase_index=1,
                 phase_total=4,
                 phase_name="spawn dataset preparation process",
-                detail=cmd,
+                detail=f"workflow={wf}; {cmd}",
             )
         return cmd
 

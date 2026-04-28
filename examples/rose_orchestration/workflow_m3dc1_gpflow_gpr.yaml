@@ -1,0 +1,23 @@
+# GPflow Gaussian Process Regression on SPARC M3DC1.
+dataset_path: workspace/sparc_m3dc1_active_learning.parquet
+dataset_format: auto
+metadata_path: ../../data/datasets/M3DC1/sparc_m3dc1_D1_metadata.yaml
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: ["val"]
+predictions_format: csv
+output_dir: .
+run_tag: rose_m3dc1_gpflow_gpr
+seed: 42
+overwrite_existing_run: true
+models:
+  - key: gpflow.gpr
+    name: gpflow_gpr_m3dc1
+    request_uncertainty: true
+    params:
+      kernel_type: rbf
+      optimize: true
+      maxiter: 50
+      noise_variance: 0.05
