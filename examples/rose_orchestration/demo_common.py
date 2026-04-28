@@ -9,12 +9,21 @@ EXAMPLE_DIR = Path(__file__).resolve().parent
 SURGE_ROOT = EXAMPLE_DIR.parent.parent
 DEFAULT_MAX_ITER = 3
 DEFAULT_POOL_WORKERS = 4
+SUPPORTED_WORKFLOW_FAMILIES = ("rf", "mlp", "gpr", "gpflow_gpr")
+GPR_M3DC1_ROW_CAP = 600
 
 
 def canonical_workflow(dataset: str, family: str = "rf") -> str:
     if dataset == "m3dc1":
         return f"m3dc1_{family}"
     return family
+
+
+def workflow_fixed_rows(dataset: str, workflow: str, *, growing_pool: bool) -> int | None:
+    family = workflow.replace("m3dc1_", "", 1) if workflow.startswith("m3dc1_") else workflow
+    if dataset == "m3dc1" and not growing_pool and family in {"gpr", "gpflow_gpr"}:
+        return GPR_M3DC1_ROW_CAP
+    return None
 
 
 def inprocess_task_kwargs(max_iter: int, dataset: str, workflow_family: str = "rf") -> dict[int, dict]:
@@ -70,7 +79,7 @@ def add_demo_cli(parser: argparse.ArgumentParser) -> None:
     add_dataset_cli(parser)
     parser.add_argument(
         "--workflow-family",
-        choices=("rf", "mlp"),
+        choices=SUPPORTED_WORKFLOW_FAMILIES,
         default="rf",
         help="SURGE workflow family for campaign examples (default rf).",
     )

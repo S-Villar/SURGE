@@ -85,7 +85,9 @@ These are reference orchestration demos.
 - `synthetic` remains available for fast smoke tests.
 - `--growing-pool` restores the staged campaign behavior (`600`, `1200`, `1800`, ... for M3DC1).
 
-Default workflow family is `rf`. You can switch to `mlp` with `--workflow-family mlp`.
+Default workflow family is `rf`. You can also use `mlp`, `gpr`, and `gpflow_gpr`.
+For `m3dc1`, the Gaussian-process workflows default to a capped 600-row subset unless
+you explicitly opt into `--growing-pool`; full 9891-row GP training is not a practical default.
 
 ### Example 3
 
@@ -187,6 +189,8 @@ ROSE/SURGE output is written under `workspace/example_XX/execution.log`. Use
 ```bash
 python example_01_rose_inprocess_verbose.py --max-iter 2
 python example_01_rose_inprocess_verbose.py --workflow-family mlp --max-iter 2
+python example_01_rose_inprocess_verbose.py --workflow-family gpr --dataset synthetic --max-iter 1
+python example_01_rose_inprocess_verbose.py --workflow-family gpflow_gpr --dataset synthetic --max-iter 1
 python example_01_rose_inprocess_verbose.py --dataset synthetic --max-iter 2
 python example_01_rose_inprocess_verbose.py --growing-pool --max-iter 3
 ```
@@ -209,6 +213,7 @@ python example_03_rose_mlp_random_r2_stop.py --max-iter 12 --r2-threshold 0.9 --
 
 ```bash
 python example_04_parallel_model_race.py --max-iter 1 --candidates rf,mlp
+python example_04_parallel_model_race.py --dataset synthetic --max-iter 1 --candidates gpr,gpflow_gpr
 python example_04_parallel_model_race.py --dataset synthetic --max-iter 1 --candidates rf,mlp
 ```
 
