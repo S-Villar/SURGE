@@ -8,6 +8,16 @@ This directory is the `radical-integration` reference integration for:
 
 The goal is to show a clean composition, not just a pile of wrappers.
 
+## Demo wrappers
+
+For a shorter, presentation-oriented entry point on M3DC1, use the scripts under
+[demos/](demos/README.md):
+
+- `demos/demo_01_better_surrogate_selection.sh`
+- `demos/demo_02_smarter_campaign_control.sh`
+
+Recorded outputs for those two runs are in [demos/RESULTS.md](demos/RESULTS.md).
+
 ## What is implemented
 
 Examples 1-4 use the same four ROSE stages:
