@@ -9,6 +9,8 @@ They are intentionally narrow:
   families in parallel on the full M3DC1 table.
 - **Demo 2** shows **smarter campaign control** by letting ROSE monitor SURGE UQ
   outputs from an MLP ensemble trained on the full M3DC1 table.
+- **Demo 3** shows **resource-aware surrogate search** by sizing the number of
+  concurrent trials from the CPUs you allocate and racing those trials together.
 
 ## Why these two demos
 
@@ -46,6 +48,7 @@ From `examples/rose_orchestration`:
 ```bash
 bash demos/demo_01_better_surrogate_selection.sh
 bash demos/demo_02_smarter_campaign_control.sh
+bash demos/demo_03_resource_aware_search.sh
 ```
 
 Both scripts:
@@ -54,6 +57,13 @@ Both scripts:
 - ensure `PYTHONPATH` points at this SURGE checkout
 - symlink the M3DC1 PKL into `data/datasets/M3DC1/`
 - write detailed execution logs under `demos/output/`
+
+To run any demo inside an interactive Slurm allocation:
+
+```bash
+cd examples/rose_orchestration
+TIME=02:00:00 CPUS_PER_TASK=16 bash demos/run_demo_interactive.sh demos/demo_03_resource_aware_search.sh
+```
 
 ## Demo definitions
 
@@ -102,6 +112,25 @@ Reasoning:
 This is not acquisition yet. It is a control-plane demo that shows the loop can
 make decisions from UQ signals emitted by SURGE, even when the model is trained
 on the full available dataset.
+
+### Demo 3: Resource-aware surrogate search
+
+Command:
+
+```bash
+python demos/demo_03_resource_aware_search.py --cpus-per-trial 4
+```
+
+Reasoning:
+
+- the script reads `SLURM_CPUS_PER_TASK` from your interactive allocation
+- it converts that into a parallel trial budget: `parallel_trials = allocated_cpus / cpus_per_trial`
+- it launches one or more RF baseline trials plus randomized MLP trials on the
+  full M3DC1 table
+- all trials race concurrently, and the script ranks them by validation `R2`
+
+This is the first demo here that actually changes campaign width based on the
+resources you allocate.
 
 ## What the UQ means
 

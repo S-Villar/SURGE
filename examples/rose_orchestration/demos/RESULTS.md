@@ -84,3 +84,33 @@ What they do **not** show yet:
 - adaptive point acquisition from an unlabeled candidate pool
 - distributed placement through RADICAL-Pilot
 - a persistent campaign database or dashboard
+
+## Demo 3: Resource-aware surrogate search
+
+Command used for verification:
+
+```bash
+python demos/demo_03_resource_aware_search.py \
+  --max-trials 2 \
+  --cpus-per-trial 4 \
+  --sklearn-mlp-max-iter 300
+```
+
+Observed summary:
+
+```text
+Demo 3 summary
+Wall time: 160.7s
+rank  trial  family   train     val    test     val_r2    val_rmse  detail
+   1      1  mlp      5934    1978    1979    0.88257    0.007724  mlp[64, 96, 128, 96]
+   2      0  rf       5934    1978    1979    0.85180    0.008677  baseline_rf
+```
+
+Notes:
+
+- The script detected the available CPU budget and converted it into a parallel
+  trial count.
+- For this bounded verification run, the search width was capped at `2` trials.
+- Both trials used the full M3DC1 table with SURGE's internal `60 / 20 / 20`
+  split.
+- The randomized MLP trial beat the RF baseline on validation `R2`.

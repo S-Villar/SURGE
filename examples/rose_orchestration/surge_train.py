@@ -119,6 +119,7 @@ def run_one_surge(
     output_dir: str | Path | None = None,
     log_path: str | Path | None = None,
     run_tag_prefix: str = "rose",
+    random_state: int | None = None,
     verbose: bool = True,
 ) -> dict:
     ex_dir = Path(__file__).resolve().parent
@@ -135,6 +136,11 @@ def run_one_surge(
     payload = _load_workflow_payload(ex_dir, wf_key)
     _override_payload_paths(payload, dataset_path=dataset_path, output_dir=output_dir)
     spec_path = ex_dir / _WORKFLOW_FILES[wf_key]
+    if random_state is not None:
+        payload["seed"] = int(random_state)
+        if payload.get("models"):
+            payload["models"][0].setdefault("params", {})
+            payload["models"][0]["params"]["random_state"] = int(random_state)
 
     run_tag = f"{run_tag_prefix}_{wf_key}_iter_{iteration}"
     payload["run_tag"] = run_tag
@@ -351,18 +357,46 @@ def main() -> int:
     ap.add_argument("--output-dir", default=None)
     ap.add_argument("--log-file", default=None)
     ap.add_argument("--run-tag-prefix", default="rose")
+    ap.add_argument("--random-state", type=int, default=None)
+    ap.add_argument(
+        "--hidden-layer-sizes",
+        default=None,
+        help="Comma-separated hidden sizes; when set for mlp workflows, use the random-arch helper.",
+    )
+    ap.add_argument("--sklearn-mlp-max-iter", type=int, default=800)
+    ap.add_argument("--dataset", choices=("synthetic", "m3dc1"), default=None)
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
-    out = run_one_surge(
-        args.workflow,
-        args.iteration,
-        namespace=args.namespace,
-        dataset_path=args.dataset_path,
-        output_dir=args.output_dir,
-        log_path=args.log_file,
-        run_tag_prefix=args.run_tag_prefix,
-        verbose=args.verbose,
-    )
+    if args.hidden_layer_sizes is not None:
+        if args.workflow not in {"mlp", "m3dc1_mlp"}:
+            raise ValueError("--hidden-layer-sizes is only supported with mlp or m3dc1_mlp workflows.")
+        dataset = args.dataset or ("m3dc1" if args.workflow.startswith("m3dc1_") else "synthetic")
+        hidden = [int(piece.strip()) for piece in args.hidden_layer_sizes.split(",") if piece.strip()]
+        out = run_mlp_surge_random_arch(
+            args.iteration,
+            hidden,
+            dataset=dataset,
+            sklearn_mlp_max_iter=args.sklearn_mlp_max_iter,
+            random_state=args.random_state if args.random_state is not None else 42,
+            namespace=args.namespace,
+            dataset_path=args.dataset_path,
+            output_dir=args.output_dir,
+            log_path=args.log_file,
+            run_tag_prefix=args.run_tag_prefix,
+            verbose=args.verbose,
+        )
+    else:
+        out = run_one_surge(
+            args.workflow,
+            args.iteration,
+            namespace=args.namespace,
+            dataset_path=args.dataset_path,
+            output_dir=args.output_dir,
+            log_path=args.log_file,
+            run_tag_prefix=args.run_tag_prefix,
+            random_state=args.random_state,
+            verbose=args.verbose,
+        )
     print(out["val_mse"], flush=True)
     return 0
 
