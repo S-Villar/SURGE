@@ -84,6 +84,7 @@ async def _demo(
 
     from rose.al.active_learner import SequentialActiveLearner
     from rose.learner import LearnerConfig, TaskConfig
+    use_full_training_set = dataset == "m3dc1"
     timer = RunTimer()
     print_run_header(
         example="3 - random MLP hidden_layer_sizes + ROSE stop on val_r2",
@@ -120,16 +121,27 @@ async def _demo(
         it = int(kwargs.get("iteration", 0))
         seed = int(kwargs.get("base_seed", base_seed))
         if not quiet:
-            plan = training_row_plan(it, dataset=dataset)
+            plan = training_row_plan(
+                it,
+                dataset=dataset,
+                use_full_dataset=use_full_training_set,
+            )
             print(
-                f"{progress_label(it, max_iter, 'sim')} base_seed={seed}  "
-                f"grow Parquet ({dataset}); training_rows={plan['n_rows']} "
-                f"total_available={plan['n_rows_total'] or 'generated'}",
+                f"{progress_label(it, max_iter, 'prepare training set')} "
+                f"seed={seed}  {plan['row_policy']}  rows={plan['n_rows']}",
                 flush=True,
             )
-        path = build_training_parquet(it, dataset=dataset)
+        path = build_training_parquet(
+            it,
+            dataset=dataset,
+            use_full_dataset=use_full_training_set,
+        )
         n = pd.read_parquet(path).shape[0]
-        plan = training_row_plan(it, dataset=dataset)
+        plan = training_row_plan(
+            it,
+            dataset=dataset,
+            use_full_dataset=use_full_training_set,
+        )
         meta = {
             "iteration": it,
             "n_rows": n,
@@ -143,7 +155,8 @@ async def _demo(
         write_json_atomic(workspace_dir() / "last_simulation.json", meta)
         if not quiet:
             print(
-                f"{progress_label(it, max_iter, 'sim')} wrote {n} rows -> {path.name}",
+                f"{progress_label(it, max_iter, 'training set ready')} "
+                f"{n} rows -> {path.name}",
                 flush=True,
             )
         return meta
@@ -156,8 +169,8 @@ async def _demo(
         arch = sample_hidden_layers(rng)
         if not quiet:
             print(
-                f"{progress_label(it, max_iter, 'train')} hidden_layer_sizes={arch}  "
-                f"training_rows={sim_result['n_rows']}",
+                f"{progress_label(it, max_iter, 'evaluate candidate')} "
+                f"arch={arch}  training_rows={sim_result['n_rows']}",
                 flush=True,
             )
         out = run_mlp_surge_random_arch(
@@ -176,8 +189,9 @@ async def _demo(
         surge = train_bundle["surge"]
         if not quiet:
             print(
-                f"{progress_label(it, max_iter, 'active_learn')} arch={surge.get('hidden_layer_sizes')}  "
-                f"val_r2={float(surge['val_r2']):.5f}  (stub; no acquisition)",
+                f"{progress_label(it, max_iter, 'post-train policy')} "
+                f"arch={surge.get('hidden_layer_sizes')}  val_r2={float(surge['val_r2']):.5f}  "
+                f"(stub; no acquisition)",
                 flush=True,
             )
         return {"iteration": it, "train": train_bundle}
@@ -196,7 +210,7 @@ async def _demo(
         crit_it = int(meta.get("iteration", 0))
         if not quiet:
             print(
-                f"{progress_label(crit_it, max_iter, 'criterion')} val_r2={r2:.6f}  "
+                f"{progress_label(crit_it, max_iter, 'stop check')} val_r2={r2:.6f}  "
                 f"threshold {r2_operator} {r2_threshold}",
                 flush=True,
             )
@@ -212,6 +226,7 @@ async def _demo(
             max_iter=max_iter,
             score_metric="val_r2",
             higher_is_better=True,
+            mode_label="hpo",
             threshold=r2_threshold,
             threshold_operator=r2_operator,
         )

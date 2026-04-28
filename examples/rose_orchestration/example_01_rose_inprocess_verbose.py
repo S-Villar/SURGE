@@ -82,8 +82,8 @@ async def _demo(*, max_iter: int, workers: int, dataset: str, quiet: bool) -> No
         if not quiet:
             plan = training_row_plan(it, dataset=dataset)
             print(
-                f"{progress_label(it, max_iter, 'sim')} refresh Parquet; next SURGE spec={wf}; "
-                f"training_rows={plan['n_rows']} total_available={plan['n_rows_total'] or 'generated'}",
+                f"{progress_label(it, max_iter, 'dataset setup')} next workflow={wf}; "
+                f"{plan['row_policy']}; rows_this_iter={plan['n_rows']}",
                 flush=True,
             )
         path = build_training_parquet(it, dataset=dataset)
@@ -109,7 +109,8 @@ async def _demo(*, max_iter: int, workers: int, dataset: str, quiet: bool) -> No
         wf = str(kwargs.get("workflow", "rf"))
         if not quiet:
             print(
-                f"{progress_label(it, max_iter, 'train')} SURGE spec={wf}  rows={sim_result['n_rows']}",
+                f"{progress_label(it, max_iter, 'train surrogate')} "
+                f"workflow={wf}  training_rows={sim_result['n_rows']}",
                 flush=True,
             )
         out = run_one_surge(wf, it, verbose=not quiet)
@@ -157,6 +158,7 @@ async def _demo(*, max_iter: int, workers: int, dataset: str, quiet: bool) -> No
             max_iter=max_iter,
             score_metric="val_r2",
             higher_is_better=True,
+            mode_label="campaign",
         )
         if not quiet:
             print(
