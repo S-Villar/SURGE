@@ -477,6 +477,12 @@ class GPflowMultiKernelGPR:
 
         return mean_pred
 
+    def predict_with_uncertainty(self, X):
+        """
+        Make predictions with uncertainty using the selected kernel model.
+        """
+        return self.predict(X, return_std=True)
+
     def get_best_kernel_info(self):
         """
         Return information about the best kernel found.
