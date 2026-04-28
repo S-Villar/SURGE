@@ -8,19 +8,19 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
 import os
 import sys
 import warnings
 from pathlib import Path
 
+from dataset_utils import read_iteration_state
 from demo_common import SURGE_ROOT, add_demo_cli, add_reporting_cli, shell_task_kwargs
 from orch_report import (
     RunTimer,
     print_run_header,
     print_run_report,
     print_iteration_progress,
-    progress_label,
+    print_phase_progress,
     snapshot_iteration,
 )
 
@@ -35,7 +35,15 @@ def _banner(title: str) -> None:
     print("=" * 72 + "\n", flush=True)
 
 
-async def _demo(*, max_iter: int, workers: int, dataset: str, quiet: bool) -> None:
+async def _demo(
+    *,
+    max_iter: int,
+    workers: int,
+    dataset: str,
+    workflow_family: str,
+    growing_pool: bool,
+    quiet: bool,
+) -> None:
     from concurrent.futures import ProcessPoolExecutor
 
     from radical.asyncflow import WorkflowEngine
@@ -46,13 +54,19 @@ async def _demo(*, max_iter: int, workers: int, dataset: str, quiet: bool) -> No
     from rose.metrics import MEAN_SQUARED_ERROR_MSE
 
     ws = _EX / "workspace"
+    os.environ["SURGE_ROSE_WORKSPACE_NAMESPACE"] = "example_02"
+    ws = ws / "example_02"
     timer = RunTimer()
     print_run_header(
         example="2 - SequentialActiveLearner + subprocess (ProcessPoolExecutor)",
         max_iter=max_iter,
         workers=workers,
         quiet=quiet,
-        extra=f"Dataset={dataset}. Each phase spawns sim_surge_step, surge_train, active_surge_step, check_surge_metrics.",
+        extra=(
+            f"Dataset={dataset}. Workflow family: {workflow_family}. "
+            f"Pool policy: {'growing subset' if growing_pool else 'full dataset'}. "
+            "Each phase spawns sim_surge_step, surge_train, active_surge_step, check_surge_metrics."
+        ),
     )
     if not quiet:
         _banner("ROSE + SURGE - Example 2: subprocess orchestration")
@@ -61,7 +75,7 @@ async def _demo(*, max_iter: int, workers: int, dataset: str, quiet: bool) -> No
     asyncflow = await WorkflowEngine.create(engine)
     acl = SequentialActiveLearner(asyncflow)
 
-    raw_kw = shell_task_kwargs(max_iter, dataset)
+    raw_kw = shell_task_kwargs(max_iter, dataset, workflow_family)
     from rose.learner import TaskConfig
     sched = {i: TaskConfig(kwargs=kw) for i, kw in raw_kw.items()}
     initial = LearnerConfig(simulation=sched, training=sched, active_learn=sched)
@@ -74,9 +88,17 @@ async def _demo(*, max_iter: int, workers: int, dataset: str, quiet: bool) -> No
     async def simulation(*args, **kwargs):
         it = kwargs.get("--iteration", "0")
         iit = int(it)
-        cmd = f"{py} {ex / 'sim_surge_step.py'} --iteration {it} --dataset {dataset}{vb}"
+        gp = " --growing-pool" if growing_pool else ""
+        cmd = f"{py} {ex / 'sim_surge_step.py'} --iteration {it} --dataset {dataset}{gp}{vb}"
         if not quiet:
-            print(f"{progress_label(iit, max_iter, 'dataset setup')} spawn -> {cmd}", flush=True)
+            print_phase_progress(
+                rose_iter=iit,
+                max_iter=max_iter,
+                phase_index=1,
+                phase_total=4,
+                phase_name="spawn dataset preparation process",
+                detail=cmd,
+            )
         return cmd
 
     @acl.training_task()
@@ -86,7 +108,14 @@ async def _demo(*, max_iter: int, workers: int, dataset: str, quiet: bool) -> No
         wf = kwargs.get("--workflow", "rf")
         cmd = f"{py} {ex / 'surge_train.py'} --workflow {wf} --iteration {it}{vb}"
         if not quiet:
-            print(f"{progress_label(iit, max_iter, 'train surrogate')} workflow={wf} -> {cmd}", flush=True)
+            print_phase_progress(
+                rose_iter=iit,
+                max_iter=max_iter,
+                phase_index=2,
+                phase_total=4,
+                phase_name="spawn SURGE training process",
+                detail=f"workflow={wf}; {cmd}",
+            )
         return cmd
 
     @acl.active_learn_task()
@@ -95,18 +124,29 @@ async def _demo(*, max_iter: int, workers: int, dataset: str, quiet: bool) -> No
         iit = int(it)
         cmd = f"{py} {ex / 'active_surge_step.py'} --iteration {it}{vb}"
         if not quiet:
-            print(f"{progress_label(iit, max_iter, 'active learning')} stub -> {cmd}", flush=True)
+            print_phase_progress(
+                rose_iter=iit,
+                max_iter=max_iter,
+                phase_index=3,
+                phase_total=4,
+                phase_name="spawn active-learning hook",
+                detail=cmd,
+            )
         return cmd
 
     @acl.as_stop_criterion(metric_name=MEAN_SQUARED_ERROR_MSE, threshold=0.0)
     async def check_mse(*args, **kwargs):
-        cmd = f"{py} {ex / 'check_surge_metrics.py'}{vb}"
+        crit_it = int(kwargs.get("--iteration", "0"))
+        cmd = f"{py} {ex / 'check_surge_metrics.py'} --iteration {crit_it}{vb}"
         if not quiet:
-            crit_it = 0
-            mp = ws / "last_surge_metrics.json"
-            if mp.exists():
-                crit_it = int(json.loads(mp.read_text(encoding="utf-8")).get("iteration", 0))
-            print(f"{progress_label(crit_it, max_iter, 'criterion')} -> {cmd}", flush=True)
+            print_phase_progress(
+                rose_iter=crit_it,
+                max_iter=max_iter,
+                phase_index=4,
+                phase_total=4,
+                phase_name="spawn criterion check",
+                detail=cmd,
+            )
         return cmd
 
     if not quiet:
@@ -122,11 +162,24 @@ async def _demo(*, max_iter: int, workers: int, dataset: str, quiet: bool) -> No
             mode_label="campaign",
         )
         if not quiet:
+            try:
+                surge_meta = read_iteration_state(state.iteration, "surge_metrics")
+                print(
+                    "  subprocess     "
+                    f"split train/val/test={surge_meta.get('splits', {}).get('train', '?')}/"
+                    f"{surge_meta.get('splits', {}).get('val', '?')}/"
+                    f"{surge_meta.get('splits', {}).get('test', '?')}",
+                    flush=True,
+                )
+            except FileNotFoundError:
+                pass
             print(
-                f"\n{progress_label(state.iteration, max_iter, 'ORCHESTRATION')} "
-                f"metric={state.metric_value!r}  should_stop={state.should_stop}",
+                f"  orchestration  metric={state.metric_value!r}  should_stop={state.should_stop}",
                 flush=True,
             )
+        if state.iteration >= max_iter - 1:
+            acl.stop()
+            break
 
     await acl.shutdown()
     print_run_report(
@@ -151,12 +204,15 @@ def main() -> None:
         os.environ["PYTHONPATH"] = root
     elif root not in prev.split(os.pathsep):
         os.environ["PYTHONPATH"] = root + os.pathsep + prev
+    os.environ["SURGE_ROSE_WORKSPACE_NAMESPACE"] = "example_02"
 
     asyncio.run(
         _demo(
             max_iter=args.max_iter,
             workers=args.workers,
             dataset=args.dataset,
+            workflow_family=args.workflow_family,
+            growing_pool=args.growing_pool,
             quiet=args.quiet,
         )
     )

@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 import argparse
-import json
-from pathlib import Path
 
-from dataset_utils import workspace_dir, write_json_atomic
+from dataset_utils import read_iteration_state, write_iteration_state
 
 
 def main() -> int:
@@ -14,11 +12,7 @@ def main() -> int:
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
 
-    ws = workspace_dir()
-    mpath = ws / "last_surge_metrics.json"
-    m = {}
-    if mpath.exists():
-        m = json.loads(mpath.read_text(encoding="utf-8"))
+    m = read_iteration_state(args.iteration, "surge_metrics")
 
     if args.verbose:
         print("=" * 72, flush=True)
@@ -32,8 +26,8 @@ def main() -> int:
             )
         print("=" * 72, flush=True)
 
-    info = {"step": "active_learn", "iteration": args.iteration, "surge": m}
-    write_json_atomic(ws / "last_active.json", info)
+    info = {"step": "active_learn", "iteration": args.iteration, "policy": "stub", "surge": m}
+    write_iteration_state(args.iteration, "active", info)
     return 0
 
 

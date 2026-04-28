@@ -6,3 +6,4 @@
 # ROSE/Rhapsody helper dependencies that may not be present in a base SURGE env.
 pydantic>=2.0
 typeguard
+tqdm>=4.0

@@ -34,10 +34,40 @@ def example_dir() -> Path:
     return Path(__file__).resolve().parent
 
 
-def workspace_dir() -> Path:
-    d = example_dir() / "workspace"
+def workspace_dir(namespace: str | None = None) -> Path:
+    base = example_dir() / "workspace"
+    ns = namespace if namespace is not None else os.environ.get("SURGE_ROSE_WORKSPACE_NAMESPACE", "")
+    ns = str(ns).strip()
+    d = base / ns if ns else base
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def iteration_dir(iteration: int, namespace: str | None = None) -> Path:
+    d = workspace_dir(namespace) / f"iter_{int(iteration):03d}"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def iteration_state_path(iteration: int, name: str, namespace: str | None = None) -> Path:
+    return iteration_dir(iteration, namespace) / f"{name}.json"
+
+
+def write_iteration_state(
+    iteration: int,
+    name: str,
+    payload: dict,
+    namespace: str | None = None,
+) -> Path:
+    path = iteration_state_path(iteration, name, namespace)
+    write_json_atomic(path, payload)
+    write_json_atomic(workspace_dir(namespace) / f"last_{name}.json", payload)
+    return path
+
+
+def read_iteration_state(iteration: int, name: str, namespace: str | None = None) -> dict:
+    path = iteration_state_path(iteration, name, namespace)
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def write_json_atomic(path: Path, payload: dict) -> None:
@@ -107,6 +137,7 @@ def build_synthetic_parquet(
     *,
     seed: int = SYN_SHUFFLE_SEED,
     fixed_rows: int | None = None,
+    namespace: str | None = None,
 ) -> Path:
     rng_seed = seed if fixed_rows is not None else seed + iteration
     rng = np.random.default_rng(rng_seed)
@@ -116,7 +147,7 @@ def build_synthetic_parquet(
     noise = rng.normal(0.0, 0.12, size=n)
     y = 0.7 * np.sin(2.0 * x0) + 0.3 * (x1**2) + noise
     df = pd.DataFrame({"x0": x0, "x1": x1, "y": y})
-    path = workspace_dir() / "synthetic_active_learning.parquet"
+    path = workspace_dir(namespace) / "synthetic_active_learning.parquet"
     df.to_parquet(path, index=False)
     return path
 
@@ -126,6 +157,7 @@ def build_m3dc1_parquet(
     *,
     fixed_rows: int | None = None,
     use_full_dataset: bool = False,
+    namespace: str | None = None,
 ) -> Path:
     pool = _load_m3dc1_pool()
     if use_full_dataset:
@@ -137,7 +169,7 @@ def build_m3dc1_parquet(
     if n < 1:
         raise ValueError("M3DC1 pool is empty after filtering.")
     chunk = pool.iloc[:n].copy()
-    path = workspace_dir() / "sparc_m3dc1_active_learning.parquet"
+    path = workspace_dir(namespace) / "sparc_m3dc1_active_learning.parquet"
     chunk.to_parquet(path, index=False)
     return path
 
@@ -189,13 +221,15 @@ def build_training_parquet(
     dataset: str,
     fixed_rows: int | None = None,
     use_full_dataset: bool = False,
+    namespace: str | None = None,
 ) -> Path:
     if dataset == "m3dc1":
         return build_m3dc1_parquet(
             iteration,
             fixed_rows=fixed_rows,
             use_full_dataset=use_full_dataset,
+            namespace=namespace,
         )
     if dataset == "synthetic":
-        return build_synthetic_parquet(iteration, fixed_rows=fixed_rows)
+        return build_synthetic_parquet(iteration, fixed_rows=fixed_rows, namespace=namespace)
     raise ValueError(f"Unknown dataset mode {dataset!r}; use 'synthetic' or 'm3dc1'.")
