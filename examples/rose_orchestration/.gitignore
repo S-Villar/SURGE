@@ -2,3 +2,5 @@ workspace/
 __pycache__/
 *.pyc
 ensemble_summary.json
+surge_rose_*.out
+surge_rose_*.err
