@@ -58,12 +58,34 @@ Both scripts:
 - symlink the M3DC1 PKL into `data/datasets/M3DC1/`
 - write detailed execution logs under `demos/output/`
 
-To run any demo inside an interactive Slurm allocation:
+To run Demo 1 and Demo 2 through an interactive Slurm allocation, use the
+dedicated launchers:
+
+```bash
+cd examples/rose_orchestration
+TIME=02:00:00 CPUS_PER_TASK=8 bash demos/launch_demo_01_interactive.sh
+TIME=02:00:00 CPUS_PER_TASK=8 bash demos/launch_demo_02_interactive.sh
+```
+
+Those wrappers do the `salloc` step for you and then run the demo on the
+allocated node.
+
+To run Demo 3 with an interactive allocation:
 
 ```bash
 cd examples/rose_orchestration
 TIME=02:00:00 CPUS_PER_TASK=16 bash demos/run_demo_interactive.sh demos/demo_03_resource_aware_search.sh
 ```
+
+To run Demo 3 as a Slurm job submission:
+
+```bash
+cd examples/rose_orchestration
+TIME=02:00:00 CPUS_PER_TASK=16 bash demos/run_demo_03_slurm.sh --cpus-per-trial 4
+```
+
+That submits an `sbatch` job and lets the demo size its parallel trial budget
+from the CPUs granted to the job.
 
 ## Demo definitions
 
