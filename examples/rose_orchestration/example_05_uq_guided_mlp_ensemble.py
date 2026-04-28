@@ -225,11 +225,19 @@ async def _demo(
         await learner.shutdown()
     print("\nExample 5 summary")
     print(f"Wall time: {timer.seconds():.1f}s")
-    print(f"{'#':>3}  {'samples':>8}  {'val_r2':>9}  {'mean_std':>10}  {'max_std':>10}  {'uq_artifact'}")
+    print(
+        f"{'#':>3}  {'total':>8}  {'train':>8}  {'val':>8}  {'test':>8}  "
+        f"{'val_r2':>9}  {'mean_std':>10}  {'max_std':>10}  {'uq_artifact'}"
+    )
     for row in rows:
-        n = sum(int(v) for v in row.get("splits", {}).values())
+        splits = row.get("splits", {})
+        train_n = int(splits.get("train", 0))
+        val_n = int(splits.get("val", 0))
+        test_n = int(splits.get("test", 0))
+        total_n = train_n + val_n + test_n
         print(
-            f"{int(row['iteration']):>3}  {n:>8}  {float(row['val_r2']):>9.5f}  "
+            f"{int(row['iteration']):>3}  {total_n:>8}  {train_n:>8}  {val_n:>8}  {test_n:>8}  "
+            f"{float(row['val_r2']):>9.5f}  "
             f"{float(row.get('uq_val_std_mean', float('nan'))):>10.6f}  "
             f"{float(row.get('uq_val_std_max', float('nan'))):>10.6f}  "
             f"{row.get('uq_artifact')}",

@@ -26,8 +26,7 @@ fi
 cd "${EXAMPLE_DIR}"
 exec python example_05_uq_guided_mlp_ensemble.py \
   --dataset m3dc1 \
-  --growing-pool \
-  --max-iter 3 \
+  --max-iter 1 \
   --ensemble-n 3 \
   --sklearn-mlp-max-iter 250 \
   --uncertainty-threshold 0.015 \

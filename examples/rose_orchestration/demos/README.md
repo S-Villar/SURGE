@@ -6,9 +6,9 @@ This directory contains two runnable demos built on top of the
 They are intentionally narrow:
 
 - **Demo 1** shows **better surrogate selection** by racing multiple SURGE model
-  families in parallel on the same M3DC1 subset.
+  families in parallel on the full M3DC1 table.
 - **Demo 2** shows **smarter campaign control** by letting ROSE monitor SURGE UQ
-  outputs from an MLP ensemble across a staged M3DC1 campaign.
+  outputs from an MLP ensemble trained on the full M3DC1 table.
 
 ## Why these two demos
 
@@ -19,7 +19,7 @@ They exercise different parts of the stack:
 - `Rhapsody` plus `radical.asyncflow` own the execution backend.
 
 Demo 1 emphasizes **parallel candidate evaluation**.
-Demo 2 emphasizes **campaign-state monitoring from uncertainty artifacts**.
+Demo 2 emphasizes **uncertainty-aware model assessment and control signals**.
 
 ## Prerequisites
 
@@ -64,17 +64,17 @@ Command:
 ```bash
 python example_04_parallel_model_race.py \
   --dataset m3dc1 \
-  --growing-pool \
   --max-iter 1 \
-  --candidates rf,mlp,gpr,gpflow_gpr
+  --candidates rf,mlp
 ```
 
 Reasoning:
 
-- `--growing-pool --max-iter 1` keeps all four model families on the same 600-row
-  M3DC1 slice.
-- That makes the model race fair enough to compare `rf`, `mlp`, `sklearn.gpr`,
-  and `gpflow.gpr`.
+- Both candidates see the full complete-case M3DC1 table.
+- SURGE then applies its internal `60 / 20 / 20` split.
+- The default full-dataset race uses `rf` and `mlp` because the current Gaussian
+  process workflows are intentionally capped on M3DC1 and would not be a fair
+  "entire sample set" comparison.
 - ROSE `ParallelActiveLearner` and the Rhapsody backend execute the race
   concurrently, while SURGE handles training for each candidate.
 
@@ -85,8 +85,7 @@ Command:
 ```bash
 python example_05_uq_guided_mlp_ensemble.py \
   --dataset m3dc1 \
-  --growing-pool \
-  --max-iter 3 \
+  --max-iter 1 \
   --ensemble-n 3 \
   --sklearn-mlp-max-iter 250 \
   --uncertainty-threshold 0.015
@@ -94,13 +93,42 @@ python example_05_uq_guided_mlp_ensemble.py \
 
 Reasoning:
 
-- The M3DC1 pool grows `600 -> 1200 -> 1800` rows.
-- SURGE trains an sklearn MLP ensemble on each iteration.
+- The M3DC1 complete-case table is used as the full outer dataset.
+- SURGE applies the internal `60 / 20 / 20` split once for the run.
+- SURGE trains an sklearn MLP ensemble on that split.
 - SURGE writes validation uncertainty artifacts.
 - ROSE `SeqUQLearner` reads those artifacts and monitors the uncertainty threshold.
 
 This is not acquisition yet. It is a control-plane demo that shows the loop can
-make decisions from UQ signals emitted by SURGE.
+make decisions from UQ signals emitted by SURGE, even when the model is trained
+on the full available dataset.
+
+## What the UQ means
+
+For Demo 2, SURGE writes ensemble uncertainty on the validation split:
+
+- `mean_std`: average predictive standard deviation across validation points
+- `max_std`: largest predictive standard deviation across validation points
+
+In plain terms:
+
+- low `mean_std` means the ensemble members mostly agree
+- high `mean_std` means the ensemble members disagree more
+- large `max_std` highlights at least one validation region where the model is not stable
+
+## What ROSE can do with it
+
+In the current implementation, ROSE uses that UQ signal for **monitoring and
+decision logic**, not yet for full acquisition. Concretely, ROSE can:
+
+- stop a campaign when uncertainty drops below a target
+- flag that the current surrogate is still not trustworthy enough
+- compare campaign states or retraining attempts using the same UQ metric
+
+The current Demo 2 therefore demonstrates **uncertainty-aware control**, not
+"using less data". The earlier staged version used less data to make the control
+signal evolve across iterations; this full-dataset version keeps the data fixed
+and shows the same ROSE-to-SURGE contract on the complete M3DC1 table.
 
 ## Recorded results
 
