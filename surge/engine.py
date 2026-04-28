@@ -424,6 +424,31 @@ class SurrogateEngine:
             arr = arr.reshape(-1, 1)
         return arr
 
+    @staticmethod
+    def _normalize_uncertainty_payload(payload: Any) -> Dict[str, Any]:
+        """Convert backend-specific UQ returns into a JSON-friendly mapping."""
+        if isinstance(payload, dict):
+            out = dict(payload)
+            if "std" not in out and "variance" in out:
+                out["std"] = np.sqrt(np.asarray(out["variance"]))
+            if "variance" not in out and "std" in out:
+                out["variance"] = np.asarray(out["std"]) ** 2
+            return out
+
+        if isinstance(payload, tuple) and len(payload) == 2:
+            mean, std = payload
+            std_arr = np.asarray(std)
+            return {
+                "mean": mean,
+                "std": std,
+                "variance": std_arr**2,
+            }
+
+        raise TypeError(
+            "predict_with_uncertainty must return a dict or a (mean, std) tuple; "
+            f"got {type(payload).__name__}"
+        )
+
     def _train_single_model(
         self,
         spec: ModelSpec,
@@ -560,7 +585,9 @@ class SurrogateEngine:
         uq_payload: Optional[Dict[str, Any]] = None
         if spec.request_uncertainty:
             try:
-                uq_payload = adapter.predict_with_uncertainty(proc.X_val)
+                uq_payload = self._normalize_uncertainty_payload(
+                    adapter.predict_with_uncertainty(proc.X_val)
+                )
             except NotImplementedError:
                 self.logger.warning(
                     "Model '%s' does not implement predict_with_uncertainty.",
@@ -695,4 +722,3 @@ class SurrogateEngine:
         if self._proc_splits is None:
             raise ValueError("Splits not prepared. Call prepare() or run() first.")
         return self._proc_splits
-
