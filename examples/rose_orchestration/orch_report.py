@@ -10,7 +10,7 @@ from typing import Optional
 
 
 def progress_label(rose_iter: int, n_rose_iters: int, phase: str) -> str:
-    return f"[{rose_iter + 1}/{n_rose_iters} {phase}]"
+    return f"Iteration {rose_iter + 1}/{n_rose_iters} | {phase}"
 
 
 def snapshot_iteration(workspace: Path, rose_iter: int) -> dict:
@@ -41,6 +41,17 @@ def progress_bar(current: int, total: int | None, *, width: int = 24) -> str:
     current = max(0, min(int(current), int(total)))
     filled = round(width * current / total)
     return "[" + "#" * filled + "." * (width - filled) + f"] {current}/{total}"
+
+
+def target_bar(value: float, target: float, *, width: int = 24, higher_is_better: bool = True) -> str:
+    if not math.isfinite(value) or not math.isfinite(target) or target == 0:
+        return "[" + "." * width + "]"
+    if higher_is_better:
+        frac = max(0.0, min(value / target, 1.0))
+    else:
+        frac = max(0.0, min(target / value, 1.0)) if value != 0 else 1.0
+    filled = round(width * frac)
+    return "[" + "=" * filled + "." * (width - filled) + f"] {100.0 * frac:5.1f}%"
 
 
 def metric_sparkline(values: list[float], *, width: int = 32, higher_is_better: bool = True) -> str:
@@ -95,6 +106,7 @@ def print_iteration_progress(
     max_iter: int,
     score_metric: str,
     higher_is_better: bool,
+    mode_label: str = "campaign",
     threshold: float | None = None,
     threshold_operator: str | None = None,
 ) -> None:
@@ -112,19 +124,23 @@ def print_iteration_progress(
         best_i = str(best.get("rose_iter", "?"))
     vals = [float(r[score_metric]) for r in rows if r.get(score_metric) is not None]
     spark = metric_sparkline(vals, higher_is_better=higher_is_better)
-    stop_s = ""
-    if threshold is not None and threshold_operator:
-        stop_s = f"  target: {score_metric} {threshold_operator} {threshold}"
     extra = row.get("hidden_layer_sizes") or row.get("run_tag") or ""
     print(
-        f"[progress] {progress_bar(i + 1, max_iter)}  {describe_row_count(row)}  "
-        f"{score_metric}={metric_s}  best={best_s}@iter{best_i}{stop_s}",
+        f"[{mode_label}] explored {progress_bar(i + 1, max_iter)}  "
+        f"{describe_row_count(row)}  current {score_metric}={metric_s}  "
+        f"best={best_s}@iter{best_i}",
         flush=True,
     )
+    if threshold is not None and threshold_operator:
+        print(
+            f"[{mode_label}] target   {target_bar(float(metric_val), threshold, higher_is_better=higher_is_better)}  "
+            f"{score_metric} {threshold_operator} {threshold}",
+            flush=True,
+        )
     if extra:
-        print(f"[progress] latest={extra}", flush=True)
+        print(f"[{mode_label}] latest   {extra}", flush=True)
     if spark:
-        print(f"[progress] trend {score_metric}: {spark}", flush=True)
+        print(f"[{mode_label}] trend    {score_metric}: {spark}", flush=True)
 
 
 def print_run_header(

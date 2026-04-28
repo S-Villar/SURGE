@@ -102,9 +102,15 @@ def _load_m3dc1_pool(*, shuffle_seed: int = M3DC1_SHUFFLE_SEED) -> pd.DataFrame:
     return _m3dc1_pool
 
 
-def build_synthetic_parquet(iteration: int, *, seed: int = SYN_SHUFFLE_SEED) -> Path:
-    rng = np.random.default_rng(seed + iteration)
-    n = SYN_N_BASE + iteration * SYN_N_STEP
+def build_synthetic_parquet(
+    iteration: int,
+    *,
+    seed: int = SYN_SHUFFLE_SEED,
+    fixed_rows: int | None = None,
+) -> Path:
+    rng_seed = seed if fixed_rows is not None else seed + iteration
+    rng = np.random.default_rng(rng_seed)
+    n = int(fixed_rows) if fixed_rows is not None else SYN_N_BASE + iteration * SYN_N_STEP
     x0 = rng.uniform(-1.0, 1.0, size=n)
     x1 = rng.uniform(-1.0, 1.0, size=n)
     noise = rng.normal(0.0, 0.12, size=n)
@@ -115,9 +121,19 @@ def build_synthetic_parquet(iteration: int, *, seed: int = SYN_SHUFFLE_SEED) -> 
     return path
 
 
-def build_m3dc1_parquet(iteration: int) -> Path:
+def build_m3dc1_parquet(
+    iteration: int,
+    *,
+    fixed_rows: int | None = None,
+    use_full_dataset: bool = False,
+) -> Path:
     pool = _load_m3dc1_pool()
-    n = min(M3DC1_N_BASE + iteration * M3DC1_N_STEP, len(pool))
+    if use_full_dataset:
+        n = len(pool)
+    elif fixed_rows is not None:
+        n = min(int(fixed_rows), len(pool))
+    else:
+        n = min(M3DC1_N_BASE + iteration * M3DC1_N_STEP, len(pool))
     if n < 1:
         raise ValueError("M3DC1 pool is empty after filtering.")
     chunk = pool.iloc[:n].copy()
@@ -126,31 +142,60 @@ def build_m3dc1_parquet(iteration: int) -> Path:
     return path
 
 
-def training_row_plan(iteration: int, *, dataset: str) -> dict:
+def training_row_plan(
+    iteration: int,
+    *,
+    dataset: str,
+    fixed_rows: int | None = None,
+    use_full_dataset: bool = False,
+) -> dict:
     """Return row-count context for the current demo iteration."""
     if dataset == "m3dc1":
         pool = _load_m3dc1_pool()
-        requested = M3DC1_N_BASE + iteration * M3DC1_N_STEP
+        if use_full_dataset:
+            requested = len(pool)
+            row_policy = "full shuffled complete M3DC1 pool for every candidate"
+        elif fixed_rows is not None:
+            requested = int(fixed_rows)
+            row_policy = f"fixed prefix of shuffled complete M3DC1 pool; {requested} rows/iteration"
+        else:
+            requested = M3DC1_N_BASE + iteration * M3DC1_N_STEP
+            row_policy = f"prefix of shuffled complete M3DC1 pool; +{M3DC1_N_STEP} rows/iteration"
         return {
             "n_rows_requested": requested,
             "n_rows": min(requested, len(pool)),
             "n_rows_total": len(pool),
-            "row_policy": f"prefix of shuffled complete M3DC1 pool; +{M3DC1_N_STEP} rows/iteration",
+            "row_policy": row_policy,
         }
     if dataset == "synthetic":
-        n = SYN_N_BASE + iteration * SYN_N_STEP
+        if fixed_rows is not None:
+            n = int(fixed_rows)
+            row_policy = f"fixed synthetic sample; {n} rows for every candidate"
+        else:
+            n = SYN_N_BASE + iteration * SYN_N_STEP
+            row_policy = f"fresh synthetic sample; +{SYN_N_STEP} rows/iteration"
         return {
             "n_rows_requested": n,
             "n_rows": n,
             "n_rows_total": None,
-            "row_policy": f"fresh synthetic sample; +{SYN_N_STEP} rows/iteration",
+            "row_policy": row_policy,
         }
     raise ValueError(f"Unknown dataset mode {dataset!r}; use 'synthetic' or 'm3dc1'.")
 
 
-def build_training_parquet(iteration: int, *, dataset: str) -> Path:
+def build_training_parquet(
+    iteration: int,
+    *,
+    dataset: str,
+    fixed_rows: int | None = None,
+    use_full_dataset: bool = False,
+) -> Path:
     if dataset == "m3dc1":
-        return build_m3dc1_parquet(iteration)
+        return build_m3dc1_parquet(
+            iteration,
+            fixed_rows=fixed_rows,
+            use_full_dataset=use_full_dataset,
+        )
     if dataset == "synthetic":
-        return build_synthetic_parquet(iteration)
+        return build_synthetic_parquet(iteration, fixed_rows=fixed_rows)
     raise ValueError(f"Unknown dataset mode {dataset!r}; use 'synthetic' or 'm3dc1'.")

@@ -76,7 +76,7 @@ async def _demo(*, max_iter: int, workers: int, dataset: str, quiet: bool) -> No
         iit = int(it)
         cmd = f"{py} {ex / 'sim_surge_step.py'} --iteration {it} --dataset {dataset}{vb}"
         if not quiet:
-            print(f"{progress_label(iit, max_iter, 'sim')} spawn -> {cmd}", flush=True)
+            print(f"{progress_label(iit, max_iter, 'dataset setup')} spawn -> {cmd}", flush=True)
         return cmd
 
     @acl.training_task()
@@ -86,7 +86,7 @@ async def _demo(*, max_iter: int, workers: int, dataset: str, quiet: bool) -> No
         wf = kwargs.get("--workflow", "rf")
         cmd = f"{py} {ex / 'surge_train.py'} --workflow {wf} --iteration {it}{vb}"
         if not quiet:
-            print(f"{progress_label(iit, max_iter, 'train')} spec={wf} -> {cmd}", flush=True)
+            print(f"{progress_label(iit, max_iter, 'train surrogate')} workflow={wf} -> {cmd}", flush=True)
         return cmd
 
     @acl.active_learn_task()
@@ -95,7 +95,7 @@ async def _demo(*, max_iter: int, workers: int, dataset: str, quiet: bool) -> No
         iit = int(it)
         cmd = f"{py} {ex / 'active_surge_step.py'} --iteration {it}{vb}"
         if not quiet:
-            print(f"{progress_label(iit, max_iter, 'active_learn')} stub -> {cmd}", flush=True)
+            print(f"{progress_label(iit, max_iter, 'active learning')} stub -> {cmd}", flush=True)
         return cmd
 
     @acl.as_stop_criterion(metric_name=MEAN_SQUARED_ERROR_MSE, threshold=0.0)
@@ -119,6 +119,7 @@ async def _demo(*, max_iter: int, workers: int, dataset: str, quiet: bool) -> No
             max_iter=max_iter,
             score_metric="val_r2",
             higher_is_better=True,
+            mode_label="campaign",
         )
         if not quiet:
             print(

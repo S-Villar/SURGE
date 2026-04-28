@@ -21,11 +21,11 @@ The integration keeps the roles deliberately separate:
 | **ROSE criterion** | Reads `workspace/last_surge_metrics.json` and decides whether to continue or stop. |
 | **Rhapsody / Radical Asyncflow** | Execute the ROSE task graph using threads (Examples 1/3) or subprocesses (Example 2). |
 
-The **`rows`** column is the number of training cases used by SURGE in that ROSE iteration, not the full size of the source dataset. This is intentional: the examples mimic an active-learning/campaign loop where more labels become available over time.
+The **`rows`** column is the number of training cases used by SURGE in that ROSE iteration, not automatically the full size of the source dataset.
 
 - Synthetic mode starts at **50** rows and adds **30** rows per iteration.
-- M3DC1 mode starts at **600** rows from a shuffled complete-case pool and adds **600** rows per iteration, capped by the number of complete rows in the PKL.
-- In Example 3, each random MLP architecture is trained on the current iteration's growing table. It is therefore a campaign/search demonstration, not a controlled HPO benchmark where every architecture sees the exact same full dataset.
+- Examples 1 and 2 in M3DC1 mode start at **600** rows from a shuffled complete-case pool and add **600** rows per iteration, capped by the number of complete rows in the PKL.
+- Example 3 now uses the **full shuffled complete M3DC1 pool for every candidate architecture**, so the HPO loop compares models on the same training table instead of a growing subset.
 
 For a fixed-data HPO comparison, change `build_m3dc1_parquet()` / `build_synthetic_parquet()` to always write the same row count for every iteration, then let only the architecture or model settings vary.
 
