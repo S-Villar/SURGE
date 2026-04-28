@@ -152,10 +152,13 @@ def run_surrogate_workflow(
     spec: SurrogateWorkflowSpec,
     *,
     invocation: Optional[Mapping[str, Any]] = None,
+    console_output: bool = True,
 ) -> Dict[str, Any]:
     """Execute the full surrogate workflow described by the spec."""
-    _real_out = sys.__stdout__
-    _real_err = sys.__stderr__
+    _restore_out = sys.stdout
+    _restore_err = sys.stderr
+    _real_out = sys.__stdout__ if console_output else io.StringIO()
+    _real_err = sys.__stderr__ if console_output else io.StringIO()
     capture_buf = io.StringIO()
     sys.stdout = TeeText(_real_out, capture_buf)
     sys.stderr = TeeText(_real_err, capture_buf)
@@ -406,20 +409,20 @@ def run_surrogate_workflow(
             "scalers": scaler_artifacts,
             "models": workflow_models,
             "registry": registry_summary(),
-        "artifacts": {
-            "root": str(paths.root),
-            "metrics": str(metrics_path),
-            "summary": str(paths.summary_file),
-            "spec": str(paths.spec_file),
-            "train_data_ranges": str(ranges_path) if ranges_path.exists() else None,
-            "invocation": str(paths.root / "invocation.json")
-            if (paths.root / "invocation.json").exists()
-            else None,
-            "run_log": str(paths.root / "run.log")
-            if (paths.root / "run.log").exists()
-            else None,
-        },
-    }
+            "artifacts": {
+                "root": str(paths.root),
+                "metrics": str(metrics_path),
+                "summary": str(paths.summary_file),
+                "spec": str(paths.spec_file),
+                "train_data_ranges": str(ranges_path) if ranges_path.exists() else None,
+                "invocation": str(paths.root / "invocation.json")
+                if (paths.root / "invocation.json").exists()
+                else None,
+                "run_log": str(paths.root / "run.log")
+                if (paths.root / "run.log").exists()
+                else None,
+            },
+        }
         save_workflow_summary(summary, paths)
 
         # Optional MLflow logging (AmSC-style tracking)
@@ -440,7 +443,7 @@ def run_surrogate_workflow(
         LOGGER.info("Workflow %s complete. Artifacts saved to %s", run_tag, paths.root)
         return summary
     finally:
-        sys.stdout, sys.stderr = _real_out, _real_err
+        sys.stdout, sys.stderr = _restore_out, _restore_err
         if log_fp is not None:
             try:
                 log_fp.close()
@@ -905,4 +908,3 @@ def _ensure_serializable(payload: Mapping[str, Any]) -> Dict[str, Any]:
         else:
             result[key] = value
     return result
-
