@@ -26,8 +26,7 @@ fi
 cd "${EXAMPLE_DIR}"
 exec python example_04_parallel_model_race.py \
   --dataset m3dc1 \
-  --growing-pool \
   --max-iter 1 \
-  --candidates rf,mlp,gpr,gpflow_gpr \
+  --candidates rf,mlp \
   --log-file "${OUTPUT_DIR}/execution.log" \
   "$@"
