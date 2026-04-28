@@ -35,6 +35,7 @@ def run_one_surge(
     os.chdir(ex_dir)
 
     _ensure_surge_on_path()
+    from dataset_utils import write_json_atomic  # noqa: WPS433
     import yaml  # noqa: WPS433
     import surge  # noqa: F401, WPS433
     from surge.workflow.run import run_surrogate_workflow
@@ -77,8 +78,7 @@ def run_one_surge(
     w = ex_dir / "workspace"
     w.mkdir(parents=True, exist_ok=True)
     metrics_path = w / "last_surge_metrics.json"
-    with metrics_path.open("w", encoding="utf-8") as f:
-        json.dump(out, f, indent=2)
+    write_json_atomic(metrics_path, out)
 
     if verbose:
         print(f"[SURGE] Wrote metrics for ROSE: {metrics_path}", flush=True)
@@ -99,6 +99,7 @@ def run_mlp_surge_random_arch(
     ex_dir = Path(__file__).resolve().parent
     os.chdir(ex_dir)
     _ensure_surge_on_path()
+    from dataset_utils import write_json_atomic  # noqa: WPS433
     import yaml  # noqa: WPS433
     import surge  # noqa: F401, WPS433
     from surge.workflow.run import run_surrogate_workflow
@@ -145,8 +146,7 @@ def run_mlp_surge_random_arch(
     }
     w = ex_dir / "workspace"
     w.mkdir(parents=True, exist_ok=True)
-    with (w / "last_surge_metrics.json").open("w", encoding="utf-8") as f:
-        json.dump(out, f, indent=2)
+    write_json_atomic(w / "last_surge_metrics.json", out)
 
     if verbose:
         print(f"[SURGE] val_rmse={rmse:.6f}  val_r2={r2:.6f}", flush=True)

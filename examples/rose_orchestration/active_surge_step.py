@@ -5,7 +5,7 @@ import argparse
 import json
 from pathlib import Path
 
-from dataset_utils import workspace_dir
+from dataset_utils import workspace_dir, write_json_atomic
 
 
 def main() -> int:
@@ -33,8 +33,7 @@ def main() -> int:
         print("=" * 72, flush=True)
 
     info = {"step": "active_learn", "iteration": args.iteration, "surge": m}
-    with (ws / "last_active.json").open("w", encoding="utf-8") as f:
-        json.dump(info, f, indent=2)
+    write_json_atomic(ws / "last_active.json", info)
     return 0
 
 

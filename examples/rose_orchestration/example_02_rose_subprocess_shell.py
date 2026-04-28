@@ -19,6 +19,7 @@ from orch_report import (
     RunTimer,
     print_run_header,
     print_run_report,
+    print_iteration_progress,
     progress_label,
     snapshot_iteration,
 )
@@ -113,6 +114,12 @@ async def _demo(*, max_iter: int, workers: int, dataset: str, quiet: bool) -> No
     report_rows: list[dict] = []
     async for state in acl.start(max_iter=max_iter, initial_config=initial):
         report_rows.append(snapshot_iteration(ws, state.iteration))
+        print_iteration_progress(
+            report_rows,
+            max_iter=max_iter,
+            score_metric="val_r2",
+            higher_is_better=True,
+        )
         if not quiet:
             print(
                 f"\n{progress_label(state.iteration, max_iter, 'ORCHESTRATION')} "
