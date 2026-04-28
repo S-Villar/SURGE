@@ -1,0 +1,20 @@
+---
+description: Default conda env path for SURGE on NERSC project m3716 (shared software)
+alwaysApply: true
+---
+
+# SURGE conda environment (m3716)
+
+The pre-built **surge** conda environment for this project is installed at:
+
+`/global/common/software/m3716/asvillar/envs/surge` (Python 3.11)
+
+**Activate by path** (e.g. when the env is not registered by name in conda):
+
+`conda activate /global/common/software/m3716/asvillar/envs/surge`
+
+**One-off command:**
+
+`conda run -p /global/common/software/m3716/asvillar/envs/surge python ...`
+
+See `envs/README.md` for details and for creating a local env from `environment.yml` instead.
