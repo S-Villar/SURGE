@@ -42,7 +42,7 @@ run_cmd python verify_demo_env.py
 echo
 echo "## Examples"
 run_cmd python example_01_rose_inprocess_verbose.py --max-iter 2
-run_cmd python example_02_rose_subprocess_shell.py --max-iter 2
+run_cmd python example_02_rose_subprocess_shell.py --dataset synthetic --workflow-sequence rf,mlp,gpr,gpflow_gpr --quiet
 run_cmd python example_03_rose_mlp_random_r2_stop.py --max-iter 12 --r2-threshold 0.9 --r2-operator ">="
 run_cmd python example_04_parallel_model_race.py --dataset m3dc1 --max-iter 1 --candidates rf,mlp
 run_cmd python example_05_uq_guided_mlp_ensemble.py --dataset m3dc1 --max-iter 1 --ensemble-n 3
@@ -76,6 +76,10 @@ if [[ "${INCLUDE_SCALING_SWEEP}" == "1" ]]; then
   run_cmd python demos/demo_03_scaling_report.py
   run_cmd python demos/plot_demo_03_scaling.py
 fi
+
+echo
+echo "## Visualization"
+run_cmd python viz_examples_and_demos.py
 
 echo
 echo "Done. This script printed the full command set."

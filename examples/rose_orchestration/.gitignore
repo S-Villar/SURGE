@@ -1,4 +1,5 @@
 workspace/
+viz/
 __pycache__/
 *.pyc
 ensemble_summary.json
