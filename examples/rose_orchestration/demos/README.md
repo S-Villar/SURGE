@@ -103,6 +103,12 @@ Then aggregate the completed runs into JSON, CSV, and Markdown:
 python demos/demo_03_scaling_report.py
 ```
 
+Then turn the scaling CSV into PNG plots:
+
+```bash
+python demos/plot_demo_03_scaling.py
+```
+
 To run the GPU-aware demo on an interactive GPU node:
 
 ```bash
