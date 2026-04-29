@@ -34,7 +34,7 @@ The scripts default to:
 - venv:
   `/global/cfs/projectdirs/amsc007/asvillar/radical-integration-smoke/venv`
 - M3DC1 source PKL:
-  `/global/homes/a/asvillar/src/SURGEROSE/data/datasets/M3DC1/sparc-m3dc1-D1.pkl`
+  `/global/cfs/projectdirs/amsc007/data/m3dc1/sparc-m3dc1-D1.pkl`
 
 Override them with environment variables if needed:
 

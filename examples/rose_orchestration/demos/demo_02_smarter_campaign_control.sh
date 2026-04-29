@@ -5,7 +5,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 EXAMPLE_DIR="$(cd "${HERE}/.." && pwd)"
 SURGE_ROOT="$(cd "${EXAMPLE_DIR}/../.." && pwd)"
 VENV_PATH="${SURGE_ROSE_VENV:-/global/cfs/projectdirs/amsc007/asvillar/radical-integration-smoke/venv}"
-M3DC1_SOURCE="${M3DC1_SOURCE:-/global/homes/a/asvillar/src/SURGEROSE/data/datasets/M3DC1/sparc-m3dc1-D1.pkl}"
+M3DC1_SOURCE="${M3DC1_SOURCE:-/global/cfs/projectdirs/amsc007/data/m3dc1/sparc-m3dc1-D1.pkl}"
 OUTPUT_DIR="${HERE}/output/demo_02"
 
 mkdir -p "${OUTPUT_DIR}"

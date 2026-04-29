@@ -34,7 +34,7 @@ source ./activate_surge_rose_cfs_venv.sh
 ## 3. Link the M3DC1 dataset if needed
 
 ```bash
-ln -sf /global/homes/a/asvillar/src/SURGEROSE/data/datasets/M3DC1/sparc-m3dc1-D1.pkl \
+ln -sf /global/cfs/projectdirs/amsc007/data/m3dc1/sparc-m3dc1-D1.pkl \
   "$SURGE_ROOT/data/datasets/M3DC1/sparc-m3dc1-D1.pkl"
 ```
 

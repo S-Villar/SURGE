@@ -17,7 +17,7 @@ set -euo pipefail
 
 SURGE_ROOT="${SURGE_ROOT:-/global/cfs/projectdirs/amsc007/asvillar/radical-integration-smoke/SURGE}"
 SURGE_ROSE_VENV="${SURGE_ROSE_VENV:-/global/cfs/projectdirs/amsc007/asvillar/radical-integration-smoke/venv}"
-M3DC1_SOURCE="${M3DC1_SOURCE:-/global/homes/a/asvillar/src/SURGEROSE/data/datasets/M3DC1/sparc-m3dc1-D1.pkl}"
+M3DC1_SOURCE="${M3DC1_SOURCE:-/global/cfs/projectdirs/amsc007/data/m3dc1/sparc-m3dc1-D1.pkl}"
 
 EXAMPLE="${EXAMPLE:-example_01_rose_inprocess_verbose.py}"
 ARGS="${ARGS:---max-iter 2}"
