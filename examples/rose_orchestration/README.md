@@ -211,7 +211,7 @@ $SURGE_ROOT/data/datasets/M3DC1/sparc-m3dc1-D1.pkl
 If your source dataset lives elsewhere, symlink it:
 
 ```bash
-ln -sf /global/homes/a/asvillar/src/SURGEROSE/data/datasets/M3DC1/sparc-m3dc1-D1.pkl \
+ln -sf /global/cfs/projectdirs/amsc007/data/m3dc1/sparc-m3dc1-D1.pkl \
   "$SURGE_ROOT/data/datasets/M3DC1/sparc-m3dc1-D1.pkl"
 ```
 

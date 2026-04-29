@@ -8,7 +8,7 @@ These results were recorded from the `radical-integration` branch in:
 
 - dataset: `m3dc1`
 - split policy inside SURGE workflows: `train=0.6`, `val=0.2`, `test=0.2`
-- source PKL: `/global/homes/a/asvillar/src/SURGEROSE/data/datasets/M3DC1/sparc-m3dc1-D1.pkl`
+- source PKL: `/global/cfs/projectdirs/amsc007/data/m3dc1/sparc-m3dc1-D1.pkl`
 
 ## Demo 1: Better surrogate selection
 
