@@ -6,7 +6,10 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ "${1:-}" == "--inside-allocation" ]]; then
   shift
   cd "${HERE}"
-  exec bash demos/demo_04_gpu_aware_search.sh "$@"
+  bash ./demo_01_better_surrogate_selection.sh
+  bash ./demo_02_smarter_campaign_control.sh
+  bash ./demo_03_resource_aware_search.sh --cpus-per-trial "${CPUS_PER_TRIAL:-4}" --max-trials "${MAX_TRIALS:-4}"
+  exit 0
 fi
 
 if [[ -n "${SLURM_JOB_ID:-}" ]]; then
@@ -15,12 +18,11 @@ fi
 
 ACCOUNT="${ACCOUNT:-amsc007}"
 QOS="${QOS:-interactive}"
-TIME="${TIME:-02:00:00}"
+TIME="${TIME:-04:00:00}"
 NODES="${NODES:-1}"
-CONSTRAINT="${CONSTRAINT:-gpu&hbm80g}"
-CPUS_PER_TASK="${CPUS_PER_TASK:-8}"
-GPUS="${GPUS:-${GPUS_PER_NODE:-1}}"
-JOB_NAME="${JOB_NAME:-surge_gpu_demo}"
+CONSTRAINT="${CONSTRAINT:-cpu}"
+CPUS_PER_TASK="${CPUS_PER_TASK:-16}"
+JOB_NAME="${JOB_NAME:-surge_rose_cpu_demos}"
 
 exec salloc \
   --nodes "${NODES}" \
@@ -30,5 +32,4 @@ exec salloc \
   --account "${ACCOUNT}" \
   --job-name "${JOB_NAME}" \
   --cpus-per-task "${CPUS_PER_TASK}" \
-  --gpus "${GPUS}" \
   "$0" --inside-allocation "$@"

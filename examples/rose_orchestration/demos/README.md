@@ -73,6 +73,13 @@ TIME=02:00:00 CPUS_PER_TASK=8 bash demos/launch_demo_02_interactive.sh
 Those wrappers do the `salloc` step for you and then run the demo on the
 allocated node.
 
+To run the CPU demo suite in one interactive allocation:
+
+```bash
+cd examples/rose_orchestration
+TIME=04:00:00 CPUS_PER_TASK=16 bash demos/launch_all_demos_cpu_interactive.sh
+```
+
 To run Demo 3 with an interactive allocation:
 
 ```bash
@@ -114,6 +121,13 @@ To run the GPU-aware demo on an interactive GPU node:
 ```bash
 cd examples/rose_orchestration
 TIME=02:00:00 CPUS_PER_TASK=8 GPUS_PER_NODE=1 bash demos/launch_demo_04_gpu_interactive.sh
+```
+
+To run the GPU demo suite launcher directly:
+
+```bash
+cd examples/rose_orchestration
+TIME=04:00:00 CPUS_PER_TASK=8 GPUS_PER_NODE=1 bash demos/launch_all_demos_gpu_interactive.sh
 ```
 
 ## Demo definitions
@@ -224,6 +238,17 @@ CPU-only models in SURGE today:
 
 This demo uses `pytorch.mlp` because its device placement is explicit and
 verifiable through SURGE's `resources_used` summary.
+
+## Artifact visualization
+
+After examples and demos finish, generate PNG summaries from saved artifacts:
+
+```bash
+cd examples/rose_orchestration
+python viz_examples_and_demos.py
+```
+
+Plots are written under `examples/rose_orchestration/viz/`.
 
 ## What the UQ means
 

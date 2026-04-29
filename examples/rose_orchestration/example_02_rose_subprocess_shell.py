@@ -14,7 +14,14 @@ import warnings
 from pathlib import Path
 
 from dataset_utils import read_iteration_state
-from demo_common import SURGE_ROOT, add_demo_cli, add_reporting_cli, shell_task_kwargs
+from demo_common import (
+    SURGE_ROOT,
+    SUPPORTED_WORKFLOW_FAMILIES,
+    add_demo_cli,
+    add_reporting_cli,
+    canonical_workflow,
+    shell_task_kwargs,
+)
 from orch_report import (
     RunTimer,
     print_run_header,
@@ -41,6 +48,7 @@ async def _demo(
     workers: int,
     dataset: str,
     workflow_family: str,
+    workflow_sequence: list[str] | None,
     growing_pool: bool,
     quiet: bool,
 ) -> None:
@@ -57,13 +65,15 @@ async def _demo(
     os.environ["SURGE_ROSE_WORKSPACE_NAMESPACE"] = "example_02"
     ws = ws / "example_02"
     timer = RunTimer()
+    effective_max_iter = len(workflow_sequence) if workflow_sequence else max_iter
     print_run_header(
         example="2 - SequentialActiveLearner + subprocess (ProcessPoolExecutor)",
-        max_iter=max_iter,
+        max_iter=effective_max_iter,
         workers=workers,
         quiet=quiet,
         extra=(
-            f"Dataset={dataset}. Workflow family: {workflow_family}. "
+            f"Dataset={dataset}. "
+            f"{'Workflow sequence: ' + ','.join(workflow_sequence) + '. ' if workflow_sequence else f'Workflow family: {workflow_family}. '}"
             f"Pool policy: {'growing subset' if growing_pool else 'full dataset'}. "
             "Each phase spawns sim_surge_step, surge_train, active_surge_step, check_surge_metrics."
         ),
@@ -75,7 +85,17 @@ async def _demo(
     asyncflow = await WorkflowEngine.create(engine)
     acl = SequentialActiveLearner(asyncflow)
 
-    raw_kw = shell_task_kwargs(max_iter, dataset, workflow_family)
+    if workflow_sequence:
+        raw_kw = {
+            i: {
+                "--iteration": str(i),
+                "--workflow": canonical_workflow(dataset, family),
+            }
+            for i, family in enumerate(workflow_sequence)
+        }
+        max_iter = effective_max_iter
+    else:
+        raw_kw = shell_task_kwargs(max_iter, dataset, workflow_family)
     from rose.learner import TaskConfig
     sched = {i: TaskConfig(kwargs=kw) for i, kw in raw_kw.items()}
     initial = LearnerConfig(simulation=sched, training=sched, active_learn=sched)
@@ -83,6 +103,7 @@ async def _demo(
     py = sys.executable
     ex = _EX
     vb = " --verbose" if not quiet else ""
+    dataset_file = ws / ("sparc_m3dc1_active_learning.parquet" if dataset == "m3dc1" else "synthetic_active_learning.parquet")
 
     @acl.simulation_task()
     async def simulation(*args, **kwargs):
@@ -107,7 +128,12 @@ async def _demo(
         it = kwargs.get("--iteration", "0")
         iit = int(it)
         wf = kwargs.get("--workflow", "rf")
-        cmd = f"{py} {ex / 'surge_train.py'} --workflow {wf} --iteration {it}{vb}"
+        cmd = (
+            f"{py} {ex / 'surge_train.py'} "
+            f"--workflow {wf} --iteration {it} "
+            f"--namespace example_02 "
+            f"--dataset-path {dataset_file}{vb}"
+        )
         if not quiet:
             print_phase_progress(
                 rose_iter=iit,
@@ -197,7 +223,26 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="ROSE subprocess orchestration.")
     add_demo_cli(parser)
     add_reporting_cli(parser)
+    parser.add_argument(
+        "--workflow-sequence",
+        default=None,
+        help=(
+            "Comma-separated SURGE workflow families to run in order through subprocess "
+            "boundaries, for example: rf,mlp,gpr,gpflow_gpr. When set, max-iter is "
+            "derived from the sequence length."
+        ),
+    )
     args = parser.parse_args()
+
+    workflow_sequence: list[str] | None = None
+    if args.workflow_sequence:
+        workflow_sequence = [part.strip() for part in args.workflow_sequence.split(",") if part.strip()]
+        invalid = sorted(set(workflow_sequence) - set(SUPPORTED_WORKFLOW_FAMILIES))
+        if invalid:
+            raise ValueError(
+                f"Unsupported workflow families in --workflow-sequence: {invalid}; "
+                f"use only {SUPPORTED_WORKFLOW_FAMILIES}."
+            )
 
     root = str(SURGE_ROOT)
     prev = os.environ.get("PYTHONPATH", "").strip()
@@ -213,6 +258,7 @@ def main() -> None:
             workers=args.workers,
             dataset=args.dataset,
             workflow_family=args.workflow_family,
+            workflow_sequence=workflow_sequence,
             growing_pool=args.growing_pool,
             quiet=args.quiet,
         )

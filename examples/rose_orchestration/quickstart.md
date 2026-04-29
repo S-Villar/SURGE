@@ -46,6 +46,19 @@ python verify_demo_env.py
 
 ## 5. Run the examples
 
+### What each example and demo shows
+
+- **Example 1**: `ROSE` uses a sequential learner and `Rhapsody/radical.asyncflow` in-process tasks to repeatedly call a `SURGE` workflow, where `SURGE` performs dataset splitting, preprocessing, model training, metrics, and artifact writing.
+- **Example 2**: `ROSE` uses sequential subprocess-based orchestration through `Rhapsody/radical.asyncflow` to launch distinct `SURGE` workflows (`rf`, `mlp`, `sklearn.gpr`, `gpflow.gpr`), with `SURGE` handling the actual model fit, validation metrics, and run artifacts in each external process.
+- **Example 3**: `ROSE` uses stop criteria and learner-state tracking with in-process execution to explore multiple `SURGE` sklearn MLP architectures, while `SURGE` trains each candidate and returns the validation scores that drive the HPO loop.
+- **Example 4**: `ROSE ParallelActiveLearner` and `Rhapsody/radical.asyncflow` run several `SURGE` model families concurrently, with `SURGE` training each surrogate independently and producing the metrics used to rank them.
+- **Example 5**: `ROSE` uses a UQ-oriented learner flow to monitor uncertainty signals, while `SURGE` trains an sklearn MLP ensemble, computes predictive uncertainty, and writes the UQ artifacts that `ROSE` reads.
+- **Demo 1**: `ROSE` and `Rhapsody/radical.asyncflow` orchestrate a parallel full-dataset surrogate race, while `SURGE` trains and evaluates the candidate models and provides the metrics used for model selection.
+- **Demo 2**: `ROSE` monitors campaign quality through uncertainty-aware control logic, while `SURGE` trains the full-dataset ensemble surrogate and emits the validation UQ artifacts that drive that decision signal.
+- **Demo 3**: A resource-aware orchestration layer scales the number of concurrent `SURGE` trials with allocated CPUs, and `SURGE` trains each trial model and returns the quality metrics used to compare the search outcomes.
+- **Demo 4**: A device-aware orchestration layer maps trials onto visible accelerators, while `SURGE` runs the GPU-capable PyTorch MLP backend and reports the effective device and training artifacts.
+- **RADICAL-Cybertools note**: These examples use `radical.asyncflow` via `Rhapsody` as the execution backend.
+
 Examples 1, 3, 4, and 5 show refreshing progress bars by default and write detailed
 logs to `workspace/example_XX/execution.log`. Add `--no-live-progress` for the
 line-oriented terminal trace.
@@ -117,4 +130,16 @@ Override allocation details with environment variables, for example:
 ```bash
 TIME=04:00:00 CPUS_PER_TASK=16 \
   ./run_rose_example_interactive.sh example_03_rose_mlp_random_r2_stop.py --max-iter 12
+```
+
+Run the entire example suite on one interactive CPU node:
+
+```bash
+TIME=04:00:00 CPUS_PER_TASK=16 ./launch_all_examples_interactive.sh
+```
+
+Generate visualization PNGs from saved example/demo artifacts:
+
+```bash
+python viz_examples_and_demos.py
 ```
