@@ -143,6 +143,11 @@ def main() -> int:
     ap.add_argument("--rf-baselines", type=int, default=1)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--sklearn-mlp-max-iter", type=int, default=400)
+    ap.add_argument(
+        "--output-prefix",
+        default=None,
+        help="Optional output directory override for logs and summary.json.",
+    )
     args = ap.parse_args()
 
     available = _available_cpus()
@@ -153,7 +158,7 @@ def main() -> int:
     rf_baselines = min(max(1, int(args.rf_baselines)), planned_trials)
     mlp_trials = max(0, planned_trials - rf_baselines)
 
-    output_dir = _HERE / "output" / "demo_03"
+    output_dir = Path(args.output_prefix).resolve() if args.output_prefix else (_HERE / "output" / "demo_03")
     log_dir = output_dir / "logs"
     output_dir.mkdir(parents=True, exist_ok=True)
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -248,12 +253,25 @@ def main() -> int:
             flush=True,
         )
 
+    best = results[0] if results else None
+    completed_trials = len(results)
+    trials_per_hour = (completed_trials / elapsed) * 3600.0 if elapsed > 0 else 0.0
     payload = {
         "available_cpus": available,
         "cpus_per_trial": cpus_per_trial,
         "parallel_trials": planned_trials,
+        "completed_trials": completed_trials,
         "total_rows": total_rows,
         "row_policy": plan["row_policy"],
+        "wall_time_seconds": elapsed,
+        "trials_per_hour": trials_per_hour,
+        "best_trial_id": None if best is None else int(best["trial_id"]),
+        "best_family": None if best is None else best["family"],
+        "best_val_r2": None if best is None else float(best["val_r2"]),
+        "best_val_rmse": None if best is None else float(best["val_rmse"]),
+        "best_detail": None if best is None else (
+            "baseline_rf" if best["family"] == "rf" else f"mlp{best['hidden_layer_sizes']}"
+        ),
         "results": results,
     }
     results_path = output_dir / "summary.json"
