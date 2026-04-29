@@ -51,7 +51,7 @@ echo
 echo "## Demos"
 run_cmd bash demos/demo_01_better_surrogate_selection.sh
 run_cmd bash demos/demo_02_smarter_campaign_control.sh
-run_cmd bash demos/demo_03_resource_aware_search.sh --cpus-per-trial 4
+run_cmd bash demos/demo_03_resource_aware_search.sh --cpus-per-trial 4 --max-trials 4
 
 if [[ "${INCLUDE_GPU}" == "1" ]]; then
   run_cmd bash demos/demo_04_gpu_aware_search.sh --allow-cpu-fallback --max-trials 1
