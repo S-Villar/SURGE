@@ -46,7 +46,15 @@ class PyTorchMLPAdapter(BaseModelAdapter):
 
     def fit(self, X: Any, y: Any, *, X_val: Any = None, y_val: Any = None, finetune: bool = False, **kwargs: Any) -> Any:
         if self._model is None and not finetune:
-            self._model = self._build_model(**self.params)
+            build_params = dict(self.params)
+            concrete = ((self._last_fit_resources or {}).get("concrete", {}))
+            if "device" in concrete:
+                build_params["device"] = concrete["device"]
+            if "dataloader_num_workers" in concrete:
+                build_params["dataloader_num_workers"] = concrete["dataloader_num_workers"]
+            if "pin_memory" in concrete:
+                build_params["pin_memory"] = concrete["pin_memory"]
+            self._model = self._build_model(**build_params)
         return self._model.fit(X, y, X_val=X_val, y_val=y_val, finetune=finetune)
 
     def predict(self, X: Any) -> Any:

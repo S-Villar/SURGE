@@ -118,7 +118,12 @@ class PyTorchMLP(nn.Module if TORCH_AVAILABLE else object):
         if not (0.0 < frac <= 1.0):
             raise ValueError("epoch_train_sample_fraction must be in (0, 1].")
         self.epoch_train_sample_fraction = frac
-        self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if device is None:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        elif isinstance(device, torch.device):
+            self.device = device
+        else:
+            self.device = torch.device(device)
         self.checkpoint_dir = checkpoint_dir
         self.checkpoint_every_n_epochs = max(0, int(checkpoint_every_n_epochs))
         self.restore_best_weights = bool(restore_best_weights)
@@ -422,6 +427,7 @@ class PyTorchMLPModel:
                  learning_rate=1e-3, n_epochs=300, batch_size=32, patience=None,
                  max_epochs=None, epochs=None, dropout=0.1,
                  dataloader_num_workers: int = 0, pin_memory=None,
+                 device=None,
                  inference_batch_size=None, log_progress: bool = False,
                  epoch_train_sample_fraction: float = 1.0,
                  checkpoint_every_n_epochs: int = 0,
@@ -453,6 +459,7 @@ class PyTorchMLPModel:
         self.patience = patience
         self.dataloader_num_workers = int(dataloader_num_workers)
         self.pin_memory = pin_memory
+        self.device = device
         self.inference_batch_size = inference_batch_size
         self.log_progress = bool(log_progress)
         self.epoch_train_sample_fraction = float(epoch_train_sample_fraction)
@@ -479,6 +486,7 @@ class PyTorchMLPModel:
                 learning_rate=self.learning_rate,
                 n_epochs=self.n_epochs,
                 batch_size=self.batch_size,
+                device=self.device,
                 dataloader_num_workers=self.dataloader_num_workers,
                 pin_memory=self.pin_memory,
                 inference_batch_size=self.inference_batch_size,
