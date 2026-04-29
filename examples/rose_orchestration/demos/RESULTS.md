@@ -114,3 +114,33 @@ Notes:
 - Both trials used the full M3DC1 table with SURGE's internal `60 / 20 / 20`
   split.
 - The randomized MLP trial beat the RF baseline on validation `R2`.
+
+## Demo 4: GPU-aware surrogate search
+
+Command used for fallback verification in a non-GPU shell:
+
+```bash
+python demos/demo_04_gpu_aware_search.py \
+  --allow-cpu-fallback \
+  --max-trials 1 \
+  --n-epochs 10 \
+  --batch-size 512 \
+  --num-workers 0
+```
+
+Observed summary:
+
+```text
+Demo 4 summary
+Wall time: 51.1s
+rank  trial  device     train     val    test     val_r2    val_rmse  arch
+   1      0  cpu         5934    1978    1979    0.77286    0.010743  [96, 128, 160, 64]
+```
+
+Notes:
+
+- The important verification point was `effective_device=cpu` in the trial output.
+- That confirms the SURGE resource policy is now reaching the `pytorch.mlp`
+  backend rather than only being logged.
+- On a GPU allocation, the same demo should report `effective_device=cuda:0`
+  (or one slot-local CUDA device per trial).

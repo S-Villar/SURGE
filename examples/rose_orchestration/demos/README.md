@@ -11,6 +11,8 @@ They are intentionally narrow:
   outputs from an MLP ensemble trained on the full M3DC1 table.
 - **Demo 3** shows **resource-aware surrogate search** by sizing the number of
   concurrent trials from the CPUs you allocate and racing those trials together.
+- **Demo 4** shows **GPU-aware surrogate search** by sizing PyTorch MLP trials
+  from the visible GPUs and binding one trial per GPU.
 
 ## Why these two demos
 
@@ -49,6 +51,7 @@ From `examples/rose_orchestration`:
 bash demos/demo_01_better_surrogate_selection.sh
 bash demos/demo_02_smarter_campaign_control.sh
 bash demos/demo_03_resource_aware_search.sh
+bash demos/demo_04_gpu_aware_search.sh --allow-cpu-fallback --max-trials 1
 ```
 
 Both scripts:
@@ -86,6 +89,13 @@ TIME=02:00:00 CPUS_PER_TASK=16 bash demos/run_demo_03_slurm.sh --cpus-per-trial 
 
 That submits an `sbatch` job and lets the demo size its parallel trial budget
 from the CPUs granted to the job.
+
+To run the GPU-aware demo on an interactive GPU node:
+
+```bash
+cd examples/rose_orchestration
+TIME=02:00:00 CPUS_PER_TASK=8 GPUS_PER_NODE=1 bash demos/launch_demo_04_gpu_interactive.sh
+```
 
 ## Demo definitions
 
@@ -153,6 +163,37 @@ Reasoning:
 
 This is the first demo here that actually changes campaign width based on the
 resources you allocate.
+
+### Demo 4: GPU-aware surrogate search
+
+Command:
+
+```bash
+python demos/demo_04_gpu_aware_search.py --allow-cpu-fallback --max-trials 1
+```
+
+Reasoning:
+
+- the script detects visible GPUs from `CUDA_VISIBLE_DEVICES` or `torch.cuda`
+- it launches one PyTorch MLP trial per visible GPU
+- each subprocess is bound to one GPU slot and requests `resources.device=cuda:0`
+  inside that slot-local environment
+- if no GPU is visible, `--allow-cpu-fallback` verifies the same code path on CPU
+
+GPU-capable models in SURGE today:
+
+- `pytorch.mlp`
+- `gpflow.gpr`
+- `gpflow.multi_kernel`
+
+CPU-only models in SURGE today:
+
+- `sklearn.random_forest`
+- `sklearn.mlp`
+- `sklearn.gpr`
+
+This demo uses `pytorch.mlp` because its device placement is explicit and
+verifiable through SURGE's `resources_used` summary.
 
 ## What the UQ means
 
