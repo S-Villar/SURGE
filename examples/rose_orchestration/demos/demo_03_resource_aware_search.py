@@ -20,6 +20,8 @@ if str(_EXAMPLE_DIR) not in sys.path:
 
 from dataset_utils import build_training_parquet, read_iteration_state, training_row_plan, workspace_dir
 
+DEFAULT_NONALLOCATED_MAX_TRIALS = 4
+
 
 def _available_cpus() -> int:
     for key in ("SLURM_CPUS_PER_TASK", "CPUS_PER_TASK"):
@@ -27,6 +29,14 @@ def _available_cpus() -> int:
         if raw and raw.isdigit():
             return max(1, int(raw))
     return max(1, os.cpu_count() or 1)
+
+
+def _has_explicit_allocation() -> bool:
+    for key in ("SLURM_CPUS_PER_TASK", "CPUS_PER_TASK"):
+        raw = os.environ.get(key)
+        if raw and raw.isdigit():
+            return True
+    return False
 
 
 def _sample_architectures(count: int, seed: int) -> list[list[int]]:
@@ -144,6 +154,12 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--sklearn-mlp-max-iter", type=int, default=400)
     ap.add_argument(
+        "--default-max-trials",
+        type=int,
+        default=DEFAULT_NONALLOCATED_MAX_TRIALS,
+        help="When no explicit CPU allocation env is set, cap automatic trial width to this value.",
+    )
+    ap.add_argument(
         "--output-prefix",
         default=None,
         help="Optional output directory override for logs and summary.json.",
@@ -151,10 +167,13 @@ def main() -> int:
     args = ap.parse_args()
 
     available = _available_cpus()
+    explicit_allocation = _has_explicit_allocation()
     cpus_per_trial = max(1, int(args.cpus_per_trial))
     planned_trials = max(1, available // cpus_per_trial)
     if args.max_trials is not None:
         planned_trials = min(planned_trials, max(1, int(args.max_trials)))
+    elif not explicit_allocation:
+        planned_trials = min(planned_trials, max(1, int(args.default_max_trials)))
     rf_baselines = min(max(1, int(args.rf_baselines)), planned_trials)
     mlp_trials = max(0, planned_trials - rf_baselines)
 
@@ -200,6 +219,13 @@ def main() -> int:
         f"log_dir={log_dir}",
         flush=True,
     )
+    if not explicit_allocation and args.max_trials is None:
+        print(
+            f"No explicit Slurm/CPU allocation detected; capped automatic trial width to "
+            f"{planned_trials}. Use --max-trials or set CPUS_PER_TASK/SLURM_CPUS_PER_TASK "
+            f"to override.",
+            flush=True,
+        )
     print(
         f"Full M3DC1 table -> SURGE split 60/20/20. "
         f"Planned trials: {rf_baselines} rf baseline(s) + {mlp_trials} randomized mlp trial(s).",
@@ -258,6 +284,7 @@ def main() -> int:
     trials_per_hour = (completed_trials / elapsed) * 3600.0 if elapsed > 0 else 0.0
     payload = {
         "available_cpus": available,
+        "explicit_allocation": explicit_allocation,
         "cpus_per_trial": cpus_per_trial,
         "parallel_trials": planned_trials,
         "completed_trials": completed_trials,

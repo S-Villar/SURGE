@@ -62,6 +62,7 @@ Example 2:
 
 ```bash
 python example_02_rose_subprocess_shell.py --max-iter 2
+python example_02_rose_subprocess_shell.py --dataset synthetic --workflow-sequence rf,mlp,gpr,gpflow_gpr
 ```
 
 Example 3:
