@@ -90,6 +90,19 @@ TIME=02:00:00 CPUS_PER_TASK=16 bash demos/run_demo_03_slurm.sh --cpus-per-trial 
 That submits an `sbatch` job and lets the demo size its parallel trial budget
 from the CPUs granted to the job.
 
+To record scaling curves for Demo 3 across several CPU allocations:
+
+```bash
+cd examples/rose_orchestration
+CPU_SWEEP="8 16 32" CPUS_PER_TRIAL=4 TIME=02:00:00 bash demos/run_demo_03_scaling_sweep.sh
+```
+
+Then aggregate the completed runs into JSON, CSV, and Markdown:
+
+```bash
+python demos/demo_03_scaling_report.py
+```
+
 To run the GPU-aware demo on an interactive GPU node:
 
 ```bash
@@ -163,6 +176,17 @@ Reasoning:
 
 This is the first demo here that actually changes campaign width based on the
 resources you allocate.
+
+Each Demo 3 run now records:
+
+- allocated CPUs
+- CPUs per trial
+- parallel trial width
+- completed trial count
+- wall time
+- trials/hour
+- best validation `R2`
+- best validation `RMSE`
 
 ### Demo 4: GPU-aware surrogate search
 
