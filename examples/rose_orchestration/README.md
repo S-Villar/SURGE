@@ -202,18 +202,20 @@ source ./activate_surge_rose_cfs_venv.sh
 
 ## M3DC1 dataset
 
-Expected location inside the SURGE checkout:
+Default shared location used by the examples and demos:
 
 ```bash
-$SURGE_ROOT/data/datasets/M3DC1/sparc-m3dc1-D1.pkl
+/global/cfs/projectdirs/amsc007/data/m3dc1/sparc-m3dc1-D1.pkl
 ```
 
-If your source dataset lives elsewhere, symlink it:
+Override it by exporting `M3DC1_SOURCE`:
 
 ```bash
-ln -sf /global/cfs/projectdirs/amsc007/data/m3dc1/sparc-m3dc1-D1.pkl \
-  "$SURGE_ROOT/data/datasets/M3DC1/sparc-m3dc1-D1.pkl"
+export M3DC1_SOURCE=/path/to/sparc-m3dc1-D1.pkl
 ```
+
+The orchestration examples read the shared dataset path directly and do not
+require a local symlink inside `SURGE_ROOT/data/datasets/M3DC1/`.
 
 ## Run commands
 

@@ -58,7 +58,7 @@ Both scripts:
 
 - activate the default venv when present
 - ensure `PYTHONPATH` points at this SURGE checkout
-- symlink the M3DC1 PKL into `data/datasets/M3DC1/`
+- pass the shared M3DC1 dataset path directly through `M3DC1_SOURCE`
 - write detailed execution logs under `demos/output/`
 
 To run Demo 1 and Demo 2 through an interactive Slurm allocation, use the

@@ -15,12 +15,14 @@ The default smoke commands use **`--dataset synthetic`** (no extra files). This 
 
 Use Python 3.10+ with ROSE + deps and **`PYTHONPATH`** pointing at the **SURGE repo root** (see [quickstart.md](quickstart.md)). Example: activate your `surge-rose-demos` venv and `export SURGE_ROOT=...` / `export PYTHONPATH=...` as there.
 
-## Step 1 — Place the M3DC1 pickle
+## Step 1 — Set the M3DC1 pickle path
 
-`dataset_utils.m3dc1_pkl_path()` expects this **exact** file (relative to repo root):
+`dataset_utils.m3dc1_pkl_path()` resolves the dataset in this order:
 
 ```text
-data/datasets/M3DC1/sparc-m3dc1-D1.pkl
+1. $M3DC1_SOURCE
+2. /global/cfs/projectdirs/amsc007/data/m3dc1/sparc-m3dc1-D1.pkl
+3. data/datasets/M3DC1/sparc-m3dc1-D1.pkl
 ```
 
 **Metadata (usually already in git):**
@@ -29,20 +31,18 @@ data/datasets/M3DC1/sparc-m3dc1-D1.pkl
 data/datasets/M3DC1/sparc_m3dc1_D1_metadata.yaml
 ```
 
-If the PKL is not there, copy it from your SPARC / SURGE data tree, e.g.:
+Recommended shared path:
 
 ```bash
-export SURGE_ROOT=/path/to/SURGE
-cp /path/to/SPARC/sparc-m3dc1-D1.pkl \
-  "$SURGE_ROOT/data/datasets/M3DC1/sparc-m3dc1-D1.pkl"
+export M3DC1_SOURCE=/global/cfs/projectdirs/amsc007/data/m3dc1/sparc-m3dc1-D1.pkl
 ```
 
-(Paths match [data/datasets/M3DC1/README.md](../../data/datasets/M3DC1/README.md).)
+You can still point `M3DC1_SOURCE` somewhere else if needed.
 
 **Verify:**
 
 ```bash
-test -f "$SURGE_ROOT/data/datasets/M3DC1/sparc-m3dc1-D1.pkl" && echo "PKL OK"
+test -f "$M3DC1_SOURCE" && echo "PKL OK"
 ```
 
 ## Step 2 — `cd` to the orchestration directory
