@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 _PKL_NAME = "sparc-m3dc1-D1.pkl"
+_DEFAULT_SHARED_M3DC1_PKL = Path("/global/cfs/projectdirs/amsc007/data/m3dc1") / _PKL_NAME
 
 SYN_N_BASE = 50
 SYN_N_STEP = 30
@@ -81,6 +82,11 @@ def write_json_atomic(path: Path, payload: dict) -> None:
 
 
 def m3dc1_pkl_path() -> Path:
+    configured = os.environ.get("M3DC1_SOURCE", "").strip()
+    if configured:
+        return Path(configured).expanduser().resolve()
+    if _DEFAULT_SHARED_M3DC1_PKL.is_file():
+        return _DEFAULT_SHARED_M3DC1_PKL
     return repo_root_from_here() / "data" / "datasets" / "M3DC1" / _PKL_NAME
 
 
@@ -113,8 +119,8 @@ def _load_m3dc1_pool(*, shuffle_seed: int = M3DC1_SHUFFLE_SEED) -> pd.DataFrame:
     pkl = m3dc1_pkl_path()
     if not pkl.is_file():
         raise FileNotFoundError(
-            f"Missing M3DC1 PKL at {pkl}. Copy from SURGE, e.g.:\n"
-            f"  cp /path/to/SURGE/data/datasets/SPARC/{_PKL_NAME} {pkl}\n"
+            f"Missing M3DC1 PKL at {pkl}. Set M3DC1_SOURCE or place the file at:\n"
+            f"  {_DEFAULT_SHARED_M3DC1_PKL}\n"
             "Or use --dataset synthetic for Examples 1-3 without external data.",
         )
     _install_numpy_pickle_compat()

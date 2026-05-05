@@ -24,12 +24,8 @@ ARGS="${ARGS:---max-iter 2}"
 
 source "${SURGE_ROSE_VENV}/bin/activate"
 export SURGE_ROOT
+export M3DC1_SOURCE
 export PYTHONPATH="${SURGE_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
-
-mkdir -p "${SURGE_ROOT}/data/datasets/M3DC1"
-if [[ -e "${M3DC1_SOURCE}" ]]; then
-  ln -sf "${M3DC1_SOURCE}" "${SURGE_ROOT}/data/datasets/M3DC1/sparc-m3dc1-D1.pkl"
-fi
 
 cd "${SURGE_ROOT}/examples/rose_orchestration"
 
