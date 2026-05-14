@@ -18,7 +18,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from .hpc import ResourceSpec
+from .hpc import ResourcePolicyError, ResourceSpec
 from .registry import BaseModelAdapter, ModelRegistry
 from .model.registry import MODEL_REGISTRY
 
@@ -470,6 +470,8 @@ class SurrogateEngine:
                     X_shape=getattr(proc.X_train, "shape", None),
                     y_shape=getattr(y_train_for_fit, "shape", None),
                 )
+            except ResourcePolicyError:
+                raise
             except Exception:  # never let banner/policy block a fit
                 self.logger.warning(
                     "prepare_for_fit failed for %s; continuing without banner",
