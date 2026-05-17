@@ -54,4 +54,18 @@ PYTHONPATH=. python -c "from pathlib import Path; import numpy as np; from surge
 
 ## Phase 4–5 — Benchmark registry + Tier 0/1 runner
 
-*(filled in next commit)*
+**Summary**
+- New package `surge/benchmarks/`: `BenchmarkResult`, `REGISTRY`, `run_benchmark`, `list_benchmarks`.
+- **Tier 0:** `synthetic.regression_1d`, `synthetic.classification_binary` (no downloads).
+- **Tier 1:** `tabular.iris`, `tabular.diabetes` via `sklearn.datasets`.
+- CLI: `python -m surge.benchmarks.run` (exit code 1 if `passed` is false). Console script: `surge-benchmark` after install.
+- Policy: `docs/benchmarks/benchmark_policy.md`.
+
+**Verification**
+```bash
+PYTHONPATH=. python -m surge.benchmarks.run --list
+PYTHONPATH=. python -m surge.benchmarks.run --benchmark synthetic.regression_1d
+PYTHONPATH=. python -m pytest tests/benchmarks/test_smoke_benchmarks.py -q
+```
+
+Vision / torchvision benchmarks remain future work (plan §6–7).
