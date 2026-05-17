@@ -23,13 +23,32 @@ After any `torch.mlp` workflow run, check `runs/<tag>/plots/training_dashboard_*
 
 ## Phase 2 — Classification metrics (`surge/metrics.py`)
 
-*(filled in next commit)*
+**Summary**
+- Added thin wrappers: `accuracy_score`, `f1_score`, `auroc`, `log_loss`, `top_k_accuracy_score`, `expected_calibration_error` (multiclass-safe max-prob binning for ECE).
+- `__all__` documents the public metric API.
+
+**Verification**
+```bash
+PYTHONPATH=. python -m pytest tests/unit/test_classification_metrics.py -q
+```
 
 ---
 
 ## Phase 3 — Classification visualization (`surge/viz/classification.py`)
 
-*(filled in next commit)*
+**Summary**
+- ROC / PR (binary + multiclass OvR), confusion matrix, calibration (+ ECE subtitle), and a 2×2 `plot_classification_dashboard`.
+- PNG writes optionally pair with PDF when saving `.png`.
+
+**Verification**
+```bash
+PYTHONPATH=. python -m pytest tests/unit/test_viz_classification.py -q
+```
+
+**Showcase**
+```bash
+PYTHONPATH=. python -c "from pathlib import Path; import numpy as np; from surge.viz.classification import plot_roc_curve; plot_roc_curve(np.array([0,1,1]), np.array([0.1,0.8,0.9]), save_path=Path('/tmp/roc_demo.png'))"
+```
 
 ---
 
