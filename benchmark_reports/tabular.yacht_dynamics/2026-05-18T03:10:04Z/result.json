@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "tabular.yacht_dynamics",
+  "tier": "1",
+  "task_type": "regression",
+  "metrics": {
+    "test_r2": 0.8643983147988933,
+    "test_rmse": 4.488724737828142,
+    "runtime_s": 2.3209748749795835
+  },
+  "passed": true,
+  "model_key": "sklearn.mlp",
+  "message": "UCI Yacht Hydrodynamics (Gerritsma 1981) \u2014 residuary resistance",
+  "extra": {
+    "n_train": 246,
+    "n_test": 62
+  },
+  "timestamp": "2026-05-18T03:10:04Z",
+  "surge_version": "0.1.0"
+}

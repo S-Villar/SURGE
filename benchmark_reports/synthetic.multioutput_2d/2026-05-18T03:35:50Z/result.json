@@ -1,0 +1,18 @@
+{
+  "benchmark_key": "synthetic.multioutput_2d",
+  "tier": "0",
+  "task_type": "regression",
+  "metrics": {
+    "test_r2": 0.985177468466653,
+    "runtime_s": 0.41309729099157266
+  },
+  "passed": true,
+  "model_key": "sklearn.mlp",
+  "message": "8\u21922 linear multi-output with Gaussian noise (inline fixture)",
+  "extra": {
+    "n_train": 450,
+    "n_test": 150
+  },
+  "timestamp": "2026-05-18T03:35:50Z",
+  "surge_version": "0.1.0"
+}

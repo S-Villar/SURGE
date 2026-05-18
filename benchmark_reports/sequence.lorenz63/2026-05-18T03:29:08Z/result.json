@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "sequence.lorenz63",
+  "tier": "0",
+  "task_type": "regression",
+  "metrics": {
+    "test_nrmse": 0.014137083950311522,
+    "test_r2": 0.9989416996053124,
+    "runtime_s": 3.725124374992447
+  },
+  "passed": true,
+  "model_key": "pytorch.residual_mlp",
+  "message": "leaderboard run via pytorch.residual_mlp",
+  "extra": {
+    "n_train": 960,
+    "n_test": 240
+  },
+  "timestamp": "2026-05-18T03:29:08Z",
+  "surge_version": "0.1.0"
+}

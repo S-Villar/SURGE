@@ -1,0 +1,20 @@
+{
+  "benchmark_key": "tabular.wine",
+  "tier": "1",
+  "task_type": "classification",
+  "metrics": {
+    "test_accuracy": 1.0,
+    "test_f1_macro": 1.0,
+    "test_auroc": 1.0,
+    "runtime_s": 0.004172957997070625
+  },
+  "passed": true,
+  "model_key": "sklearn.logistic_regression",
+  "message": "UCI Wine / sklearn.datasets",
+  "extra": {
+    "n_train": 133,
+    "n_test": 45
+  },
+  "timestamp": "2026-05-18T03:31:51Z",
+  "surge_version": "0.1.0"
+}

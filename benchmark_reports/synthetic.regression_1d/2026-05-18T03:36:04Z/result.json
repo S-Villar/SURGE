@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "synthetic.regression_1d",
+  "tier": "0",
+  "task_type": "regression",
+  "metrics": {
+    "test_r2": 0.9907515154867574,
+    "test_rmse": 0.1678693383644082,
+    "runtime_s": 0.2707074169884436
+  },
+  "passed": true,
+  "model_key": "sklearn.mlp",
+  "message": "Linear 1-D signal with small Gaussian noise",
+  "extra": {
+    "n_train": 300,
+    "n_test": 100
+  },
+  "timestamp": "2026-05-18T03:36:04Z",
+  "surge_version": "0.1.0"
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "tabular.california_housing",
+  "tier": "1",
+  "task_type": "regression",
+  "metrics": {
+    "test_r2": 0.7993398110787833,
+    "test_rmse": 0.5127834953836536,
+    "runtime_s": 19.24304679199122
+  },
+  "passed": true,
+  "model_key": "pytorch.mlp",
+  "message": "leaderboard run via pytorch.mlp",
+  "extra": {
+    "n_train": 16512,
+    "n_test": 4128
+  },
+  "timestamp": "2026-05-18T03:07:05Z",
+  "surge_version": "0.1.0"
+}

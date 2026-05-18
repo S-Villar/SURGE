@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "tabular.diabetes",
+  "tier": "1",
+  "task_type": "regression",
+  "metrics": {
+    "test_r2": 0.5350073656033429,
+    "test_rmse": 49.63468080864416,
+    "runtime_s": 0.6093345840054099
+  },
+  "passed": true,
+  "model_key": "pytorch.mlp",
+  "message": "leaderboard run via pytorch.mlp",
+  "extra": {
+    "n_train": 353,
+    "n_test": 89
+  },
+  "timestamp": "2026-05-18T03:31:23Z",
+  "surge_version": "0.1.0"
+}

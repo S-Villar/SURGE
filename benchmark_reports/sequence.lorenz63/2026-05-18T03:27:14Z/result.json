@@ -1,0 +1,20 @@
+{
+  "benchmark_key": "sequence.lorenz63",
+  "tier": "0",
+  "task_type": "regression",
+  "metrics": {
+    "test_nrmse": 0.02881123010834278,
+    "runtime_s": 7.048771499976283
+  },
+  "passed": true,
+  "model_key": "sklearn.mlp",
+  "message": "Lorenz-63 RK-4 short-horizon prediction (inline, no download)",
+  "extra": {
+    "n_train": 960,
+    "n_test": 240,
+    "T_in": 20,
+    "T_out": 20
+  },
+  "timestamp": "2026-05-18T03:27:14Z",
+  "surge_version": "0.1.0"
+}

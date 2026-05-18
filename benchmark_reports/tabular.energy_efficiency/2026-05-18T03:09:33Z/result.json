@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "tabular.energy_efficiency",
+  "tier": "1",
+  "task_type": "regression",
+  "metrics": {
+    "test_r2": 0.6405805736274609,
+    "test_rmse": 5.995813359952389,
+    "runtime_s": 3.479082625010051
+  },
+  "passed": false,
+  "model_key": "sklearn.mlp",
+  "message": "UCI Energy Efficiency \u2014 Heating Load (Tsanas & Xifara 2012)",
+  "extra": {
+    "n_train": 614,
+    "n_test": 154
+  },
+  "timestamp": "2026-05-18T03:09:33Z",
+  "surge_version": "0.1.0"
+}

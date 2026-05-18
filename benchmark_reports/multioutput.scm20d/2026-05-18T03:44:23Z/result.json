@@ -1,0 +1,20 @@
+{
+  "benchmark_key": "multioutput.scm20d",
+  "tier": "1",
+  "task_type": "regression",
+  "metrics": {
+    "test_r2": 0.8771169147508044,
+    "test_rmse": 94.24325919665637,
+    "runtime_s": 8.419489499996416
+  },
+  "passed": true,
+  "model_key": "sklearn.random_forest",
+  "message": "SCM20d supply-chain multi-output regression (61\u219220 targets)",
+  "extra": {
+    "n_train": 7172,
+    "n_test": 1794,
+    "n_targets": 16
+  },
+  "timestamp": "2026-05-18T03:44:23Z",
+  "surge_version": "0.1.0"
+}

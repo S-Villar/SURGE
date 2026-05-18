@@ -1,0 +1,20 @@
+{
+  "benchmark_key": "tabular.breast_cancer",
+  "tier": "1",
+  "task_type": "classification",
+  "metrics": {
+    "test_accuracy": 0.9824561403508771,
+    "test_f1_macro": 0.9811507936507937,
+    "test_auroc": 0.9953703703703703,
+    "runtime_s": 0.006867249991046265
+  },
+  "passed": true,
+  "model_key": "sklearn.logistic_regression",
+  "message": "Wisconsin Breast Cancer (UCI / WDBC)",
+  "extra": {
+    "n_train": 455,
+    "n_test": 114
+  },
+  "timestamp": "2026-05-18T03:06:33Z",
+  "surge_version": "0.1.0"
+}

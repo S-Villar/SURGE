@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "tabular.energy_efficiency",
+  "tier": "1",
+  "task_type": "regression",
+  "metrics": {
+    "test_r2": 0.9728910089050736,
+    "test_rmse": 1.6466602793046028,
+    "runtime_s": 0.8962095000024419
+  },
+  "passed": true,
+  "model_key": "pytorch.mlp",
+  "message": "leaderboard run via pytorch.mlp",
+  "extra": {
+    "n_train": 614,
+    "n_test": 154
+  },
+  "timestamp": "2026-05-18T03:09:35Z",
+  "surge_version": "0.1.0"
+}

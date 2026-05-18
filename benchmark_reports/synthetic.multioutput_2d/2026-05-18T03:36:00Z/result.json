@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "synthetic.multioutput_2d",
+  "tier": "0",
+  "task_type": "regression",
+  "metrics": {
+    "test_r2": 0.9907170668439448,
+    "test_rmse": 0.129471973544068,
+    "runtime_s": 5.615514000004623
+  },
+  "passed": true,
+  "model_key": "pytorch.lstm",
+  "message": "leaderboard run via pytorch.lstm",
+  "extra": {
+    "n_train": 480,
+    "n_test": 120
+  },
+  "timestamp": "2026-05-18T03:36:00Z",
+  "surge_version": "0.1.0"
+}

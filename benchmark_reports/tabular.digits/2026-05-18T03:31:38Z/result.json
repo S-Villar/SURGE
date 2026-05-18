@@ -1,0 +1,20 @@
+{
+  "benchmark_key": "tabular.digits",
+  "tier": "1",
+  "task_type": "classification",
+  "metrics": {
+    "test_accuracy": 0.9833333333333333,
+    "test_f1_macro": 0.9829848020173108,
+    "test_auroc": 0.999423404784516,
+    "runtime_s": 2.236071584018646
+  },
+  "passed": true,
+  "model_key": "pytorch.mlp_classifier",
+  "message": "leaderboard run via pytorch.mlp_classifier",
+  "extra": {
+    "n_train": 1437,
+    "n_test": 360
+  },
+  "timestamp": "2026-05-18T03:31:38Z",
+  "surge_version": "0.1.0"
+}

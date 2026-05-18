@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "synthetic.regression_1d",
+  "tier": "0",
+  "task_type": "regression",
+  "metrics": {
+    "test_r2": 0.9912385891420397,
+    "test_rmse": 0.16889860551406186,
+    "runtime_s": 0.455151834001299
+  },
+  "passed": true,
+  "model_key": "pytorch.mlp",
+  "message": "leaderboard run via pytorch.mlp",
+  "extra": {
+    "n_train": 320,
+    "n_test": 80
+  },
+  "timestamp": "2026-05-18T03:36:06Z",
+  "surge_version": "0.1.0"
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "tabular.airfoil_noise",
+  "tier": "1",
+  "task_type": "regression",
+  "metrics": {
+    "test_r2": 0.9571108232232044,
+    "test_rmse": 1.4658399527887112,
+    "runtime_s": 1.200514583993936
+  },
+  "passed": true,
+  "model_key": "xgboost.xgbregressor",
+  "message": "NASA Airfoil Self-Noise (Brooks et al. 1989) \u2014 UCI",
+  "extra": {
+    "n_train": 1202,
+    "n_test": 301
+  },
+  "timestamp": "2026-05-18T03:26:45Z",
+  "surge_version": "0.1.0"
+}
