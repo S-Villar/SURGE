@@ -1,0 +1,20 @@
+{
+  "benchmark_key": "tabular.iris",
+  "tier": "1",
+  "task_type": "classification",
+  "metrics": {
+    "test_accuracy": 0.9473684210526315,
+    "test_f1_macro": 0.9487179487179488,
+    "test_auroc": 0.9969230769230769,
+    "runtime_s": 0.011171791993547231
+  },
+  "passed": true,
+  "model_key": "sklearn.logistic_regression",
+  "message": "UCI Iris / sklearn.datasets",
+  "extra": {
+    "n_train": 112,
+    "n_test": 38
+  },
+  "timestamp": "2026-05-17T21:04:50Z",
+  "surge_version": "0.1.0"
+}

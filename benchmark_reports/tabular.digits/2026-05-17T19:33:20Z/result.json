@@ -1,0 +1,20 @@
+{
+  "benchmark_key": "tabular.digits",
+  "tier": "1",
+  "task_type": "classification",
+  "metrics": {
+    "test_accuracy": 0.9527777777777777,
+    "test_f1_macro": 0.9520666842851361,
+    "test_auroc": 0.9988556791630865,
+    "runtime_s": 30.957249166007387
+  },
+  "passed": true,
+  "model_key": "sklearn.gradient_boosting_classifier",
+  "message": "Optical digits / sklearn.datasets (Alpaydin 1998)",
+  "extra": {
+    "n_train": 1437,
+    "n_test": 360
+  },
+  "timestamp": "2026-05-17T19:33:20Z",
+  "surge_version": "0.1.0"
+}

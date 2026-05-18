@@ -1,0 +1,20 @@
+{
+  "benchmark_key": "synthetic.classification_binary",
+  "tier": "0",
+  "task_type": "classification",
+  "metrics": {
+    "test_accuracy": 0.952,
+    "test_f1_macro": 0.9517498713329902,
+    "test_auroc": 0.9932920536635707,
+    "runtime_s": 0.053745584009448066
+  },
+  "passed": true,
+  "model_key": "sklearn.logistic_regression",
+  "message": "Random linear combo of first 3 features",
+  "extra": {
+    "n_train": 375,
+    "n_test": 125
+  },
+  "timestamp": "2026-05-17T19:31:06Z",
+  "surge_version": "0.1.0"
+}

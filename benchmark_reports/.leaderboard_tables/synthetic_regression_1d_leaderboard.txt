@@ -1,0 +1,10 @@
+
+Benchmark : synthetic.regression_1d  (task=regression, tier=0, shape=1→1)
+─────────────────────────────────────────────────────────────────────
+Model                      Pass       test_r2   test_rmse   runtime_s
+─────────────────────────────────────────────────────────────────────
+sklearn.random_forest      PASS        0.9870      0.1991      2.24s*
+sklearn.mlp                PASS        0.9908     0.1679*       3.27s
+pytorch.mlp                PASS       0.9913*      0.1683      36.81s
+─────────────────────────────────────────────────────────────────────
+  * = best  (↑ higher-is-better: accuracy, f1, auroc, r2 | ↓ lower-is-better: rmse, runtime)

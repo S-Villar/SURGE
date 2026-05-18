@@ -1,0 +1,20 @@
+{
+  "benchmark_key": "classification.flow_regime",
+  "tier": "0",
+  "task_type": "classification",
+  "metrics": {
+    "test_accuracy": 0.94375,
+    "test_f1_macro": 0.9069251927575154,
+    "test_auroc": 0.9625375965892172,
+    "runtime_s": 0.2224867920158431
+  },
+  "passed": true,
+  "model_key": "sklearn.random_forest_classifier",
+  "message": "CFD flow regime 4-class labeling (inline fixture, no download)",
+  "extra": {
+    "n_train": 640,
+    "n_test": 160
+  },
+  "timestamp": "2026-05-17T22:58:48Z",
+  "surge_version": "0.1.0"
+}
