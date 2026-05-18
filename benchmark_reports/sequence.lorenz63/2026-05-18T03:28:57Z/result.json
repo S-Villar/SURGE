@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "sequence.lorenz63",
+  "tier": "0",
+  "task_type": "regression",
+  "metrics": {
+    "test_nrmse": 0.036865022252390925,
+    "test_r2": 0.9935080730584467,
+    "runtime_s": 1.7872420830244664
+  },
+  "passed": true,
+  "model_key": "pytorch.mlp",
+  "message": "leaderboard run via pytorch.mlp",
+  "extra": {
+    "n_train": 960,
+    "n_test": 240
+  },
+  "timestamp": "2026-05-18T03:28:57Z",
+  "surge_version": "0.1.0"
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "synthetic.multioutput_2d",
+  "tier": "0",
+  "task_type": "regression",
+  "metrics": {
+    "test_r2": 0.9906549055014486,
+    "test_rmse": 0.12858515741244464,
+    "runtime_s": 0.6883189590007532
+  },
+  "passed": true,
+  "model_key": "pytorch.mlp",
+  "message": "leaderboard run via pytorch.mlp",
+  "extra": {
+    "n_train": 480,
+    "n_test": 120
+  },
+  "timestamp": "2026-05-18T03:35:52Z",
+  "surge_version": "0.1.0"
+}

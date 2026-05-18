@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "tabular.yacht_dynamics",
+  "tier": "1",
+  "task_type": "regression",
+  "metrics": {
+    "test_r2": 0.977459148221978,
+    "test_rmse": 1.8301032496439975,
+    "runtime_s": 0.384739333007019
+  },
+  "passed": true,
+  "model_key": "pytorch.mlp",
+  "message": "leaderboard run via pytorch.mlp",
+  "extra": {
+    "n_train": 246,
+    "n_test": 62
+  },
+  "timestamp": "2026-05-18T03:10:05Z",
+  "surge_version": "0.1.0"
+}

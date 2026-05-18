@@ -1,0 +1,20 @@
+{
+  "benchmark_key": "classification.plasma_stability",
+  "tier": "2",
+  "task_type": "classification",
+  "metrics": {
+    "test_accuracy": 0.9245,
+    "test_f1_macro": 0.9170055834356337,
+    "test_auroc": 0.9807750177522991,
+    "runtime_s": 0.39649358301539905
+  },
+  "passed": true,
+  "model_key": "sklearn.random_forest_classifier",
+  "message": "UCI Electrical Grid Stability (Arzamasov 2018)",
+  "extra": {
+    "n_train": 8000,
+    "n_test": 2000
+  },
+  "timestamp": "2026-05-18T03:51:39Z",
+  "surge_version": "0.1.0"
+}

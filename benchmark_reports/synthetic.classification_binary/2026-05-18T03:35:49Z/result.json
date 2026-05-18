@@ -1,0 +1,20 @@
+{
+  "benchmark_key": "synthetic.classification_binary",
+  "tier": "0",
+  "task_type": "classification",
+  "metrics": {
+    "test_accuracy": 0.96,
+    "test_f1_macro": 0.9597423510466989,
+    "test_auroc": 0.9919484702093398,
+    "runtime_s": 0.4971310829860158
+  },
+  "passed": true,
+  "model_key": "pytorch.mlp_classifier",
+  "message": "leaderboard run via pytorch.mlp_classifier",
+  "extra": {
+    "n_train": 400,
+    "n_test": 100
+  },
+  "timestamp": "2026-05-18T03:35:49Z",
+  "surge_version": "0.1.0"
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "pde.burgers_1d",
+  "tier": "1",
+  "task_type": "regression",
+  "metrics": {
+    "test_nrmse": 0.0419488372482148,
+    "test_r2": 0.9983669218911506,
+    "runtime_s": 97.01959616597742
+  },
+  "passed": true,
+  "model_key": "pytorch.cnn1d",
+  "message": "leaderboard run via pytorch.cnn1d",
+  "extra": {
+    "n_train": 819,
+    "n_test": 205
+  },
+  "timestamp": "2026-05-18T03:02:50Z",
+  "surge_version": "0.1.0"
+}

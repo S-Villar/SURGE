@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "tabular.diabetes",
+  "tier": "1",
+  "task_type": "regression",
+  "metrics": {
+    "test_r2": 0.42411118357958844,
+    "test_rmse": 56.43125475202655,
+    "runtime_s": 0.05502383300336078
+  },
+  "passed": true,
+  "model_key": "sklearn.gradient_boosting_regressor",
+  "message": "UCI Diabetes / sklearn.datasets",
+  "extra": {
+    "n_train": 331,
+    "n_test": 111
+  },
+  "timestamp": "2026-05-18T03:08:51Z",
+  "surge_version": "0.1.0"
+}

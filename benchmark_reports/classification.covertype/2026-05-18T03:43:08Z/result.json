@@ -1,0 +1,20 @@
+{
+  "benchmark_key": "classification.covertype",
+  "tier": "1",
+  "task_type": "classification",
+  "metrics": {
+    "test_accuracy": 0.832,
+    "test_f1_macro": 0.6995865760329164,
+    "runtime_s": 0.46606170799350366
+  },
+  "passed": false,
+  "model_key": "sklearn.random_forest_classifier",
+  "message": "Forest Covertype 7-class classification (Blackard & Dean 1999) \u2014 54 cartographic features",
+  "extra": {
+    "n_train": 16000,
+    "n_test": 4000,
+    "n_classes": 7
+  },
+  "timestamp": "2026-05-18T03:43:08Z",
+  "surge_version": "0.1.0"
+}

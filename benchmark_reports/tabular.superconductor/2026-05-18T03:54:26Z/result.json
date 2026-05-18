@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "tabular.superconductor",
+  "tier": "1",
+  "task_type": "regression",
+  "metrics": {
+    "test_r2": 0.9295457995519271,
+    "test_rmse": 9.005467951914516,
+    "runtime_s": 2.20354316700832
+  },
+  "passed": true,
+  "model_key": "xgboost.xgbregressor",
+  "message": "Superconductor Tc prediction (Hamidieh 2018) \u2014 81 material features \u2192 critical temp",
+  "extra": {
+    "n_train": 17010,
+    "n_test": 4253
+  },
+  "timestamp": "2026-05-18T03:54:26Z",
+  "surge_version": "0.1.0"
+}

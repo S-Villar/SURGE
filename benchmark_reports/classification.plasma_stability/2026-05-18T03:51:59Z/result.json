@@ -1,0 +1,20 @@
+{
+  "benchmark_key": "classification.plasma_stability",
+  "tier": "2",
+  "task_type": "classification",
+  "metrics": {
+    "test_accuracy": 0.9775,
+    "test_f1_macro": 0.9756228035130248,
+    "test_auroc": 0.997970392628899,
+    "runtime_s": 9.290820709022228
+  },
+  "passed": true,
+  "model_key": "pytorch.mlp_classifier",
+  "message": "leaderboard run via pytorch.mlp_classifier",
+  "extra": {
+    "n_train": 8000,
+    "n_test": 2000
+  },
+  "timestamp": "2026-05-18T03:51:59Z",
+  "surge_version": "0.1.0"
+}

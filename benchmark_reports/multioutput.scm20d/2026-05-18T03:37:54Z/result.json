@@ -1,0 +1,19 @@
+{
+  "benchmark_key": "multioutput.scm20d",
+  "tier": "1",
+  "task_type": "regression",
+  "metrics": {
+    "test_r2": 0.8876145559365186,
+    "test_rmse": 89.7801548434291,
+    "runtime_s": 25.366162416990846
+  },
+  "passed": true,
+  "model_key": "pytorch.residual_mlp",
+  "message": "leaderboard run via pytorch.residual_mlp",
+  "extra": {
+    "n_train": 7172,
+    "n_test": 1794
+  },
+  "timestamp": "2026-05-18T03:37:54Z",
+  "surge_version": "0.1.0"
+}

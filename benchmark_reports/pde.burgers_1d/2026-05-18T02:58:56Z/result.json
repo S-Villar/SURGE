@@ -1,0 +1,20 @@
+{
+  "benchmark_key": "pde.burgers_1d",
+  "tier": "1",
+  "task_type": "regression",
+  "metrics": {
+    "test_relative_l2": 0.6136941845775827,
+    "runtime_s": 1.2107622089970391
+  },
+  "passed": false,
+  "model_key": "sklearn.random_forest",
+  "message": "Viscous Burgers 1D inline FD solver (n_x=64, \u03bd=0.01)",
+  "extra": {
+    "n_train": 819,
+    "n_test": 205,
+    "n_x": 64,
+    "nt": 100
+  },
+  "timestamp": "2026-05-18T02:58:56Z",
+  "surge_version": "0.1.0"
+}
