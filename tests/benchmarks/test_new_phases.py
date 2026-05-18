@@ -193,6 +193,97 @@ def test_pdebench_raises_without_h5py_or_file():
             load_pdebench("burgers_1d", download=False, cache_dir="/nonexistent/path")
 
 
+@pytest.mark.skipif(
+    not __import__("importlib").util.find_spec("h5py"),
+    reason="h5py not installed",
+)
+def test_pdebench_burgers_loader_synthetic(tmp_path):
+    """Burgers 1D loader parses synthetic HDF5 correctly (no download)."""
+    import h5py
+    from surge.benchmarks.loaders.pdebench import _load_burgers_hdf5
+
+    N, T, nx = 50, 11, 64
+    rng = np.random.default_rng(0)
+    tensor = rng.random((N, T, nx), dtype=np.float32)
+
+    fpath = tmp_path / "1D_Burgers_test.hdf5"
+    with h5py.File(fpath, "w") as f:
+        f.create_dataset("tensor", data=tensor)
+        f.create_dataset("x-coordinate", data=np.linspace(0, 1, nx, dtype=np.float32))
+
+    X_tr, y_tr, X_te, y_te = _load_burgers_hdf5(fpath, n_train=40, n_test=10, seed=42)
+
+    assert X_tr.shape == (40, nx), f"X_train shape mismatch: {X_tr.shape}"
+    assert y_tr.shape == (40, nx)
+    assert X_te.shape == (10, nx)
+    assert y_te.shape == (10, nx)
+    # IC and final state should differ (drawn independently)
+    assert not np.allclose(X_tr, y_tr)
+
+
+@pytest.mark.skipif(
+    not __import__("importlib").util.find_spec("h5py"),
+    reason="h5py not installed",
+)
+def test_pdebench_darcy_loader_synthetic(tmp_path):
+    """Darcy 2D loader parses synthetic HDF5 correctly (no download)."""
+    import h5py
+    from surge.benchmarks.loaders.pdebench import _load_darcy_hdf5
+
+    N, nx, ny = 50, 16, 16
+    rng = np.random.default_rng(1)
+    nu_data = rng.random((N, nx, ny), dtype=np.float32)
+    tensor_data = rng.random((N, 1, nx, ny), dtype=np.float32)  # (N, nt=1, nx, ny)
+
+    fpath = tmp_path / "2D_Darcy_test.hdf5"
+    with h5py.File(fpath, "w") as f:
+        f.create_dataset("nu", data=nu_data)
+        f.create_dataset("tensor", data=tensor_data)
+        f.create_dataset("x-coordinate", data=np.linspace(0, 1, nx, dtype=np.float32))
+        f.create_dataset("y-coordinate", data=np.linspace(0, 1, ny, dtype=np.float32))
+
+    X_tr, y_tr, X_te, y_te = _load_darcy_hdf5(fpath, n_train=40, n_test=10, seed=42)
+
+    assert X_tr.shape == (40, nx * ny), f"X_train shape mismatch: {X_tr.shape}"
+    assert y_tr.shape == (40, nx * ny)
+    assert X_te.shape == (10, nx * ny)
+    assert y_te.shape == (10, nx * ny)
+
+
+@pytest.mark.skipif(
+    not __import__("importlib").util.find_spec("h5py"),
+    reason="h5py not installed",
+)
+def test_pdebench_shallow_water_loader_synthetic(tmp_path):
+    """Shallow Water 2D loader parses per-trajectory HDF5 groups correctly."""
+    import h5py
+    from surge.benchmarks.loaders.pdebench import _load_shallow_water_hdf5
+
+    T, nx, ny, nc = 8, 16, 16, 2
+    n_traj = 50
+    rng = np.random.default_rng(2)
+
+    fpath = tmp_path / "2D_rdb_test.h5"
+    with h5py.File(fpath, "w") as f:
+        for i in range(1, n_traj + 1):
+            key = f"{i:04d}"
+            grp = f.create_group(key)
+            grp.create_dataset("data", data=rng.random((T, nx, ny, nc), dtype=np.float32))
+            grid = grp.create_group("grid")
+            grid.create_dataset("x", data=np.linspace(0, 1, nx, dtype=np.float32))
+            grid.create_dataset("y", data=np.linspace(0, 1, ny, dtype=np.float32))
+            grid.create_dataset("t", data=np.linspace(0, 1, T, dtype=np.float32))
+
+    X_tr, y_tr, X_te, y_te = _load_shallow_water_hdf5(fpath, n_train=40, n_test=10, seed=42)
+
+    assert X_tr.shape == (40, nx * ny), f"X_train shape mismatch: {X_tr.shape}"
+    assert y_tr.shape == (40, nx * ny)
+    assert X_te.shape == (10, nx * ny)
+    assert y_te.shape == (10, nx * ny)
+    # IC ≠ final state
+    assert not np.allclose(X_tr, y_tr)
+
+
 # ---------------------------------------------------------------------------
 # Phase F — Scientific benchmarks
 # ---------------------------------------------------------------------------
