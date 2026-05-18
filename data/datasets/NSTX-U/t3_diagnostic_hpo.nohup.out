@@ -1,0 +1,2029 @@
+>>> Ensuring diag_* targets on pickle
+Wrote /Users/asanche2/repos/SURGE/data/datasets/NSTX-U/nstxu_equil_curated.pkl with columns: diag_rogowski_Ip, diag_flux_loop_phi_dia, diag_mirnov_proxy (Rogowski=Ip, flux loop=Phi_dia, Mirnov=B_t*κ_u*a/R0)
+
+======== 2026-04-01T12:46:10-04:00 START nstxu_t3_rogowski_hpo ========
+
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+Traceback (most recent call last):  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/asanche2/repos/SURGE/examples/m3dc1_workflow.py", line 14, in <module>
+    import surge  # noqa: F401 - ensures package initialization registers adapters
+  File "/Users/asanche2/repos/SURGE/surge/__init__.py", line 10, in <module>
+    from .model import GPFLOW_AVAILABLE, MODEL_REGISTRY, PYTORCH_AVAILABLE
+  File "/Users/asanche2/repos/SURGE/surge/model/__init__.py", line 7, in <module>
+    from .gpflow import GPFLOW_AVAILABLE, GPflowGPRAdapter, GPflowMultiKernelAdapter
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow.py", line 7, in <module>
+    from .gpflow_impl import GPFLOW_AVAILABLE, GPflowGPRModel, GPflowMultiKernelGPR
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow_impl.py", line 11, in <module>
+    import gpflow as gpf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/__init__.py", line 17, in <module>
+    from . import (
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/__init__.py", line 1, in <module>
+    from . import conditionals, multioutput, sample_conditionals
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/conditionals.py", line 17, in <module>
+    import tensorflow as tf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/__init__.py", line 45, in <module>
+    from tensorflow._api.v2 import __internal__
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/__init__.py", line 8, in <module>
+    from tensorflow._api.v2.__internal__ import autograph
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/autograph/__init__.py", line 8, in <module>
+    from tensorflow.python.autograph.core.ag_ctx import control_status_ctx # line: 34
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/core/ag_ctx.py", line 21, in <module>
+    from tensorflow.python.autograph.utils import ag_logging
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/__init__.py", line 17, in <module>
+    from tensorflow.python.autograph.utils.context_managers import control_dependency_on_returns
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/context_managers.py", line 19, in <module>
+    from tensorflow.python.framework import ops
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/framework/ops.py", line 46, in <module>
+    from tensorflow.python import pywrap_tfe
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/pywrap_tfe.py", line 25, in <module>
+    from tensorflow.python._pywrap_tfe import *
+Traceback (most recent call last):
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/numpy/core/_multiarray_umath.py", line 46, in __getattr__
+    raise ImportError(msg)
+ImportError: 
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+
+AttributeError: 'MessageFactory' object has no attribute 'GetPrototype'
+
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+Traceback (most recent call last):  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/asanche2/repos/SURGE/examples/m3dc1_workflow.py", line 14, in <module>
+    import surge  # noqa: F401 - ensures package initialization registers adapters
+  File "/Users/asanche2/repos/SURGE/surge/__init__.py", line 10, in <module>
+    from .model import GPFLOW_AVAILABLE, MODEL_REGISTRY, PYTORCH_AVAILABLE
+  File "/Users/asanche2/repos/SURGE/surge/model/__init__.py", line 7, in <module>
+    from .gpflow import GPFLOW_AVAILABLE, GPflowGPRAdapter, GPflowMultiKernelAdapter
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow.py", line 7, in <module>
+    from .gpflow_impl import GPFLOW_AVAILABLE, GPflowGPRModel, GPflowMultiKernelGPR
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow_impl.py", line 11, in <module>
+    import gpflow as gpf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/__init__.py", line 17, in <module>
+    from . import (
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/__init__.py", line 1, in <module>
+    from . import conditionals, multioutput, sample_conditionals
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/conditionals.py", line 17, in <module>
+    import tensorflow as tf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/__init__.py", line 45, in <module>
+    from tensorflow._api.v2 import __internal__
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/__init__.py", line 8, in <module>
+    from tensorflow._api.v2.__internal__ import autograph
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/autograph/__init__.py", line 8, in <module>
+    from tensorflow.python.autograph.core.ag_ctx import control_status_ctx # line: 34
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/core/ag_ctx.py", line 21, in <module>
+    from tensorflow.python.autograph.utils import ag_logging
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/__init__.py", line 17, in <module>
+    from tensorflow.python.autograph.utils.context_managers import control_dependency_on_returns
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/context_managers.py", line 19, in <module>
+    from tensorflow.python.framework import ops
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/framework/ops.py", line 49, in <module>
+    from tensorflow.python.client import pywrap_tf_session
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/client/pywrap_tf_session.py", line 19, in <module>
+    from tensorflow.python.client._pywrap_tf_session import *
+Traceback (most recent call last):
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/numpy/core/_multiarray_umath.py", line 46, in __getattr__
+    raise ImportError(msg)
+ImportError: 
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+
+
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+Traceback (most recent call last):  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/asanche2/repos/SURGE/examples/m3dc1_workflow.py", line 14, in <module>
+    import surge  # noqa: F401 - ensures package initialization registers adapters
+  File "/Users/asanche2/repos/SURGE/surge/__init__.py", line 10, in <module>
+    from .model import GPFLOW_AVAILABLE, MODEL_REGISTRY, PYTORCH_AVAILABLE
+  File "/Users/asanche2/repos/SURGE/surge/model/__init__.py", line 7, in <module>
+    from .gpflow import GPFLOW_AVAILABLE, GPflowGPRAdapter, GPflowMultiKernelAdapter
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow.py", line 7, in <module>
+    from .gpflow_impl import GPFLOW_AVAILABLE, GPflowGPRModel, GPflowMultiKernelGPR
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow_impl.py", line 11, in <module>
+    import gpflow as gpf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/__init__.py", line 17, in <module>
+    from . import (
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/__init__.py", line 1, in <module>
+    from . import conditionals, multioutput, sample_conditionals
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/conditionals.py", line 17, in <module>
+    import tensorflow as tf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/__init__.py", line 45, in <module>
+    from tensorflow._api.v2 import __internal__
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/__init__.py", line 8, in <module>
+    from tensorflow._api.v2.__internal__ import autograph
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/autograph/__init__.py", line 8, in <module>
+    from tensorflow.python.autograph.core.ag_ctx import control_status_ctx # line: 34
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/core/ag_ctx.py", line 21, in <module>
+    from tensorflow.python.autograph.utils import ag_logging
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/__init__.py", line 17, in <module>
+    from tensorflow.python.autograph.utils.context_managers import control_dependency_on_returns
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/context_managers.py", line 19, in <module>
+    from tensorflow.python.framework import ops
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/framework/ops.py", line 50, in <module>
+    from tensorflow.python.eager import context
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/eager/context.py", line 37, in <module>
+    from tensorflow.python.eager import execute
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/eager/execute.py", line 21, in <module>
+    from tensorflow.python.framework import dtypes
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/framework/dtypes.py", line 21, in <module>
+    import ml_dtypes
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/ml_dtypes/__init__.py", line 32, in <module>
+    from ml_dtypes._finfo import finfo
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/ml_dtypes/_finfo.py", line 19, in <module>
+    from ml_dtypes._ml_dtypes_ext import bfloat16
+Traceback (most recent call last):
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/numpy/core/_multiarray_umath.py", line 46, in __getattr__
+    raise ImportError(msg)
+ImportError: 
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+
+ImportError: numpy.core._multiarray_umath failed to import
+Warning: GPflow not available or incompatible. Install with: pip install gpflow
+SURGE workflow started.
+Starting SURGE workflow for dataset data/datasets/NSTX-U/nstxu_equil_curated.pkl
+[1/6] Loading dataset...
+[2/6] Preparing splits and scalers...
+[3/6] HPO for nstxu_rf_t3_rogowski (40 trials)...
+[I 2026-04-01 12:46:15,901] A new study created in memory with name: nstxu_t3_rogowski_hpo-sklearn.random_forest
+  [HPO] Trial 0 started...
+  [HPO] Trial 0 finished in 6.0s (val_r2=-5171.9357)
+[I 2026-04-01 12:46:21,928] Trial 0 finished with value: -5171.935697570703 and parameters: {'n_estimators': 500, 'max_depth': 12, 'min_samples_leaf': 4}. Best is trial 0 with value: -5171.935697570703.
+    Trial 1/40 (best val_r2=-5171.9357)
+  [HPO] Trial 1 started...
+  [HPO] Trial 1 finished in 10.8s (val_r2=-92.1356)
+[I 2026-04-01 12:46:32,747] Trial 1 finished with value: -92.13561315745719 and parameters: {'n_estimators': 600, 'max_depth': 28, 'min_samples_leaf': 2}. Best is trial 1 with value: -92.13561315745719.
+    Trial 2/40 (best val_r2=-92.1356)
+  [HPO] Trial 2 started...
+  [HPO] Trial 2 finished in 7.3s (val_r2=-1323.1258)
+[I 2026-04-01 12:46:40,090] Trial 2 finished with value: -1323.1258422260798 and parameters: {'n_estimators': 450, 'max_depth': 24, 'min_samples_leaf': 3}. Best is trial 1 with value: -92.13561315745719.
+    Trial 3/40 (best val_r2=-92.1356)
+  [HPO] Trial 3 started...
+  [HPO] Trial 3 finished in 4.6s (val_r2=-93.7661)
+[I 2026-04-01 12:46:44,720] Trial 3 finished with value: -93.76607591712926 and parameters: {'n_estimators': 500, 'max_depth': 8, 'min_samples_leaf': 2}. Best is trial 1 with value: -92.13561315745719.
+    Trial 4/40 (best val_r2=-92.1356)
+  [HPO] Trial 4 started...
+  [HPO] Trial 4 finished in 3.2s (val_r2=-89.7288)
+[I 2026-04-01 12:46:47,950] Trial 4 finished with value: -89.72883192546793 and parameters: {'n_estimators': 200, 'max_depth': 25, 'min_samples_leaf': 2}. Best is trial 4 with value: -89.72883192546793.
+    Trial 5/40 (best val_r2=-89.7288)
+  [HPO] Trial 5 started...
+  [HPO] Trial 5 finished in 7.0s (val_r2=-93.6375)
+[I 2026-04-01 12:46:54,993] Trial 5 finished with value: -93.63752075379317 and parameters: {'n_estimators': 500, 'max_depth': 13, 'min_samples_leaf': 2}. Best is trial 4 with value: -89.72883192546793.
+    Trial 6/40 (best val_r2=-89.7288)
+  [HPO] Trial 6 started...
+  [HPO] Trial 6 finished in 2.9s (val_r2=-5896.8342)
+[I 2026-04-01 12:46:57,900] Trial 6 finished with value: -5896.834225043942 and parameters: {'n_estimators': 200, 'max_depth': 15, 'min_samples_leaf': 4}. Best is trial 4 with value: -89.72883192546793.
+    Trial 7/40 (best val_r2=-89.7288)
+  [HPO] Trial 7 started...
+  [HPO] Trial 7 finished in 3.6s (val_r2=-5698.2706)
+[I 2026-04-01 12:47:01,539] Trial 7 finished with value: -5698.270602686557 and parameters: {'n_estimators': 250, 'max_depth': 14, 'min_samples_leaf': 4}. Best is trial 4 with value: -89.72883192546793.
+    Trial 8/40 (best val_r2=-89.7288)
+  [HPO] Trial 8 started...
+  [HPO] Trial 8 finished in 2.0s (val_r2=-1888.0375)
+[I 2026-04-01 12:47:03,531] Trial 8 finished with value: -1888.0374936333715 and parameters: {'n_estimators': 200, 'max_depth': 9, 'min_samples_leaf': 3}. Best is trial 4 with value: -89.72883192546793.
+    Trial 9/40 (best val_r2=-89.7288)
+  [HPO] Trial 9 started...
+  [HPO] Trial 9 finished in 4.6s (val_r2=-1582.5800)
+[I 2026-04-01 12:47:08,173] Trial 9 finished with value: -1582.5799922773056 and parameters: {'n_estimators': 550, 'max_depth': 8, 'min_samples_leaf': 3}. Best is trial 4 with value: -89.72883192546793.
+    Trial 10/40 (best val_r2=-89.7288)
+  [HPO] Trial 10 started...
+  [HPO] Trial 10 finished in 5.3s (val_r2=0.7666)
+[I 2026-04-01 12:47:13,530] Trial 10 finished with value: 0.7666043134162508 and parameters: {'n_estimators': 300, 'max_depth': 21, 'min_samples_leaf': 1}. Best is trial 10 with value: 0.7666043134162508.
+    Trial 11/40 (best val_r2=0.7666)
+  [HPO] Trial 11 started...
+  [HPO] Trial 11 finished in 5.4s (val_r2=0.7663)
+[I 2026-04-01 12:47:18,957] Trial 11 finished with value: 0.766318012609569 and parameters: {'n_estimators': 350, 'max_depth': 21, 'min_samples_leaf': 1}. Best is trial 10 with value: 0.7666043134162508.
+    Trial 12/40 (best val_r2=0.7666)
+  [HPO] Trial 12 started...
+  [HPO] Trial 12 finished in 6.1s (val_r2=0.7667)
+[I 2026-04-01 12:47:25,060] Trial 12 finished with value: 0.7667171999440948 and parameters: {'n_estimators': 350, 'max_depth': 20, 'min_samples_leaf': 1}. Best is trial 12 with value: 0.7667171999440948.
+    Trial 13/40 (best val_r2=0.7667)
+  [HPO] Trial 13 started...
+  [HPO] Trial 13 finished in 4.9s (val_r2=0.7666)
+[I 2026-04-01 12:47:29,938] Trial 13 finished with value: 0.766553808179368 and parameters: {'n_estimators': 350, 'max_depth': 19, 'min_samples_leaf': 1}. Best is trial 12 with value: 0.7667171999440948.
+    Trial 14/40 (best val_r2=0.7667)
+  [HPO] Trial 14 started...
+  [HPO] Trial 14 finished in 4.4s (val_r2=0.7661)
+[I 2026-04-01 12:47:34,374] Trial 14 finished with value: 0.7661357172270178 and parameters: {'n_estimators': 300, 'max_depth': 18, 'min_samples_leaf': 1}. Best is trial 12 with value: 0.7667171999440948.
+    Trial 15/40 (best val_r2=0.7667)
+  [HPO] Trial 15 started...
+  [HPO] Trial 15 finished in 6.7s (val_r2=0.7664)
+[I 2026-04-01 12:47:41,090] Trial 15 finished with value: 0.7664471570121275 and parameters: {'n_estimators': 400, 'max_depth': 22, 'min_samples_leaf': 1}. Best is trial 12 with value: 0.7667171999440948.
+    Trial 16/40 (best val_r2=0.7667)
+  [HPO] Trial 16 started...
+  [HPO] Trial 16 finished in 4.3s (val_r2=0.7653)
+[I 2026-04-01 12:47:45,420] Trial 16 finished with value: 0.7653280552294993 and parameters: {'n_estimators': 300, 'max_depth': 17, 'min_samples_leaf': 1}. Best is trial 12 with value: 0.7667171999440948.
+    Trial 17/40 (best val_r2=0.7667)
+  [HPO] Trial 17 started...
+  [HPO] Trial 17 finished in 6.3s (val_r2=0.7667)
+[I 2026-04-01 12:47:51,737] Trial 17 finished with value: 0.7666814703094209 and parameters: {'n_estimators': 400, 'max_depth': 21, 'min_samples_leaf': 1}. Best is trial 12 with value: 0.7667171999440948.
+    Trial 18/40 (best val_r2=0.7667)
+  [HPO] Trial 18 started...
+  [HPO] Trial 18 finished in 8.0s (val_r2=-106.4981)
+[I 2026-04-01 12:47:59,795] Trial 18 finished with value: -106.49811508860776 and parameters: {'n_estimators': 400, 'max_depth': 26, 'min_samples_leaf': 2}. Best is trial 12 with value: 0.7667171999440948.
+    Trial 19/40 (best val_r2=0.7667)
+  [HPO] Trial 19 started...
+  [HPO] Trial 19 finished in 6.5s (val_r2=0.7670)
+[I 2026-04-01 12:48:06,366] Trial 19 finished with value: 0.7669588903995261 and parameters: {'n_estimators': 400, 'max_depth': 23, 'min_samples_leaf': 1}. Best is trial 19 with value: 0.7669588903995261.
+    Trial 20/40 (best val_r2=0.7670)
+  [HPO] Trial 20 started...
+  [HPO] Trial 20 finished in 6.4s (val_r2=-101.8381)
+[I 2026-04-01 12:48:12,773] Trial 20 finished with value: -101.8380658416004 and parameters: {'n_estimators': 450, 'max_depth': 23, 'min_samples_leaf': 2}. Best is trial 19 with value: 0.7669588903995261.
+    Trial 21/40 (best val_r2=0.7670)
+  [HPO] Trial 21 started...
+  [HPO] Trial 21 finished in 5.2s (val_r2=0.7667)
+[I 2026-04-01 12:48:18,040] Trial 21 finished with value: 0.7667171999440948 and parameters: {'n_estimators': 350, 'max_depth': 20, 'min_samples_leaf': 1}. Best is trial 19 with value: 0.7669588903995261.
+    Trial 22/40 (best val_r2=0.7670)
+  [HPO] Trial 22 started...
+  [HPO] Trial 22 finished in 5.1s (val_r2=0.7666)
+[I 2026-04-01 12:48:23,199] Trial 22 finished with value: 0.7665538081793684 and parameters: {'n_estimators': 350, 'max_depth': 19, 'min_samples_leaf': 1}. Best is trial 19 with value: 0.7669588903995261.
+    Trial 23/40 (best val_r2=0.7670)
+  [HPO] Trial 23 started...
+  [HPO] Trial 23 finished in 5.6s (val_r2=0.7640)
+[I 2026-04-01 12:48:28,839] Trial 23 finished with value: 0.7639530457084258 and parameters: {'n_estimators': 350, 'max_depth': 16, 'min_samples_leaf': 1}. Best is trial 19 with value: 0.7669588903995261.
+    Trial 24/40 (best val_r2=0.7670)
+  [HPO] Trial 24 started...
+  [HPO] Trial 24 finished in 6.9s (val_r2=0.7678)
+[I 2026-04-01 12:48:35,794] Trial 24 finished with value: 0.7678117415486047 and parameters: {'n_estimators': 450, 'max_depth': 27, 'min_samples_leaf': 1}. Best is trial 24 with value: 0.7678117415486047.
+    Trial 25/40 (best val_r2=0.7678)
+  [HPO] Trial 25 started...
+  [HPO] Trial 25 finished in 6.3s (val_r2=-101.8486)
+[I 2026-04-01 12:48:42,091] Trial 25 finished with value: -101.84861808183172 and parameters: {'n_estimators': 450, 'max_depth': 28, 'min_samples_leaf': 2}. Best is trial 24 with value: 0.7678117415486047.
+    Trial 26/40 (best val_r2=0.7678)
+  [HPO] Trial 26 started...
+  [HPO] Trial 26 finished in 8.1s (val_r2=0.7669)
+[I 2026-04-01 12:48:50,204] Trial 26 finished with value: 0.7669454272810181 and parameters: {'n_estimators': 400, 'max_depth': 26, 'min_samples_leaf': 1}. Best is trial 24 with value: 0.7678117415486047.
+    Trial 27/40 (best val_r2=0.7678)
+  [HPO] Trial 27 started...
+  [HPO] Trial 27 finished in 7.4s (val_r2=-101.8430)
+[I 2026-04-01 12:48:57,628] Trial 27 finished with value: -101.84298691642263 and parameters: {'n_estimators': 450, 'max_depth': 26, 'min_samples_leaf': 2}. Best is trial 24 with value: 0.7678117415486047.
+    Trial 28/40 (best val_r2=0.7678)
+  [HPO] Trial 28 started...
+  [HPO] Trial 28 finished in 9.9s (val_r2=0.7677)
+[I 2026-04-01 12:49:07,591] Trial 28 finished with value: 0.7676564604845975 and parameters: {'n_estimators': 550, 'max_depth': 27, 'min_samples_leaf': 1}. Best is trial 24 with value: 0.7678117415486047.
+    Trial 29/40 (best val_r2=0.7678)
+  [HPO] Trial 29 started...
+  [HPO] Trial 29 finished in 9.8s (val_r2=-1612.6133)
+[I 2026-04-01 12:49:17,385] Trial 29 finished with value: -1612.613262031187 and parameters: {'n_estimators': 600, 'max_depth': 28, 'min_samples_leaf': 3}. Best is trial 24 with value: 0.7678117415486047.
+    Trial 30/40 (best val_r2=0.7678)
+  [HPO] Trial 30 started...
+  [HPO] Trial 30 finished in 9.6s (val_r2=0.7674)
+[I 2026-04-01 12:49:27,079] Trial 30 finished with value: 0.7674039446259846 and parameters: {'n_estimators': 550, 'max_depth': 24, 'min_samples_leaf': 1}. Best is trial 24 with value: 0.7678117415486047.
+    Trial 31/40 (best val_r2=0.7678)
+  [HPO] Trial 31 started...
+  [HPO] Trial 31 finished in 8.6s (val_r2=0.7674)
+[I 2026-04-01 12:49:35,751] Trial 31 finished with value: 0.7674039446259846 and parameters: {'n_estimators': 550, 'max_depth': 24, 'min_samples_leaf': 1}. Best is trial 24 with value: 0.7678117415486047.
+    Trial 32/40 (best val_r2=0.7678)
+  [HPO] Trial 32 started...
+  [HPO] Trial 32 finished in 8.8s (val_r2=0.7677)
+[I 2026-04-01 12:49:44,592] Trial 32 finished with value: 0.7676564604845979 and parameters: {'n_estimators': 550, 'max_depth': 27, 'min_samples_leaf': 1}. Best is trial 24 with value: 0.7678117415486047.
+    Trial 33/40 (best val_r2=0.7678)
+  [HPO] Trial 33 started...
+  [HPO] Trial 33 finished in 8.5s (val_r2=0.7672)
+[I 2026-04-01 12:49:53,129] Trial 33 finished with value: 0.7671861553307175 and parameters: {'n_estimators': 550, 'max_depth': 26, 'min_samples_leaf': 1}. Best is trial 24 with value: 0.7678117415486047.
+    Trial 34/40 (best val_r2=0.7678)
+  [HPO] Trial 34 started...
+  [HPO] Trial 34 finished in 9.8s (val_r2=-92.1322)
+[I 2026-04-01 12:50:02,929] Trial 34 finished with value: -92.13223317791814 and parameters: {'n_estimators': 600, 'max_depth': 27, 'min_samples_leaf': 2}. Best is trial 24 with value: 0.7678117415486047.
+    Trial 35/40 (best val_r2=0.7678)
+  [HPO] Trial 35 started...
+  [HPO] Trial 35 finished in 7.9s (val_r2=0.7675)
+[I 2026-04-01 12:50:11,082] Trial 35 finished with value: 0.7675184498829121 and parameters: {'n_estimators': 500, 'max_depth': 24, 'min_samples_leaf': 1}. Best is trial 24 with value: 0.7678117415486047.
+    Trial 36/40 (best val_r2=0.7678)
+  [HPO] Trial 36 started...
+  [HPO] Trial 36 finished in 7.6s (val_r2=-93.6025)
+[I 2026-04-01 12:50:18,727] Trial 36 finished with value: -93.60251277641594 and parameters: {'n_estimators': 500, 'max_depth': 27, 'min_samples_leaf': 2}. Best is trial 24 with value: 0.7678117415486047.
+    Trial 37/40 (best val_r2=0.7678)
+  [HPO] Trial 37 started...
+  [HPO] Trial 37 finished in 9.4s (val_r2=0.7679)
+[I 2026-04-01 12:50:28,185] Trial 37 finished with value: 0.7679403144152366 and parameters: {'n_estimators': 500, 'max_depth': 25, 'min_samples_leaf': 1}. Best is trial 37 with value: 0.7679403144152366.
+    Trial 38/40 (best val_r2=0.7679)
+  [HPO] Trial 38 started...
+  [HPO] Trial 38 finished in 8.0s (val_r2=-94.8391)
+[I 2026-04-01 12:50:36,250] Trial 38 finished with value: -94.8391368986361 and parameters: {'n_estimators': 550, 'max_depth': 28, 'min_samples_leaf': 2}. Best is trial 37 with value: 0.7679403144152366.
+    Trial 39/40 (best val_r2=0.7679)
+  [HPO] Trial 39 started...
+  [HPO] Trial 39 finished in 7.1s (val_r2=0.7679)
+[I 2026-04-01 12:50:43,371] Trial 39 finished with value: 0.7679428383241874 and parameters: {'n_estimators': 450, 'max_depth': 25, 'min_samples_leaf': 1}. Best is trial 39 with value: 0.7679428383241874.
+    Trial 40/40 (best val_r2=0.7679)
+[4/6] Training nstxu_rf_t3_rogowski...
+[5/6] HPO for nstxu_mlp_t3_rogowski (40 trials)...
+[I 2026-04-01 12:50:52,139] A new study created in memory with name: nstxu_t3_rogowski_hpo-torch.mlp
+  [HPO] Trial 0 started...
+  [HPO] Trial 0 finished in 33.0s (val_r2=-14.9194)
+[I 2026-04-01 12:51:25,164] Trial 0 finished with value: -14.91937325860064 and parameters: {'hidden_layers_index': 3, 'dropout': 0.09501648801396492, 'learning_rate': 0.0025143428814176426, 'batch_size': 64, 'epochs': 153}. Best is trial 0 with value: -14.91937325860064.
+    Trial 1/40 (best val_r2=-14.9194)
+  [HPO] Trial 1 started...
+  [HPO] Trial 1 finished in 35.9s (val_r2=-14.6018)
+[I 2026-04-01 12:52:01,118] Trial 1 finished with value: -14.601785527189096 and parameters: {'hidden_layers_index': 3, 'dropout': 0.2566453379036277, 'learning_rate': 0.0016853391697173288, 'batch_size': 64, 'epochs': 183}. Best is trial 1 with value: -14.601785527189096.
+    Trial 2/40 (best val_r2=-14.6018)
+  [HPO] Trial 2 started...
+  [HPO] Trial 2 finished in 30.1s (val_r2=0.5099)
+[I 2026-04-01 12:52:31,254] Trial 2 finished with value: 0.5098994972130155 and parameters: {'hidden_layers_index': 1, 'dropout': 0.2719391806312388, 'learning_rate': 0.0002725285130250698, 'batch_size': 128, 'epochs': 194}. Best is trial 2 with value: 0.5098994972130155.
+    Trial 3/40 (best val_r2=0.5099)
+  [HPO] Trial 3 started...
+  [HPO] Trial 3 finished in 30.6s (val_r2=-0.1454)
+[I 2026-04-01 12:53:01,827] Trial 3 finished with value: -0.14543961732367383 and parameters: {'hidden_layers_index': 0, 'dropout': 0.12775654655214583, 'learning_rate': 0.00362466400156375, 'batch_size': 128, 'epochs': 185}. Best is trial 2 with value: 0.5098994972130155.
+    Trial 4/40 (best val_r2=0.5099)
+  [HPO] Trial 4 started...
+  [HPO] Trial 4 finished in 29.4s (val_r2=-5.4764)
+[I 2026-04-01 12:53:31,227] Trial 4 finished with value: -5.476444939669285 and parameters: {'hidden_layers_index': 0, 'dropout': 0.29863089479757504, 'learning_rate': 0.0024043227611998323, 'batch_size': 64, 'epochs': 138}. Best is trial 2 with value: 0.5098994972130155.
+    Trial 5/40 (best val_r2=0.5099)
+  [HPO] Trial 5 started...
+  [HPO] Trial 5 finished in 54.0s (val_r2=0.6424)
+[I 2026-04-01 12:54:25,216] Trial 5 finished with value: 0.6424096111310351 and parameters: {'hidden_layers_index': 3, 'dropout': 4.81342779403704e-06, 'learning_rate': 0.0002627903447762754, 'batch_size': 32, 'epochs': 164}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 6/40 (best val_r2=0.6424)
+  [HPO] Trial 6 started...
+  [HPO] Trial 6 finished in 25.7s (val_r2=0.5022)
+[I 2026-04-01 12:54:50,897] Trial 6 finished with value: 0.5021863250006422 and parameters: {'hidden_layers_index': 3, 'dropout': 0.09779028087919613, 'learning_rate': 0.0006001696958441087, 'batch_size': 128, 'epochs': 173}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 7/40 (best val_r2=0.6424)
+  [HPO] Trial 7 started...
+  [HPO] Trial 7 finished in 10.6s (val_r2=0.2523)
+[I 2026-04-01 12:55:01,544] Trial 7 finished with value: 0.2522756915657419 and parameters: {'hidden_layers_index': 0, 'dropout': 0.27443403167492536, 'learning_rate': 0.0008540385215381805, 'batch_size': 128, 'epochs': 98}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 8/40 (best val_r2=0.6424)
+  [HPO] Trial 8 started...
+  [HPO] Trial 8 finished in 53.7s (val_r2=0.5120)
+[I 2026-04-01 12:55:55,229] Trial 8 finished with value: 0.511971536931195 and parameters: {'hidden_layers_index': 3, 'dropout': 0.27204200624185687, 'learning_rate': 0.0002533817781390946, 'batch_size': 32, 'epochs': 181}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 9/40 (best val_r2=0.6424)
+  [HPO] Trial 9 started...
+  [HPO] Trial 9 finished in 22.3s (val_r2=0.5052)
+[I 2026-04-01 12:56:17,580] Trial 9 finished with value: 0.5051979955683559 and parameters: {'hidden_layers_index': 1, 'dropout': 0.057948395618530046, 'learning_rate': 0.0002110412997403752, 'batch_size': 128, 'epochs': 185}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 10/40 (best val_r2=0.6424)
+  [HPO] Trial 10 started...
+  [HPO] Trial 10 finished in 33.9s (val_r2=0.1080)
+[I 2026-04-01 12:56:51,454] Trial 10 finished with value: 0.10797571434009867 and parameters: {'hidden_layers_index': 2, 'dropout': 0.3823249488402962, 'learning_rate': 0.00010575648042945282, 'batch_size': 32, 'epochs': 122}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 11/40 (best val_r2=0.6424)
+  [HPO] Trial 11 started...
+  [HPO] Trial 11 finished in 43.7s (val_r2=0.4661)
+[I 2026-04-01 12:57:35,121] Trial 11 finished with value: 0.46613192989619556 and parameters: {'hidden_layers_index': 2, 'dropout': 0.0057810100103735836, 'learning_rate': 0.0003091864095357131, 'batch_size': 32, 'epochs': 155}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 12/40 (best val_r2=0.6424)
+  [HPO] Trial 12 started...
+  [HPO] Trial 12 finished in 45.7s (val_r2=0.5136)
+[I 2026-04-01 12:58:20,785] Trial 12 finished with value: 0.513574302011691 and parameters: {'hidden_layers_index': 2, 'dropout': 0.19495012415125357, 'learning_rate': 0.00010759738730604172, 'batch_size': 32, 'epochs': 163}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 13/40 (best val_r2=0.6424)
+  [HPO] Trial 13 started...
+  [HPO] Trial 13 finished in 50.0s (val_r2=0.5298)
+[I 2026-04-01 12:59:10,796] Trial 13 finished with value: 0.5297722170445465 and parameters: {'hidden_layers_index': 2, 'dropout': 0.16826700631524824, 'learning_rate': 0.00010446792529596082, 'batch_size': 32, 'epochs': 163}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 14/40 (best val_r2=0.6424)
+  [HPO] Trial 14 started...
+  [HPO] Trial 14 finished in 68.9s (val_r2=0.4955)
+[I 2026-04-01 13:00:19,670] Trial 14 finished with value: 0.4954943883891634 and parameters: {'hidden_layers_index': 2, 'dropout': 0.17571458003960955, 'learning_rate': 0.00014946580088615375, 'batch_size': 32, 'epochs': 131}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 15/40 (best val_r2=0.6424)
+  [HPO] Trial 15 started...
+  [HPO] Trial 15 finished in 73.2s (val_r2=0.3073)
+[I 2026-04-01 13:01:32,850] Trial 15 finished with value: 0.3072808649195715 and parameters: {'hidden_layers_index': 1, 'dropout': 0.023727613968046058, 'learning_rate': 0.0004532852903572962, 'batch_size': 32, 'epochs': 119}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 16/40 (best val_r2=0.6424)
+  [HPO] Trial 16 started...
+  [HPO] Trial 16 finished in 54.3s (val_r2=0.6350)
+[I 2026-04-01 13:02:27,183] Trial 16 finished with value: 0.6350286960618101 and parameters: {'hidden_layers_index': 3, 'dropout': 0.15060939744514368, 'learning_rate': 0.00015380819419446727, 'batch_size': 32, 'epochs': 150}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 17/40 (best val_r2=0.6424)
+  [HPO] Trial 17 started...
+  [HPO] Trial 17 finished in 42.1s (val_r2=-2.9900)
+[I 2026-04-01 13:03:09,251] Trial 17 finished with value: -2.989964015706514 and parameters: {'hidden_layers_index': 3, 'dropout': 0.0593089476176166, 'learning_rate': 0.0008586231976629529, 'batch_size': 32, 'epochs': 103}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 18/40 (best val_r2=0.6424)
+  [HPO] Trial 18 started...
+  [HPO] Trial 18 finished in 48.4s (val_r2=0.3563)
+[I 2026-04-01 13:03:57,646] Trial 18 finished with value: 0.3562799568350369 and parameters: {'hidden_layers_index': 3, 'dropout': 0.34873211565242085, 'learning_rate': 0.00016965864098503707, 'batch_size': 32, 'epochs': 147}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 19/40 (best val_r2=0.6424)
+  [HPO] Trial 19 started...
+  [HPO] Trial 19 finished in 31.6s (val_r2=0.5489)
+[I 2026-04-01 13:04:29,206] Trial 19 finished with value: 0.5488640236206525 and parameters: {'hidden_layers_index': 3, 'dropout': 0.1375064833627247, 'learning_rate': 0.00038243985378321165, 'batch_size': 32, 'epochs': 83}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 20/40 (best val_r2=0.6424)
+  [HPO] Trial 20 started...
+  [HPO] Trial 20 finished in 31.3s (val_r2=0.3625)
+[I 2026-04-01 13:05:00,525] Trial 20 finished with value: 0.3624708538313647 and parameters: {'hidden_layers_index': 2, 'dropout': 0.22247744959483132, 'learning_rate': 0.0005451443892438659, 'batch_size': 64, 'epochs': 168}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 21/40 (best val_r2=0.6424)
+  [HPO] Trial 21 started...
+  [HPO] Trial 21 finished in 62.4s (val_r2=-0.2440)
+[I 2026-04-01 13:06:02,974] Trial 21 finished with value: -0.2440094008740985 and parameters: {'hidden_layers_index': 3, 'dropout': 0.1317990337224819, 'learning_rate': 0.0004010208667352724, 'batch_size': 32, 'epochs': 139}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 22/40 (best val_r2=0.6424)
+  [HPO] Trial 22 started...
+  [HPO] Trial 22 finished in 43.8s (val_r2=-0.6095)
+[I 2026-04-01 13:06:46,782] Trial 22 finished with value: -0.6095496185921594 and parameters: {'hidden_layers_index': 3, 'dropout': 0.14327358615331123, 'learning_rate': 0.00033264331087572, 'batch_size': 32, 'epochs': 109}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 23/40 (best val_r2=0.6424)
+  [HPO] Trial 23 started...
+  [HPO] Trial 23 finished in 31.3s (val_r2=0.3980)
+[I 2026-04-01 13:07:18,088] Trial 23 finished with value: 0.3980483296489309 and parameters: {'hidden_layers_index': 3, 'dropout': 0.22257257777177458, 'learning_rate': 0.00018226337875662396, 'batch_size': 32, 'epochs': 80}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 24/40 (best val_r2=0.6424)
+  [HPO] Trial 24 started...
+  [HPO] Trial 24 finished in 71.6s (val_r2=0.3901)
+[I 2026-04-01 13:08:29,719] Trial 24 finished with value: 0.3900691685681845 and parameters: {'hidden_layers_index': 3, 'dropout': 0.07359474788004405, 'learning_rate': 0.0007670148267979351, 'batch_size': 32, 'epochs': 200}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 25/40 (best val_r2=0.6424)
+  [HPO] Trial 25 started...
+  [HPO] Trial 25 finished in 25.6s (val_r2=0.5170)
+[I 2026-04-01 13:08:55,366] Trial 25 finished with value: 0.5169634623774271 and parameters: {'hidden_layers_index': 2, 'dropout': 0.037134019943837054, 'learning_rate': 0.00014242581578722632, 'batch_size': 32, 'epochs': 88}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 26/40 (best val_r2=0.6424)
+  [HPO] Trial 26 started...
+  [HPO] Trial 26 finished in 47.9s (val_r2=-0.1233)
+[I 2026-04-01 13:09:43,268] Trial 26 finished with value: -0.12325781624689358 and parameters: {'hidden_layers_index': 3, 'dropout': 0.09321313336117124, 'learning_rate': 0.001209534298684018, 'batch_size': 32, 'epochs': 148}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 27/40 (best val_r2=0.6424)
+  [HPO] Trial 27 started...
+  [HPO] Trial 27 finished in 37.7s (val_r2=0.5605)
+[I 2026-04-01 13:10:20,979] Trial 27 finished with value: 0.5605273382649301 and parameters: {'hidden_layers_index': 2, 'dropout': 0.1463987758426515, 'learning_rate': 0.0002267671494652525, 'batch_size': 32, 'epochs': 128}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 28/40 (best val_r2=0.6424)
+  [HPO] Trial 28 started...
+  [HPO] Trial 28 finished in 43.0s (val_r2=0.5654)
+[I 2026-04-01 13:11:03,982] Trial 28 finished with value: 0.5654432752848761 and parameters: {'hidden_layers_index': 1, 'dropout': 0.16361580068247858, 'learning_rate': 0.00022373281702588128, 'batch_size': 32, 'epochs': 128}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 29/40 (best val_r2=0.6424)
+  [HPO] Trial 29 started...
+  [HPO] Trial 29 finished in 36.7s (val_r2=0.4628)
+[I 2026-04-01 13:11:40,696] Trial 29 finished with value: 0.4627963636524297 and parameters: {'hidden_layers_index': 1, 'dropout': 0.11021572375803823, 'learning_rate': 0.00013999190461160246, 'batch_size': 64, 'epochs': 154}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 30/40 (best val_r2=0.6424)
+  [HPO] Trial 30 started...
+  [HPO] Trial 30 finished in 26.5s (val_r2=0.5037)
+[I 2026-04-01 13:12:07,205] Trial 30 finished with value: 0.5037041341099797 and parameters: {'hidden_layers_index': 1, 'dropout': 0.22280879980912188, 'learning_rate': 0.00020081275458845276, 'batch_size': 64, 'epochs': 114}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 31/40 (best val_r2=0.6424)
+  [HPO] Trial 31 started...
+  [HPO] Trial 31 finished in 41.2s (val_r2=0.4197)
+[I 2026-04-01 13:12:48,399] Trial 31 finished with value: 0.41974842497752096 and parameters: {'hidden_layers_index': 1, 'dropout': 0.1672972729891844, 'learning_rate': 0.00023302527223878342, 'batch_size': 32, 'epochs': 130}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 32/40 (best val_r2=0.6424)
+  [HPO] Trial 32 started...
+  [HPO] Trial 32 finished in 41.4s (val_r2=0.5774)
+[I 2026-04-01 13:13:29,847] Trial 32 finished with value: 0.5774172151950049 and parameters: {'hidden_layers_index': 2, 'dropout': 0.1955630271244759, 'learning_rate': 0.00028933486989453664, 'batch_size': 32, 'epochs': 128}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 33/40 (best val_r2=0.6424)
+  [HPO] Trial 33 started...
+  [HPO] Trial 33 finished in 45.4s (val_r2=0.5757)
+[I 2026-04-01 13:14:15,215] Trial 33 finished with value: 0.5756810659507308 and parameters: {'hidden_layers_index': 1, 'dropout': 0.19405155670463253, 'learning_rate': 0.0003090908904213516, 'batch_size': 32, 'epochs': 144}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 34/40 (best val_r2=0.6424)
+  [HPO] Trial 34 started...
+  [HPO] Trial 34 finished in 45.8s (val_r2=0.4810)
+[I 2026-04-01 13:15:00,972] Trial 34 finished with value: 0.48100293909968284 and parameters: {'hidden_layers_index': 2, 'dropout': 0.24381993724333748, 'learning_rate': 0.0003128029226326084, 'batch_size': 32, 'epochs': 141}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 35/40 (best val_r2=0.6424)
+  [HPO] Trial 35 started...
+  [HPO] Trial 35 finished in 18.0s (val_r2=0.2926)
+[I 2026-04-01 13:15:18,972] Trial 35 finished with value: 0.2926465615959887 and parameters: {'hidden_layers_index': 0, 'dropout': 0.19683250517358444, 'learning_rate': 0.00046243697759508717, 'batch_size': 128, 'epochs': 159}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 36/40 (best val_r2=0.6424)
+  [HPO] Trial 36 started...
+  [HPO] Trial 36 finished in 32.5s (val_r2=0.4054)
+[I 2026-04-01 13:15:51,513] Trial 36 finished with value: 0.4053642461856094 and parameters: {'hidden_layers_index': 3, 'dropout': 0.30247414715243054, 'learning_rate': 0.00028426166612263953, 'batch_size': 64, 'epochs': 146}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 37/40 (best val_r2=0.6424)
+  [HPO] Trial 37 started...
+  [HPO] Trial 37 finished in 42.6s (val_r2=-0.3290)
+[I 2026-04-01 13:16:34,161] Trial 37 finished with value: -0.3290445425756463 and parameters: {'hidden_layers_index': 0, 'dropout': 0.30499025606596186, 'learning_rate': 0.0006198447825002787, 'batch_size': 32, 'epochs': 178}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 38/40 (best val_r2=0.6424)
+  [HPO] Trial 38 started...
+  [HPO] Trial 38 finished in 25.6s (val_r2=0.4316)
+[I 2026-04-01 13:16:59,797] Trial 38 finished with value: 0.43163959509652783 and parameters: {'hidden_layers_index': 1, 'dropout': 0.2467233096327902, 'learning_rate': 0.0010879651935583748, 'batch_size': 128, 'epochs': 142}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 39/40 (best val_r2=0.6424)
+  [HPO] Trial 39 started...
+  [HPO] Trial 39 finished in 50.2s (val_r2=-11.0470)
+[I 2026-04-01 13:17:49,988] Trial 39 finished with value: -11.046989028114634 and parameters: {'hidden_layers_index': 2, 'dropout': 0.11034751076699126, 'learning_rate': 0.0022565069590731526, 'batch_size': 32, 'epochs': 170}. Best is trial 5 with value: 0.6424096111310351.
+    Trial 40/40 (best val_r2=0.6424)
+[6/6] Training nstxu_mlp_t3_rogowski...
+[6/6] Done. Artifacts in runs/nstxu_t3_rogowski_hpo
+Workflow nstxu_t3_rogowski_hpo complete. Artifacts saved to runs/nstxu_t3_rogowski_hpo
+{
+  "run_tag": "nstxu_t3_rogowski_hpo",
+  "dataset": {
+    "file_path": "data/datasets/NSTX-U/nstxu_equil_curated.pkl",
+    "n_rows": 10000,
+    "n_inputs": 28,
+    "n_outputs": 1,
+    "output_groups": {},
+    "profile_groups": {},
+    "dataset_info": {
+      "shape": [
+        10000,
+        36
+      ],
+      "n_input_variables": 33,
+      "n_output_variables": 3,
+      "n_output_groups": 0,
+      "largest_output_group": 0,
+      "largest_output_group_name": null
+    }
+  },
+  "resources": {
+    "scheduler": null,
+    "n_cpus": 10,
+    "n_gpus": 0,
+    "gpu_type": null,
+    "device": "cpu",
+    "hostname": "asanche2-lt",
+    "extras": {
+      "platform": "macOS-26.3.1-arm64-arm-64bit"
+    }
+  },
+  "splits": {
+    "train": 6000,
+    "val": 2000,
+    "test": 2000
+  },
+  "scalers": {
+    "input_scaler": "runs/nstxu_t3_rogowski_hpo/scalers/inputs.joblib",
+    "output_scaler": "runs/nstxu_t3_rogowski_hpo/scalers/outputs.joblib"
+  },
+  "models": [
+    {
+      "name": "nstxu_rf_t3_rogowski",
+      "backend": "sklearn",
+      "params": {
+        "n_estimators": 450,
+        "max_depth": 25,
+        "min_samples_leaf": 1
+      },
+      "metrics": {
+        "train": {
+          "r2": 0.9998218063636243,
+          "rmse": 27.562359993825535,
+          "mae": 1.4584882693511438,
+          "mape": 3202168850641584.0
+        },
+        "val": {
+          "r2": 0.7679428383241874,
+          "rmse": 3.0431807504794652,
+          "mae": 1.938192354779545,
+          "mape": 2.422934690174161e-05
+        },
+        "test": {
+          "r2": 0.7247179762052041,
+          "rmse": 3.3732657682727694,
+          "mae": 2.080044917499879,
+          "mape": 2.600229729958937e-05
+        }
+      },
+      "timings": {
+        "train_seconds": 8.178591709001921,
+        "train_inference_seconds": 0.10055774998909328,
+        "val_inference_seconds": 0.06507158301246818,
+        "train_inference_per_sample": 1.6759624998182213e-05,
+        "val_inference_per_sample": 3.253579150623409e-05,
+        "test_inference_seconds": 0.06269520899513736,
+        "test_inference_per_sample": 3.1347604497568684e-05
+      },
+      "artifacts": {
+        "model": "runs/nstxu_t3_rogowski_hpo/models/nstxu_rf_t3_rogowski.joblib",
+        "predictions": {
+          "train": "runs/nstxu_t3_rogowski_hpo/predictions/nstxu_rf_t3_rogowski_train.csv",
+          "val": "runs/nstxu_t3_rogowski_hpo/predictions/nstxu_rf_t3_rogowski_val.csv",
+          "test": "runs/nstxu_t3_rogowski_hpo/predictions/nstxu_rf_t3_rogowski_test.csv"
+        },
+        "hpo": "runs/nstxu_t3_rogowski_hpo/hpo/nstxu_rf_t3_rogowski_hpo.json"
+      }
+    },
+    {
+      "name": "nstxu_mlp_t3_rogowski",
+      "backend": "pytorch",
+      "params": {
+        "hidden_layers": [
+          384,
+          256,
+          128
+        ],
+        "dropout": 4.81342779403704e-06,
+        "epochs": 164,
+        "batch_size": 32,
+        "learning_rate": 0.0002627903447762754,
+        "mc_dropout_passes": 40,
+        "activation": "relu"
+      },
+      "metrics": {
+        "train": {
+          "r2": 0.99976471614164,
+          "rmse": 31.67133516264803,
+          "mae": 2.5115213439944344,
+          "mape": 3671489593973495.0
+        },
+        "val": {
+          "r2": 0.6652186472218389,
+          "rmse": 3.6551978542782684,
+          "mae": 2.32664244555404,
+          "mape": 2.9085193107553494e-05
+        },
+        "test": {
+          "r2": 0.620656329990102,
+          "rmse": 3.959843787249346,
+          "mae": 2.498693783162387,
+          "mape": 3.123586773857047e-05
+        }
+      },
+      "timings": {
+        "train_seconds": 57.80629462499928,
+        "train_inference_seconds": 0.02102299999387469,
+        "val_inference_seconds": 0.005704583003534935,
+        "train_inference_per_sample": 3.5038333323124485e-06,
+        "val_inference_per_sample": 2.8522915017674675e-06,
+        "test_inference_seconds": 0.004370790993561968,
+        "test_inference_per_sample": 2.185395496780984e-06
+      },
+      "artifacts": {
+        "model": "runs/nstxu_t3_rogowski_hpo/models/nstxu_mlp_t3_rogowski.joblib",
+        "predictions": {
+          "train": "runs/nstxu_t3_rogowski_hpo/predictions/nstxu_mlp_t3_rogowski_train.csv",
+          "val": "runs/nstxu_t3_rogowski_hpo/predictions/nstxu_mlp_t3_rogowski_val.csv",
+          "test": "runs/nstxu_t3_rogowski_hpo/predictions/nstxu_mlp_t3_rogowski_test.csv",
+          "val_uq": "runs/nstxu_t3_rogowski_hpo/predictions/nstxu_mlp_t3_rogowski_val_uq.json"
+        },
+        "hpo": "runs/nstxu_t3_rogowski_hpo/hpo/nstxu_mlp_t3_rogowski_hpo.json"
+      }
+    }
+  ],
+  "registry": "Registered Models:",
+  "artifacts": {
+    "root": "runs/nstxu_t3_rogowski_hpo",
+    "metrics": "runs/nstxu_t3_rogowski_hpo/metrics.json",
+    "summary": "runs/nstxu_t3_rogowski_hpo/workflow_summary.json",
+    "spec": "runs/nstxu_t3_rogowski_hpo/spec.yaml",
+    "train_data_ranges": "runs/nstxu_t3_rogowski_hpo/train_data_ranges.json"
+  }
+}
+======== 2026-04-01T13:18:50-04:00 OK nstxu_t3_rogowski_hpo ========
+
+======== 2026-04-01T13:18:50-04:00 START nstxu_t3_flux_loop_hpo ========
+
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+Traceback (most recent call last):  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/asanche2/repos/SURGE/examples/m3dc1_workflow.py", line 14, in <module>
+    import surge  # noqa: F401 - ensures package initialization registers adapters
+  File "/Users/asanche2/repos/SURGE/surge/__init__.py", line 10, in <module>
+    from .model import GPFLOW_AVAILABLE, MODEL_REGISTRY, PYTORCH_AVAILABLE
+  File "/Users/asanche2/repos/SURGE/surge/model/__init__.py", line 7, in <module>
+    from .gpflow import GPFLOW_AVAILABLE, GPflowGPRAdapter, GPflowMultiKernelAdapter
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow.py", line 7, in <module>
+    from .gpflow_impl import GPFLOW_AVAILABLE, GPflowGPRModel, GPflowMultiKernelGPR
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow_impl.py", line 11, in <module>
+    import gpflow as gpf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/__init__.py", line 17, in <module>
+    from . import (
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/__init__.py", line 1, in <module>
+    from . import conditionals, multioutput, sample_conditionals
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/conditionals.py", line 17, in <module>
+    import tensorflow as tf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/__init__.py", line 45, in <module>
+    from tensorflow._api.v2 import __internal__
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/__init__.py", line 8, in <module>
+    from tensorflow._api.v2.__internal__ import autograph
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/autograph/__init__.py", line 8, in <module>
+    from tensorflow.python.autograph.core.ag_ctx import control_status_ctx # line: 34
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/core/ag_ctx.py", line 21, in <module>
+    from tensorflow.python.autograph.utils import ag_logging
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/__init__.py", line 17, in <module>
+    from tensorflow.python.autograph.utils.context_managers import control_dependency_on_returns
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/context_managers.py", line 19, in <module>
+    from tensorflow.python.framework import ops
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/framework/ops.py", line 46, in <module>
+    from tensorflow.python import pywrap_tfe
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/pywrap_tfe.py", line 25, in <module>
+    from tensorflow.python._pywrap_tfe import *
+Traceback (most recent call last):
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/numpy/core/_multiarray_umath.py", line 46, in __getattr__
+    raise ImportError(msg)
+ImportError: 
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+
+AttributeError: 'MessageFactory' object has no attribute 'GetPrototype'
+
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+Traceback (most recent call last):  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/asanche2/repos/SURGE/examples/m3dc1_workflow.py", line 14, in <module>
+    import surge  # noqa: F401 - ensures package initialization registers adapters
+  File "/Users/asanche2/repos/SURGE/surge/__init__.py", line 10, in <module>
+    from .model import GPFLOW_AVAILABLE, MODEL_REGISTRY, PYTORCH_AVAILABLE
+  File "/Users/asanche2/repos/SURGE/surge/model/__init__.py", line 7, in <module>
+    from .gpflow import GPFLOW_AVAILABLE, GPflowGPRAdapter, GPflowMultiKernelAdapter
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow.py", line 7, in <module>
+    from .gpflow_impl import GPFLOW_AVAILABLE, GPflowGPRModel, GPflowMultiKernelGPR
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow_impl.py", line 11, in <module>
+    import gpflow as gpf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/__init__.py", line 17, in <module>
+    from . import (
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/__init__.py", line 1, in <module>
+    from . import conditionals, multioutput, sample_conditionals
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/conditionals.py", line 17, in <module>
+    import tensorflow as tf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/__init__.py", line 45, in <module>
+    from tensorflow._api.v2 import __internal__
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/__init__.py", line 8, in <module>
+    from tensorflow._api.v2.__internal__ import autograph
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/autograph/__init__.py", line 8, in <module>
+    from tensorflow.python.autograph.core.ag_ctx import control_status_ctx # line: 34
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/core/ag_ctx.py", line 21, in <module>
+    from tensorflow.python.autograph.utils import ag_logging
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/__init__.py", line 17, in <module>
+    from tensorflow.python.autograph.utils.context_managers import control_dependency_on_returns
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/context_managers.py", line 19, in <module>
+    from tensorflow.python.framework import ops
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/framework/ops.py", line 49, in <module>
+    from tensorflow.python.client import pywrap_tf_session
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/client/pywrap_tf_session.py", line 19, in <module>
+    from tensorflow.python.client._pywrap_tf_session import *
+Traceback (most recent call last):
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/numpy/core/_multiarray_umath.py", line 46, in __getattr__
+    raise ImportError(msg)
+ImportError: 
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+
+
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+Traceback (most recent call last):  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/asanche2/repos/SURGE/examples/m3dc1_workflow.py", line 14, in <module>
+    import surge  # noqa: F401 - ensures package initialization registers adapters
+  File "/Users/asanche2/repos/SURGE/surge/__init__.py", line 10, in <module>
+    from .model import GPFLOW_AVAILABLE, MODEL_REGISTRY, PYTORCH_AVAILABLE
+  File "/Users/asanche2/repos/SURGE/surge/model/__init__.py", line 7, in <module>
+    from .gpflow import GPFLOW_AVAILABLE, GPflowGPRAdapter, GPflowMultiKernelAdapter
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow.py", line 7, in <module>
+    from .gpflow_impl import GPFLOW_AVAILABLE, GPflowGPRModel, GPflowMultiKernelGPR
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow_impl.py", line 11, in <module>
+    import gpflow as gpf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/__init__.py", line 17, in <module>
+    from . import (
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/__init__.py", line 1, in <module>
+    from . import conditionals, multioutput, sample_conditionals
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/conditionals.py", line 17, in <module>
+    import tensorflow as tf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/__init__.py", line 45, in <module>
+    from tensorflow._api.v2 import __internal__
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/__init__.py", line 8, in <module>
+    from tensorflow._api.v2.__internal__ import autograph
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/autograph/__init__.py", line 8, in <module>
+    from tensorflow.python.autograph.core.ag_ctx import control_status_ctx # line: 34
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/core/ag_ctx.py", line 21, in <module>
+    from tensorflow.python.autograph.utils import ag_logging
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/__init__.py", line 17, in <module>
+    from tensorflow.python.autograph.utils.context_managers import control_dependency_on_returns
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/context_managers.py", line 19, in <module>
+    from tensorflow.python.framework import ops
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/framework/ops.py", line 50, in <module>
+    from tensorflow.python.eager import context
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/eager/context.py", line 37, in <module>
+    from tensorflow.python.eager import execute
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/eager/execute.py", line 21, in <module>
+    from tensorflow.python.framework import dtypes
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/framework/dtypes.py", line 21, in <module>
+    import ml_dtypes
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/ml_dtypes/__init__.py", line 32, in <module>
+    from ml_dtypes._finfo import finfo
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/ml_dtypes/_finfo.py", line 19, in <module>
+    from ml_dtypes._ml_dtypes_ext import bfloat16
+Traceback (most recent call last):
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/numpy/core/_multiarray_umath.py", line 46, in __getattr__
+    raise ImportError(msg)
+ImportError: 
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+
+ImportError: numpy.core._multiarray_umath failed to import
+Warning: GPflow not available or incompatible. Install with: pip install gpflow
+SURGE workflow started.
+Starting SURGE workflow for dataset data/datasets/NSTX-U/nstxu_equil_curated.pkl
+[1/6] Loading dataset...
+[2/6] Preparing splits and scalers...
+[3/6] HPO for nstxu_rf_t3_flux_loop (40 trials)...
+[I 2026-04-01 13:18:57,108] A new study created in memory with name: nstxu_t3_flux_loop_hpo-sklearn.random_forest
+  [HPO] Trial 0 started...
+  [HPO] Trial 0 finished in 6.7s (val_r2=0.9901)
+[I 2026-04-01 13:19:03,811] Trial 0 finished with value: 0.9900706073193352 and parameters: {'n_estimators': 500, 'max_depth': 12, 'min_samples_leaf': 4}. Best is trial 0 with value: 0.9900706073193352.
+    Trial 1/40 (best val_r2=0.9901)
+  [HPO] Trial 1 started...
+  [HPO] Trial 1 finished in 9.2s (val_r2=0.9994)
+[I 2026-04-01 13:19:13,027] Trial 1 finished with value: 0.9993530922991372 and parameters: {'n_estimators': 600, 'max_depth': 28, 'min_samples_leaf': 2}. Best is trial 1 with value: 0.9993530922991372.
+    Trial 2/40 (best val_r2=0.9994)
+  [HPO] Trial 2 started...
+  [HPO] Trial 2 finished in 6.6s (val_r2=0.9969)
+[I 2026-04-01 13:19:19,657] Trial 2 finished with value: 0.9968516523345174 and parameters: {'n_estimators': 450, 'max_depth': 24, 'min_samples_leaf': 3}. Best is trial 1 with value: 0.9993530922991372.
+    Trial 3/40 (best val_r2=0.9994)
+  [HPO] Trial 3 started...
+  [HPO] Trial 3 finished in 5.0s (val_r2=0.9981)
+[I 2026-04-01 13:19:24,650] Trial 3 finished with value: 0.9980922502494004 and parameters: {'n_estimators': 500, 'max_depth': 8, 'min_samples_leaf': 2}. Best is trial 1 with value: 0.9993530922991372.
+    Trial 4/40 (best val_r2=0.9994)
+  [HPO] Trial 4 started...
+  [HPO] Trial 4 finished in 3.8s (val_r2=0.9994)
+[I 2026-04-01 13:19:28,476] Trial 4 finished with value: 0.9993886736620907 and parameters: {'n_estimators': 200, 'max_depth': 25, 'min_samples_leaf': 2}. Best is trial 4 with value: 0.9993886736620907.
+    Trial 5/40 (best val_r2=0.9994)
+  [HPO] Trial 5 started...
+  [HPO] Trial 5 finished in 9.0s (val_r2=0.9993)
+[I 2026-04-01 13:19:37,512] Trial 5 finished with value: 0.9993312088801932 and parameters: {'n_estimators': 500, 'max_depth': 13, 'min_samples_leaf': 2}. Best is trial 4 with value: 0.9993886736620907.
+    Trial 6/40 (best val_r2=0.9994)
+  [HPO] Trial 6 started...
+  [HPO] Trial 6 finished in 2.8s (val_r2=0.9891)
+[I 2026-04-01 13:19:40,342] Trial 6 finished with value: 0.9891243436751754 and parameters: {'n_estimators': 200, 'max_depth': 15, 'min_samples_leaf': 4}. Best is trial 4 with value: 0.9993886736620907.
+    Trial 7/40 (best val_r2=0.9994)
+  [HPO] Trial 7 started...
+  [HPO] Trial 7 finished in 3.4s (val_r2=0.9900)
+[I 2026-04-01 13:19:43,763] Trial 7 finished with value: 0.9900427223813372 and parameters: {'n_estimators': 250, 'max_depth': 14, 'min_samples_leaf': 4}. Best is trial 4 with value: 0.9993886736620907.
+    Trial 8/40 (best val_r2=0.9994)
+  [HPO] Trial 8 started...
+  [HPO] Trial 8 finished in 2.6s (val_r2=0.9962)
+[I 2026-04-01 13:19:46,403] Trial 8 finished with value: 0.9962210456970422 and parameters: {'n_estimators': 200, 'max_depth': 9, 'min_samples_leaf': 3}. Best is trial 4 with value: 0.9993886736620907.
+    Trial 9/40 (best val_r2=0.9994)
+  [HPO] Trial 9 started...
+  [HPO] Trial 9 finished in 6.2s (val_r2=0.9955)
+[I 2026-04-01 13:19:52,598] Trial 9 finished with value: 0.9955293686133343 and parameters: {'n_estimators': 550, 'max_depth': 8, 'min_samples_leaf': 3}. Best is trial 4 with value: 0.9993886736620907.
+    Trial 10/40 (best val_r2=0.9994)
+  [HPO] Trial 10 started...
+  [HPO] Trial 10 finished in 6.4s (val_r2=0.9994)
+[I 2026-04-01 13:19:59,006] Trial 10 finished with value: 0.9994053692242864 and parameters: {'n_estimators': 300, 'max_depth': 21, 'min_samples_leaf': 1}. Best is trial 10 with value: 0.9994053692242864.
+    Trial 11/40 (best val_r2=0.9994)
+  [HPO] Trial 11 started...
+  [HPO] Trial 11 finished in 9.9s (val_r2=0.9994)
+[I 2026-04-01 13:20:08,891] Trial 11 finished with value: 0.9994075630977892 and parameters: {'n_estimators': 350, 'max_depth': 21, 'min_samples_leaf': 1}. Best is trial 11 with value: 0.9994075630977892.
+    Trial 12/40 (best val_r2=0.9994)
+  [HPO] Trial 12 started...
+  [HPO] Trial 12 finished in 5.9s (val_r2=0.9994)
+[I 2026-04-01 13:20:14,840] Trial 12 finished with value: 0.9994098278206921 and parameters: {'n_estimators': 350, 'max_depth': 20, 'min_samples_leaf': 1}. Best is trial 12 with value: 0.9994098278206921.
+    Trial 13/40 (best val_r2=0.9994)
+  [HPO] Trial 13 started...
+  [HPO] Trial 13 finished in 5.3s (val_r2=0.9994)
+[I 2026-04-01 13:20:20,184] Trial 13 finished with value: 0.9994125608243773 and parameters: {'n_estimators': 350, 'max_depth': 19, 'min_samples_leaf': 1}. Best is trial 13 with value: 0.9994125608243773.
+    Trial 14/40 (best val_r2=0.9994)
+  [HPO] Trial 14 started...
+  [HPO] Trial 14 finished in 6.5s (val_r2=0.9994)
+[I 2026-04-01 13:20:26,714] Trial 14 finished with value: 0.9994112498540328 and parameters: {'n_estimators': 400, 'max_depth': 19, 'min_samples_leaf': 1}. Best is trial 13 with value: 0.9994125608243773.
+    Trial 15/40 (best val_r2=0.9994)
+  [HPO] Trial 15 started...
+  [HPO] Trial 15 finished in 8.2s (val_r2=0.9994)
+[I 2026-04-01 13:20:34,953] Trial 15 finished with value: 0.9994106416410141 and parameters: {'n_estimators': 400, 'max_depth': 17, 'min_samples_leaf': 1}. Best is trial 13 with value: 0.9994125608243773.
+    Trial 16/40 (best val_r2=0.9994)
+  [HPO] Trial 16 started...
+  [HPO] Trial 16 finished in 6.0s (val_r2=0.9994)
+[I 2026-04-01 13:20:40,975] Trial 16 finished with value: 0.9994080447599556 and parameters: {'n_estimators': 400, 'max_depth': 18, 'min_samples_leaf': 1}. Best is trial 13 with value: 0.9994125608243773.
+    Trial 17/40 (best val_r2=0.9994)
+  [HPO] Trial 17 started...
+  [HPO] Trial 17 finished in 6.1s (val_r2=0.9994)
+[I 2026-04-01 13:20:47,092] Trial 17 finished with value: 0.9994069618505846 and parameters: {'n_estimators': 300, 'max_depth': 24, 'min_samples_leaf': 1}. Best is trial 13 with value: 0.9994125608243773.
+    Trial 18/40 (best val_r2=0.9994)
+  [HPO] Trial 18 started...
+  [HPO] Trial 18 finished in 4.9s (val_r2=0.9993)
+[I 2026-04-01 13:20:52,045] Trial 18 finished with value: 0.9993382899135139 and parameters: {'n_estimators': 350, 'max_depth': 16, 'min_samples_leaf': 2}. Best is trial 13 with value: 0.9994125608243773.
+    Trial 19/40 (best val_r2=0.9994)
+  [HPO] Trial 19 started...
+  [HPO] Trial 19 finished in 8.7s (val_r2=0.9994)
+[I 2026-04-01 13:21:00,771] Trial 19 finished with value: 0.9994115764534572 and parameters: {'n_estimators': 450, 'max_depth': 20, 'min_samples_leaf': 1}. Best is trial 13 with value: 0.9994125608243773.
+    Trial 20/40 (best val_r2=0.9994)
+  [HPO] Trial 20 started...
+  [HPO] Trial 20 finished in 6.6s (val_r2=0.9994)
+[I 2026-04-01 13:21:07,380] Trial 20 finished with value: 0.9993500903031213 and parameters: {'n_estimators': 450, 'max_depth': 22, 'min_samples_leaf': 2}. Best is trial 13 with value: 0.9994125608243773.
+    Trial 21/40 (best val_r2=0.9994)
+  [HPO] Trial 21 started...
+  [HPO] Trial 21 finished in 9.0s (val_r2=0.9994)
+[I 2026-04-01 13:21:16,377] Trial 21 finished with value: 0.9994142206541667 and parameters: {'n_estimators': 450, 'max_depth': 19, 'min_samples_leaf': 1}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 22/40 (best val_r2=0.9994)
+  [HPO] Trial 22 started...
+  [HPO] Trial 22 finished in 11.7s (val_r2=0.9994)
+[I 2026-04-01 13:21:28,087] Trial 22 finished with value: 0.9994126795169159 and parameters: {'n_estimators': 450, 'max_depth': 18, 'min_samples_leaf': 1}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 23/40 (best val_r2=0.9994)
+  [HPO] Trial 23 started...
+  [HPO] Trial 23 finished in 19.1s (val_r2=0.9994)
+[I 2026-04-01 13:21:47,240] Trial 23 finished with value: 0.9994090180687162 and parameters: {'n_estimators': 550, 'max_depth': 18, 'min_samples_leaf': 1}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 24/40 (best val_r2=0.9994)
+  [HPO] Trial 24 started...
+  [HPO] Trial 24 finished in 13.1s (val_r2=0.9993)
+[I 2026-04-01 13:22:00,404] Trial 24 finished with value: 0.9993110688760459 and parameters: {'n_estimators': 450, 'max_depth': 11, 'min_samples_leaf': 1}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 25/40 (best val_r2=0.9994)
+  [HPO] Trial 25 started...
+  [HPO] Trial 25 finished in 8.4s (val_r2=0.9993)
+[I 2026-04-01 13:22:08,865] Trial 25 finished with value: 0.9993382899135139 and parameters: {'n_estimators': 350, 'max_depth': 16, 'min_samples_leaf': 2}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 26/40 (best val_r2=0.9994)
+  [HPO] Trial 26 started...
+  [HPO] Trial 26 finished in 7.7s (val_r2=0.9994)
+[I 2026-04-01 13:22:16,618] Trial 26 finished with value: 0.9994071238936533 and parameters: {'n_estimators': 300, 'max_depth': 23, 'min_samples_leaf': 1}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 27/40 (best val_r2=0.9994)
+  [HPO] Trial 27 started...
+  [HPO] Trial 27 finished in 14.5s (val_r2=0.9993)
+[I 2026-04-01 13:22:31,100] Trial 27 finished with value: 0.9993498393531566 and parameters: {'n_estimators': 550, 'max_depth': 26, 'min_samples_leaf': 2}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 28/40 (best val_r2=0.9994)
+  [HPO] Trial 28 started...
+  [HPO] Trial 28 finished in 11.3s (val_r2=0.9994)
+[I 2026-04-01 13:22:42,418] Trial 28 finished with value: 0.9994112498540328 and parameters: {'n_estimators': 400, 'max_depth': 19, 'min_samples_leaf': 1}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 29/40 (best val_r2=0.9994)
+  [HPO] Trial 29 started...
+  [HPO] Trial 29 finished in 10.6s (val_r2=0.9969)
+[I 2026-04-01 13:22:53,000] Trial 29 finished with value: 0.9968595783758148 and parameters: {'n_estimators': 500, 'max_depth': 17, 'min_samples_leaf': 3}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 30/40 (best val_r2=0.9994)
+  [HPO] Trial 30 started...
+  [HPO] Trial 30 finished in 8.7s (val_r2=0.9994)
+[I 2026-04-01 13:23:01,758] Trial 30 finished with value: 0.9993975319226792 and parameters: {'n_estimators': 450, 'max_depth': 13, 'min_samples_leaf': 1}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 31/40 (best val_r2=0.9994)
+  [HPO] Trial 31 started...
+  [HPO] Trial 31 finished in 8.1s (val_r2=0.9994)
+[I 2026-04-01 13:23:09,846] Trial 31 finished with value: 0.9994115764534572 and parameters: {'n_estimators': 450, 'max_depth': 20, 'min_samples_leaf': 1}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 32/40 (best val_r2=0.9994)
+  [HPO] Trial 32 started...
+  [HPO] Trial 32 finished in 6.4s (val_r2=0.9994)
+[I 2026-04-01 13:23:16,302] Trial 32 finished with value: 0.9994081503971202 and parameters: {'n_estimators': 400, 'max_depth': 22, 'min_samples_leaf': 1}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 33/40 (best val_r2=0.9994)
+  [HPO] Trial 33 started...
+  [HPO] Trial 33 finished in 9.4s (val_r2=0.9994)
+[I 2026-04-01 13:23:25,729] Trial 33 finished with value: 0.9994114254290282 and parameters: {'n_estimators': 600, 'max_depth': 19, 'min_samples_leaf': 1}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 34/40 (best val_r2=0.9994)
+  [HPO] Trial 34 started...
+  [HPO] Trial 34 finished in 6.3s (val_r2=0.9993)
+[I 2026-04-01 13:23:32,023] Trial 34 finished with value: 0.9993494519495212 and parameters: {'n_estimators': 450, 'max_depth': 17, 'min_samples_leaf': 2}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 35/40 (best val_r2=0.9994)
+  [HPO] Trial 35 started...
+  [HPO] Trial 35 finished in 8.0s (val_r2=0.9994)
+[I 2026-04-01 13:23:40,075] Trial 35 finished with value: 0.999409987528671 and parameters: {'n_estimators': 500, 'max_depth': 20, 'min_samples_leaf': 1}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 36/40 (best val_r2=0.9994)
+  [HPO] Trial 36 started...
+  [HPO] Trial 36 finished in 7.6s (val_r2=0.9993)
+[I 2026-04-01 13:23:47,671] Trial 36 finished with value: 0.9993413492245633 and parameters: {'n_estimators': 500, 'max_depth': 28, 'min_samples_leaf': 2}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 37/40 (best val_r2=0.9994)
+  [HPO] Trial 37 started...
+  [HPO] Trial 37 finished in 6.2s (val_r2=0.9994)
+[I 2026-04-01 13:23:53,846] Trial 37 finished with value: 0.9993500903031213 and parameters: {'n_estimators': 450, 'max_depth': 22, 'min_samples_leaf': 2}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 38/40 (best val_r2=0.9994)
+  [HPO] Trial 38 started...
+  [HPO] Trial 38 finished in 10.0s (val_r2=0.9994)
+[I 2026-04-01 13:24:03,880] Trial 38 finished with value: 0.9994063953086316 and parameters: {'n_estimators': 550, 'max_depth': 15, 'min_samples_leaf': 1}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 39/40 (best val_r2=0.9994)
+  [HPO] Trial 39 started...
+  [HPO] Trial 39 finished in 5.7s (val_r2=0.9993)
+[I 2026-04-01 13:24:09,560] Trial 39 finished with value: 0.999338148304332 and parameters: {'n_estimators': 400, 'max_depth': 25, 'min_samples_leaf': 2}. Best is trial 21 with value: 0.9994142206541667.
+    Trial 40/40 (best val_r2=0.9994)
+[4/6] Training nstxu_rf_t3_flux_loop...
+[5/6] HPO for nstxu_mlp_t3_flux_loop (40 trials)...
+[I 2026-04-01 13:24:16,729] A new study created in memory with name: nstxu_t3_flux_loop_hpo-torch.mlp
+  [HPO] Trial 0 started...
+  [HPO] Trial 0 finished in 34.1s (val_r2=0.9959)
+[I 2026-04-01 13:24:50,782] Trial 0 finished with value: 0.9958745552634274 and parameters: {'hidden_layers_index': 3, 'dropout': 0.09501648801396492, 'learning_rate': 0.0025143428814176426, 'batch_size': 64, 'epochs': 153}. Best is trial 0 with value: 0.9958745552634274.
+    Trial 1/40 (best val_r2=0.9959)
+  [HPO] Trial 1 started...
+  [HPO] Trial 1 finished in 38.0s (val_r2=0.9976)
+[I 2026-04-01 13:25:28,768] Trial 1 finished with value: 0.9976369405836921 and parameters: {'hidden_layers_index': 3, 'dropout': 0.2566453379036277, 'learning_rate': 0.0016853391697173288, 'batch_size': 64, 'epochs': 183}. Best is trial 1 with value: 0.9976369405836921.
+    Trial 2/40 (best val_r2=0.9976)
+  [HPO] Trial 2 started...
+  [HPO] Trial 2 finished in 28.7s (val_r2=0.9990)
+[I 2026-04-01 13:25:57,427] Trial 2 finished with value: 0.9989825747396325 and parameters: {'hidden_layers_index': 1, 'dropout': 0.2719391806312388, 'learning_rate': 0.0002725285130250698, 'batch_size': 128, 'epochs': 194}. Best is trial 2 with value: 0.9989825747396325.
+    Trial 3/40 (best val_r2=0.9990)
+  [HPO] Trial 3 started...
+  [HPO] Trial 3 finished in 19.7s (val_r2=0.9991)
+[I 2026-04-01 13:26:17,176] Trial 3 finished with value: 0.9990653939482376 and parameters: {'hidden_layers_index': 0, 'dropout': 0.12775654655214583, 'learning_rate': 0.00362466400156375, 'batch_size': 128, 'epochs': 185}. Best is trial 3 with value: 0.9990653939482376.
+    Trial 4/40 (best val_r2=0.9991)
+  [HPO] Trial 4 started...
+  [HPO] Trial 4 finished in 21.8s (val_r2=0.9957)
+[I 2026-04-01 13:26:38,951] Trial 4 finished with value: 0.9957033527467778 and parameters: {'hidden_layers_index': 0, 'dropout': 0.29863089479757504, 'learning_rate': 0.0024043227611998323, 'batch_size': 64, 'epochs': 138}. Best is trial 3 with value: 0.9990653939482376.
+    Trial 5/40 (best val_r2=0.9991)
+  [HPO] Trial 5 started...
+  [HPO] Trial 5 finished in 58.2s (val_r2=0.9999)
+[I 2026-04-01 13:27:37,187] Trial 5 finished with value: 0.9998779647820782 and parameters: {'hidden_layers_index': 3, 'dropout': 4.81342779403704e-06, 'learning_rate': 0.0002627903447762754, 'batch_size': 32, 'epochs': 164}. Best is trial 5 with value: 0.9998779647820782.
+    Trial 6/40 (best val_r2=0.9999)
+  [HPO] Trial 6 started...
+  [HPO] Trial 6 finished in 28.0s (val_r2=0.9996)
+[I 2026-04-01 13:28:05,155] Trial 6 finished with value: 0.9996356090656451 and parameters: {'hidden_layers_index': 3, 'dropout': 0.09779028087919613, 'learning_rate': 0.0006001696958441087, 'batch_size': 128, 'epochs': 173}. Best is trial 5 with value: 0.9998779647820782.
+    Trial 7/40 (best val_r2=0.9999)
+  [HPO] Trial 7 started...
+  [HPO] Trial 7 finished in 10.5s (val_r2=0.9992)
+[I 2026-04-01 13:28:15,682] Trial 7 finished with value: 0.9991543340761126 and parameters: {'hidden_layers_index': 0, 'dropout': 0.27443403167492536, 'learning_rate': 0.0008540385215381805, 'batch_size': 128, 'epochs': 98}. Best is trial 5 with value: 0.9998779647820782.
+    Trial 8/40 (best val_r2=0.9999)
+  [HPO] Trial 8 started...
+  [HPO] Trial 8 finished in 68.2s (val_r2=0.9992)
+[I 2026-04-01 13:29:23,855] Trial 8 finished with value: 0.9991531255446249 and parameters: {'hidden_layers_index': 3, 'dropout': 0.27204200624185687, 'learning_rate': 0.0002533817781390946, 'batch_size': 32, 'epochs': 181}. Best is trial 5 with value: 0.9998779647820782.
+    Trial 9/40 (best val_r2=0.9999)
+  [HPO] Trial 9 started...
+  [HPO] Trial 9 finished in 29.4s (val_r2=0.9999)
+[I 2026-04-01 13:29:53,240] Trial 9 finished with value: 0.9998570017351999 and parameters: {'hidden_layers_index': 1, 'dropout': 0.057948395618530046, 'learning_rate': 0.0002110412997403752, 'batch_size': 128, 'epochs': 185}. Best is trial 5 with value: 0.9998779647820782.
+    Trial 10/40 (best val_r2=0.9999)
+  [HPO] Trial 10 started...
+  [HPO] Trial 10 finished in 51.9s (val_r2=0.9895)
+[I 2026-04-01 13:30:45,157] Trial 10 finished with value: 0.9895057438523176 and parameters: {'hidden_layers_index': 2, 'dropout': 0.3823249488402962, 'learning_rate': 0.00010575648042945282, 'batch_size': 32, 'epochs': 122}. Best is trial 5 with value: 0.9998779647820782.
+    Trial 11/40 (best val_r2=0.9999)
+  [HPO] Trial 11 started...
+  [HPO] Trial 11 finished in 96.4s (val_r2=0.9999)
+[I 2026-04-01 13:32:21,530] Trial 11 finished with value: 0.9999351702044996 and parameters: {'hidden_layers_index': 1, 'dropout': 0.0030282612757671474, 'learning_rate': 0.000167380615653714, 'batch_size': 32, 'epochs': 155}. Best is trial 11 with value: 0.9999351702044996.
+    Trial 12/40 (best val_r2=0.9999)
+  [HPO] Trial 12 started...
+  [HPO] Trial 12 finished in 60.9s (val_r2=1.0000)
+[I 2026-04-01 13:33:22,476] Trial 12 finished with value: 0.9999503957121385 and parameters: {'hidden_layers_index': 2, 'dropout': 0.002434429437378677, 'learning_rate': 0.00010759738730604172, 'batch_size': 32, 'epochs': 159}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 13/40 (best val_r2=1.0000)
+  [HPO] Trial 13 started...
+  [HPO] Trial 13 finished in 51.6s (val_r2=0.9989)
+[I 2026-04-01 13:34:14,109] Trial 13 finished with value: 0.9989045434618093 and parameters: {'hidden_layers_index': 2, 'dropout': 0.007398680327247182, 'learning_rate': 0.00010446792529596082, 'batch_size': 32, 'epochs': 137}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 14/40 (best val_r2=1.0000)
+  [HPO] Trial 14 started...
+  [HPO] Trial 14 finished in 40.5s (val_r2=0.9997)
+[I 2026-04-01 13:34:54,659] Trial 14 finished with value: 0.9997466855682123 and parameters: {'hidden_layers_index': 1, 'dropout': 0.17571458003960955, 'learning_rate': 0.0001506470844426437, 'batch_size': 32, 'epochs': 118}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 15/40 (best val_r2=1.0000)
+  [HPO] Trial 15 started...
+  [HPO] Trial 15 finished in 57.6s (val_r2=0.9998)
+[I 2026-04-01 13:35:52,273] Trial 15 finished with value: 0.9997777429175904 and parameters: {'hidden_layers_index': 2, 'dropout': 0.042957184905575284, 'learning_rate': 0.00047320867372062847, 'batch_size': 32, 'epochs': 155}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 16/40 (best val_r2=1.0000)
+  [HPO] Trial 16 started...
+  [HPO] Trial 16 finished in 57.3s (val_r2=0.9988)
+[I 2026-04-01 13:36:49,577] Trial 16 finished with value: 0.998762117720913 and parameters: {'hidden_layers_index': 1, 'dropout': 0.165027167553038, 'learning_rate': 0.00038410317815646474, 'batch_size': 32, 'epochs': 153}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 17/40 (best val_r2=1.0000)
+  [HPO] Trial 17 started...
+  [HPO] Trial 17 finished in 46.4s (val_r2=0.9956)
+[I 2026-04-01 13:37:35,956] Trial 17 finished with value: 0.9955879513117232 and parameters: {'hidden_layers_index': 2, 'dropout': 0.0675785734290031, 'learning_rate': 0.0009929862745938526, 'batch_size': 32, 'epochs': 126}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 18/40 (best val_r2=1.0000)
+  [HPO] Trial 18 started...
+  [HPO] Trial 18 finished in 61.0s (val_r2=0.9997)
+[I 2026-04-01 13:38:36,924] Trial 18 finished with value: 0.9996720508211318 and parameters: {'hidden_layers_index': 1, 'dropout': 0.13240904281323385, 'learning_rate': 0.00015129765348505562, 'batch_size': 32, 'epochs': 167}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 19/40 (best val_r2=1.0000)
+  [HPO] Trial 19 started...
+  [HPO] Trial 19 finished in 31.3s (val_r2=0.9976)
+[I 2026-04-01 13:39:08,274] Trial 19 finished with value: 0.9975806386652131 and parameters: {'hidden_layers_index': 2, 'dropout': 0.2113490378090324, 'learning_rate': 0.00016665426739894358, 'batch_size': 32, 'epochs': 83}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 20/40 (best val_r2=1.0000)
+  [HPO] Trial 20 started...
+  [HPO] Trial 20 finished in 32.6s (val_r2=0.9976)
+[I 2026-04-01 13:39:40,898] Trial 20 finished with value: 0.9975967910745455 and parameters: {'hidden_layers_index': 1, 'dropout': 0.025729199128126247, 'learning_rate': 0.0012113885863359482, 'batch_size': 64, 'epochs': 145}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 21/40 (best val_r2=1.0000)
+  [HPO] Trial 21 started...
+  [HPO] Trial 21 finished in 68.3s (val_r2=0.9995)
+[I 2026-04-01 13:40:49,224] Trial 21 finished with value: 0.999540614230632 and parameters: {'hidden_layers_index': 3, 'dropout': 0.000772374945256925, 'learning_rate': 0.0003017457495924008, 'batch_size': 32, 'epochs': 167}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 22/40 (best val_r2=1.0000)
+  [HPO] Trial 22 started...
+  [HPO] Trial 22 finished in 61.8s (val_r2=0.9979)
+[I 2026-04-01 13:41:51,026] Trial 22 finished with value: 0.9979207866328156 and parameters: {'hidden_layers_index': 2, 'dropout': 0.07810414678644567, 'learning_rate': 0.00015500570065725812, 'batch_size': 32, 'epochs': 162}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 23/40 (best val_r2=1.0000)
+  [HPO] Trial 23 started...
+  [HPO] Trial 23 finished in 55.5s (val_r2=0.9997)
+[I 2026-04-01 13:42:46,551] Trial 23 finished with value: 0.9996513561431688 and parameters: {'hidden_layers_index': 3, 'dropout': 0.0018668532911018283, 'learning_rate': 0.00010825055063282521, 'batch_size': 32, 'epochs': 145}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 24/40 (best val_r2=1.0000)
+  [HPO] Trial 24 started...
+  [HPO] Trial 24 finished in 76.1s (val_r2=0.9965)
+[I 2026-04-01 13:44:02,640] Trial 24 finished with value: 0.9965033495331083 and parameters: {'hidden_layers_index': 2, 'dropout': 0.04299052042164503, 'learning_rate': 0.00020175715411831493, 'batch_size': 32, 'epochs': 200}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 25/40 (best val_r2=1.0000)
+  [HPO] Trial 25 started...
+  [HPO] Trial 25 finished in 61.3s (val_r2=0.9999)
+[I 2026-04-01 13:45:03,934] Trial 25 finished with value: 0.9999079794065058 and parameters: {'hidden_layers_index': 1, 'dropout': 0.03649943673271262, 'learning_rate': 0.0003725415807303442, 'batch_size': 32, 'epochs': 173}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 26/40 (best val_r2=1.0000)
+  [HPO] Trial 26 started...
+  [HPO] Trial 26 finished in 67.6s (val_r2=0.9995)
+[I 2026-04-01 13:46:11,593] Trial 26 finished with value: 0.9995463779716891 and parameters: {'hidden_layers_index': 1, 'dropout': 0.12025711563739484, 'learning_rate': 0.0004915592841323845, 'batch_size': 32, 'epochs': 177}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 27/40 (best val_r2=1.0000)
+  [HPO] Trial 27 started...
+  [HPO] Trial 27 finished in 43.4s (val_r2=0.9989)
+[I 2026-04-01 13:46:54,969] Trial 27 finished with value: 0.9989326745886651 and parameters: {'hidden_layers_index': 0, 'dropout': 0.040188303784623174, 'learning_rate': 0.0003858384168842718, 'batch_size': 32, 'epochs': 133}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 28/40 (best val_r2=1.0000)
+  [HPO] Trial 28 started...
+  [HPO] Trial 28 finished in 51.9s (val_r2=0.9995)
+[I 2026-04-01 13:47:46,906] Trial 28 finished with value: 0.9994899722869134 and parameters: {'hidden_layers_index': 1, 'dropout': 0.08201277413594223, 'learning_rate': 0.0001343273199193011, 'batch_size': 32, 'epochs': 113}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 29/40 (best val_r2=1.0000)
+  [HPO] Trial 29 started...
+  [HPO] Trial 29 finished in 37.9s (val_r2=0.9997)
+[I 2026-04-01 13:48:24,795] Trial 29 finished with value: 0.9997027349183871 and parameters: {'hidden_layers_index': 1, 'dropout': 0.1048369799540066, 'learning_rate': 0.00020042617755897284, 'batch_size': 64, 'epochs': 153}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 30/40 (best val_r2=1.0000)
+  [HPO] Trial 30 started...
+  [HPO] Trial 30 finished in 23.6s (val_r2=0.9994)
+[I 2026-04-01 13:48:48,351] Trial 30 finished with value: 0.9993807156474673 and parameters: {'hidden_layers_index': 0, 'dropout': 0.02708493450930663, 'learning_rate': 0.0003551020078416728, 'batch_size': 64, 'epochs': 160}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 31/40 (best val_r2=1.0000)
+  [HPO] Trial 31 started...
+  [HPO] Trial 31 finished in 59.8s (val_r2=0.9999)
+[I 2026-04-01 13:49:48,188] Trial 31 finished with value: 0.9998682850505354 and parameters: {'hidden_layers_index': 3, 'dropout': 0.02608968493662026, 'learning_rate': 0.00023302527223878342, 'batch_size': 32, 'epochs': 169}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 32/40 (best val_r2=1.0000)
+  [HPO] Trial 32 started...
+  [HPO] Trial 32 finished in 48.0s (val_r2=0.9984)
+[I 2026-04-01 13:50:36,223] Trial 32 finished with value: 0.9983746191555481 and parameters: {'hidden_layers_index': 2, 'dropout': 0.06177206051535045, 'learning_rate': 0.00030777081027804693, 'batch_size': 32, 'epochs': 160}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 33/40 (best val_r2=1.0000)
+  [HPO] Trial 33 started...
+  [HPO] Trial 33 finished in 56.8s (val_r2=0.9994)
+[I 2026-04-01 13:51:33,072] Trial 33 finished with value: 0.9993869605357925 and parameters: {'hidden_layers_index': 1, 'dropout': 0.008304738494687165, 'learning_rate': 0.0005772324164703177, 'batch_size': 32, 'epochs': 192}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 34/40 (best val_r2=1.0000)
+  [HPO] Trial 34 started...
+  [HPO] Trial 34 finished in 54.1s (val_r2=0.9998)
+[I 2026-04-01 13:52:27,223] Trial 34 finished with value: 0.9998061056899084 and parameters: {'hidden_layers_index': 3, 'dropout': 0.050412909693290084, 'learning_rate': 0.00012644025311224453, 'batch_size': 32, 'epochs': 146}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 35/40 (best val_r2=1.0000)
+  [HPO] Trial 35 started...
+  [HPO] Trial 35 finished in 25.5s (val_r2=0.9997)
+[I 2026-04-01 13:52:52,679] Trial 35 finished with value: 0.9996606619792002 and parameters: {'hidden_layers_index': 1, 'dropout': 0.34167241354997047, 'learning_rate': 0.0001788599040025442, 'batch_size': 128, 'epochs': 175}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 36/40 (best val_r2=1.0000)
+  [HPO] Trial 36 started...
+  [HPO] Trial 36 finished in 33.8s (val_r2=0.9986)
+[I 2026-04-01 13:53:26,525] Trial 36 finished with value: 0.998630147052788 and parameters: {'hidden_layers_index': 2, 'dropout': 0.22427384229200423, 'learning_rate': 0.0002644392237790576, 'batch_size': 64, 'epochs': 190}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 37/40 (best val_r2=1.0000)
+  [HPO] Trial 37 started...
+  [HPO] Trial 37 finished in 38.3s (val_r2=0.9992)
+[I 2026-04-01 13:54:04,862] Trial 37 finished with value: 0.9991928009413182 and parameters: {'hidden_layers_index': 0, 'dropout': 0.026530945148960153, 'learning_rate': 0.0006730893903707106, 'batch_size': 32, 'epochs': 162}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 38/40 (best val_r2=1.0000)
+  [HPO] Trial 38 started...
+  [HPO] Trial 38 finished in 27.7s (val_r2=0.9991)
+[I 2026-04-01 13:54:32,522] Trial 38 finished with value: 0.9991362014589547 and parameters: {'hidden_layers_index': 3, 'dropout': 0.14418450499078908, 'learning_rate': 0.00045634836653842415, 'batch_size': 128, 'epochs': 179}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 39/40 (best val_r2=1.0000)
+  [HPO] Trial 39 started...
+  [HPO] Trial 39 finished in 50.9s (val_r2=0.9988)
+[I 2026-04-01 13:55:23,458] Trial 39 finished with value: 0.9988409980780666 and parameters: {'hidden_layers_index': 1, 'dropout': 0.10680626727427153, 'learning_rate': 0.0022565069590731526, 'batch_size': 32, 'epochs': 173}. Best is trial 12 with value: 0.9999503957121385.
+    Trial 40/40 (best val_r2=1.0000)
+[6/6] Training nstxu_mlp_t3_flux_loop...
+[6/6] Done. Artifacts in runs/nstxu_t3_flux_loop_hpo
+Workflow nstxu_t3_flux_loop_hpo complete. Artifacts saved to runs/nstxu_t3_flux_loop_hpo
+{
+  "run_tag": "nstxu_t3_flux_loop_hpo",
+  "dataset": {
+    "file_path": "data/datasets/NSTX-U/nstxu_equil_curated.pkl",
+    "n_rows": 10000,
+    "n_inputs": 28,
+    "n_outputs": 1,
+    "output_groups": {},
+    "profile_groups": {},
+    "dataset_info": {
+      "shape": [
+        10000,
+        37
+      ],
+      "n_input_variables": 33,
+      "n_output_variables": 4,
+      "n_output_groups": 0,
+      "largest_output_group": 0,
+      "largest_output_group_name": null
+    }
+  },
+  "resources": {
+    "scheduler": null,
+    "n_cpus": 10,
+    "n_gpus": 0,
+    "gpu_type": null,
+    "device": "cpu",
+    "hostname": "asanche2-lt",
+    "extras": {
+      "platform": "macOS-26.3.1-arm64-arm-64bit"
+    }
+  },
+  "splits": {
+    "train": 6000,
+    "val": 2000,
+    "test": 2000
+  },
+  "scalers": {
+    "input_scaler": "runs/nstxu_t3_flux_loop_hpo/scalers/inputs.joblib",
+    "output_scaler": "runs/nstxu_t3_flux_loop_hpo/scalers/outputs.joblib"
+  },
+  "models": [
+    {
+      "name": "nstxu_rf_t3_flux_loop",
+      "backend": "sklearn",
+      "params": {
+        "n_estimators": 450,
+        "max_depth": 19,
+        "min_samples_leaf": 1
+      },
+      "metrics": {
+        "train": {
+          "r2": 0.9999172288387032,
+          "rmse": 8.889219175937377e-07,
+          "mae": 5.755005866594177e-07,
+          "mape": 45776981.18507122
+        },
+        "val": {
+          "r2": 0.9994142206541667,
+          "rmse": 2.1803919386930073e-06,
+          "mae": 1.5048648791535545e-06,
+          "mape": 0.001109250620091494
+        },
+        "test": {
+          "r2": 0.999462713151384,
+          "rmse": 2.1169839194019354e-06,
+          "mae": 1.4989727795660933e-06,
+          "mape": 0.0011051962129254257
+        }
+      },
+      "timings": {
+        "train_seconds": 6.622247249993961,
+        "train_inference_seconds": 0.12260745798994321,
+        "val_inference_seconds": 0.08895458400365897,
+        "train_inference_per_sample": 2.04345763316572e-05,
+        "val_inference_per_sample": 4.447729200182948e-05,
+        "test_inference_seconds": 0.09633808300714009,
+        "test_inference_per_sample": 4.816904150357004e-05
+      },
+      "artifacts": {
+        "model": "runs/nstxu_t3_flux_loop_hpo/models/nstxu_rf_t3_flux_loop.joblib",
+        "predictions": {
+          "train": "runs/nstxu_t3_flux_loop_hpo/predictions/nstxu_rf_t3_flux_loop_train.csv",
+          "val": "runs/nstxu_t3_flux_loop_hpo/predictions/nstxu_rf_t3_flux_loop_val.csv",
+          "test": "runs/nstxu_t3_flux_loop_hpo/predictions/nstxu_rf_t3_flux_loop_test.csv"
+        },
+        "hpo": "runs/nstxu_t3_flux_loop_hpo/hpo/nstxu_rf_t3_flux_loop_hpo.json"
+      }
+    },
+    {
+      "name": "nstxu_mlp_t3_flux_loop",
+      "backend": "pytorch",
+      "params": {
+        "hidden_layers": [
+          256,
+          256,
+          128
+        ],
+        "dropout": 0.002434429437378677,
+        "epochs": 159,
+        "batch_size": 32,
+        "learning_rate": 0.00010759738730604172,
+        "mc_dropout_passes": 40,
+        "activation": "relu"
+      },
+      "metrics": {
+        "train": {
+          "r2": 0.9999625014971776,
+          "rmse": 5.983166028464409e-07,
+          "mae": 4.6307754226873424e-07,
+          "mape": 6451952.981679827
+        },
+        "val": {
+          "r2": 0.9999372836731801,
+          "rmse": 7.134406450011323e-07,
+          "mae": 5.524837398172858e-07,
+          "mape": 0.0004129063803724351
+        },
+        "test": {
+          "r2": 0.9999391271826691,
+          "rmse": 7.12567737475228e-07,
+          "mae": 5.468579070921575e-07,
+          "mape": 0.00040851745591580745
+        }
+      },
+      "timings": {
+        "train_seconds": 50.71280645800289,
+        "train_inference_seconds": 0.013379333991906606,
+        "val_inference_seconds": 0.003005750011652708,
+        "train_inference_per_sample": 2.229888998651101e-06,
+        "val_inference_per_sample": 1.502875005826354e-06,
+        "test_inference_seconds": 0.0026150829944526777,
+        "test_inference_per_sample": 1.307541497226339e-06
+      },
+      "artifacts": {
+        "model": "runs/nstxu_t3_flux_loop_hpo/models/nstxu_mlp_t3_flux_loop.joblib",
+        "predictions": {
+          "train": "runs/nstxu_t3_flux_loop_hpo/predictions/nstxu_mlp_t3_flux_loop_train.csv",
+          "val": "runs/nstxu_t3_flux_loop_hpo/predictions/nstxu_mlp_t3_flux_loop_val.csv",
+          "test": "runs/nstxu_t3_flux_loop_hpo/predictions/nstxu_mlp_t3_flux_loop_test.csv",
+          "val_uq": "runs/nstxu_t3_flux_loop_hpo/predictions/nstxu_mlp_t3_flux_loop_val_uq.json"
+        },
+        "hpo": "runs/nstxu_t3_flux_loop_hpo/hpo/nstxu_mlp_t3_flux_loop_hpo.json"
+      }
+    }
+  ],
+  "registry": "Registered Models:",
+  "artifacts": {
+    "root": "runs/nstxu_t3_flux_loop_hpo",
+    "metrics": "runs/nstxu_t3_flux_loop_hpo/metrics.json",
+    "summary": "runs/nstxu_t3_flux_loop_hpo/workflow_summary.json",
+    "spec": "runs/nstxu_t3_flux_loop_hpo/spec.yaml",
+    "train_data_ranges": "runs/nstxu_t3_flux_loop_hpo/train_data_ranges.json"
+  }
+}
+======== 2026-04-01T13:56:16-04:00 OK nstxu_t3_flux_loop_hpo ========
+
+======== 2026-04-01T13:56:16-04:00 START nstxu_t3_mirnov_hpo ========
+
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+Traceback (most recent call last):  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/asanche2/repos/SURGE/examples/m3dc1_workflow.py", line 14, in <module>
+    import surge  # noqa: F401 - ensures package initialization registers adapters
+  File "/Users/asanche2/repos/SURGE/surge/__init__.py", line 10, in <module>
+    from .model import GPFLOW_AVAILABLE, MODEL_REGISTRY, PYTORCH_AVAILABLE
+  File "/Users/asanche2/repos/SURGE/surge/model/__init__.py", line 7, in <module>
+    from .gpflow import GPFLOW_AVAILABLE, GPflowGPRAdapter, GPflowMultiKernelAdapter
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow.py", line 7, in <module>
+    from .gpflow_impl import GPFLOW_AVAILABLE, GPflowGPRModel, GPflowMultiKernelGPR
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow_impl.py", line 11, in <module>
+    import gpflow as gpf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/__init__.py", line 17, in <module>
+    from . import (
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/__init__.py", line 1, in <module>
+    from . import conditionals, multioutput, sample_conditionals
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/conditionals.py", line 17, in <module>
+    import tensorflow as tf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/__init__.py", line 45, in <module>
+    from tensorflow._api.v2 import __internal__
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/__init__.py", line 8, in <module>
+    from tensorflow._api.v2.__internal__ import autograph
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/autograph/__init__.py", line 8, in <module>
+    from tensorflow.python.autograph.core.ag_ctx import control_status_ctx # line: 34
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/core/ag_ctx.py", line 21, in <module>
+    from tensorflow.python.autograph.utils import ag_logging
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/__init__.py", line 17, in <module>
+    from tensorflow.python.autograph.utils.context_managers import control_dependency_on_returns
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/context_managers.py", line 19, in <module>
+    from tensorflow.python.framework import ops
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/framework/ops.py", line 46, in <module>
+    from tensorflow.python import pywrap_tfe
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/pywrap_tfe.py", line 25, in <module>
+    from tensorflow.python._pywrap_tfe import *
+Traceback (most recent call last):
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/numpy/core/_multiarray_umath.py", line 46, in __getattr__
+    raise ImportError(msg)
+ImportError: 
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+
+AttributeError: 'MessageFactory' object has no attribute 'GetPrototype'
+
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+Traceback (most recent call last):  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/asanche2/repos/SURGE/examples/m3dc1_workflow.py", line 14, in <module>
+    import surge  # noqa: F401 - ensures package initialization registers adapters
+  File "/Users/asanche2/repos/SURGE/surge/__init__.py", line 10, in <module>
+    from .model import GPFLOW_AVAILABLE, MODEL_REGISTRY, PYTORCH_AVAILABLE
+  File "/Users/asanche2/repos/SURGE/surge/model/__init__.py", line 7, in <module>
+    from .gpflow import GPFLOW_AVAILABLE, GPflowGPRAdapter, GPflowMultiKernelAdapter
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow.py", line 7, in <module>
+    from .gpflow_impl import GPFLOW_AVAILABLE, GPflowGPRModel, GPflowMultiKernelGPR
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow_impl.py", line 11, in <module>
+    import gpflow as gpf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/__init__.py", line 17, in <module>
+    from . import (
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/__init__.py", line 1, in <module>
+    from . import conditionals, multioutput, sample_conditionals
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/conditionals.py", line 17, in <module>
+    import tensorflow as tf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/__init__.py", line 45, in <module>
+    from tensorflow._api.v2 import __internal__
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/__init__.py", line 8, in <module>
+    from tensorflow._api.v2.__internal__ import autograph
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/autograph/__init__.py", line 8, in <module>
+    from tensorflow.python.autograph.core.ag_ctx import control_status_ctx # line: 34
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/core/ag_ctx.py", line 21, in <module>
+    from tensorflow.python.autograph.utils import ag_logging
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/__init__.py", line 17, in <module>
+    from tensorflow.python.autograph.utils.context_managers import control_dependency_on_returns
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/context_managers.py", line 19, in <module>
+    from tensorflow.python.framework import ops
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/framework/ops.py", line 49, in <module>
+    from tensorflow.python.client import pywrap_tf_session
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/client/pywrap_tf_session.py", line 19, in <module>
+    from tensorflow.python.client._pywrap_tf_session import *
+Traceback (most recent call last):
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/numpy/core/_multiarray_umath.py", line 46, in __getattr__
+    raise ImportError(msg)
+ImportError: 
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+
+
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+Traceback (most recent call last):  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/asanche2/repos/SURGE/examples/m3dc1_workflow.py", line 14, in <module>
+    import surge  # noqa: F401 - ensures package initialization registers adapters
+  File "/Users/asanche2/repos/SURGE/surge/__init__.py", line 10, in <module>
+    from .model import GPFLOW_AVAILABLE, MODEL_REGISTRY, PYTORCH_AVAILABLE
+  File "/Users/asanche2/repos/SURGE/surge/model/__init__.py", line 7, in <module>
+    from .gpflow import GPFLOW_AVAILABLE, GPflowGPRAdapter, GPflowMultiKernelAdapter
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow.py", line 7, in <module>
+    from .gpflow_impl import GPFLOW_AVAILABLE, GPflowGPRModel, GPflowMultiKernelGPR
+  File "/Users/asanche2/repos/SURGE/surge/model/gpflow_impl.py", line 11, in <module>
+    import gpflow as gpf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/__init__.py", line 17, in <module>
+    from . import (
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/__init__.py", line 1, in <module>
+    from . import conditionals, multioutput, sample_conditionals
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/gpflow/conditionals/conditionals.py", line 17, in <module>
+    import tensorflow as tf
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/__init__.py", line 45, in <module>
+    from tensorflow._api.v2 import __internal__
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/__init__.py", line 8, in <module>
+    from tensorflow._api.v2.__internal__ import autograph
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/_api/v2/__internal__/autograph/__init__.py", line 8, in <module>
+    from tensorflow.python.autograph.core.ag_ctx import control_status_ctx # line: 34
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/core/ag_ctx.py", line 21, in <module>
+    from tensorflow.python.autograph.utils import ag_logging
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/__init__.py", line 17, in <module>
+    from tensorflow.python.autograph.utils.context_managers import control_dependency_on_returns
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/autograph/utils/context_managers.py", line 19, in <module>
+    from tensorflow.python.framework import ops
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/framework/ops.py", line 50, in <module>
+    from tensorflow.python.eager import context
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/eager/context.py", line 37, in <module>
+    from tensorflow.python.eager import execute
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/eager/execute.py", line 21, in <module>
+    from tensorflow.python.framework import dtypes
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/tensorflow/python/framework/dtypes.py", line 21, in <module>
+    import ml_dtypes
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/ml_dtypes/__init__.py", line 32, in <module>
+    from ml_dtypes._finfo import finfo
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/ml_dtypes/_finfo.py", line 19, in <module>
+    from ml_dtypes._ml_dtypes_ext import bfloat16
+Traceback (most recent call last):
+  File "/opt/homebrew/anaconda3/lib/python3.12/site-packages/numpy/core/_multiarray_umath.py", line 46, in __getattr__
+    raise ImportError(msg)
+ImportError: 
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.3.4 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+
+If you are a user of the module, the easiest solution will be to
+downgrade to 'numpy<2' or try to upgrade the affected module.
+We expect that some modules will need time to support NumPy 2.
+
+
+ImportError: numpy.core._multiarray_umath failed to import
+Warning: GPflow not available or incompatible. Install with: pip install gpflow
+SURGE workflow started.
+Starting SURGE workflow for dataset data/datasets/NSTX-U/nstxu_equil_curated.pkl
+[1/6] Loading dataset...
+[2/6] Preparing splits and scalers...
+[3/6] HPO for nstxu_rf_t3_mirnov (40 trials)...
+[I 2026-04-01 13:56:23,226] A new study created in memory with name: nstxu_t3_mirnov_hpo-sklearn.random_forest
+  [HPO] Trial 0 started...
+  [HPO] Trial 0 finished in 6.4s (val_r2=0.9854)
+[I 2026-04-01 13:56:29,679] Trial 0 finished with value: 0.9854039530721852 and parameters: {'n_estimators': 500, 'max_depth': 12, 'min_samples_leaf': 4}. Best is trial 0 with value: 0.9854039530721852.
+    Trial 1/40 (best val_r2=0.9854)
+  [HPO] Trial 1 started...
+  [HPO] Trial 1 finished in 8.3s (val_r2=0.9872)
+[I 2026-04-01 13:56:38,005] Trial 1 finished with value: 0.9871830683652509 and parameters: {'n_estimators': 600, 'max_depth': 28, 'min_samples_leaf': 2}. Best is trial 1 with value: 0.9871830683652509.
+    Trial 2/40 (best val_r2=0.9872)
+  [HPO] Trial 2 started...
+  [HPO] Trial 2 finished in 6.2s (val_r2=0.9865)
+[I 2026-04-01 13:56:44,214] Trial 2 finished with value: 0.9865197859891007 and parameters: {'n_estimators': 450, 'max_depth': 24, 'min_samples_leaf': 3}. Best is trial 1 with value: 0.9871830683652509.
+    Trial 3/40 (best val_r2=0.9872)
+  [HPO] Trial 3 started...
+  [HPO] Trial 3 finished in 5.6s (val_r2=0.9783)
+[I 2026-04-01 13:56:49,844] Trial 3 finished with value: 0.978268351445016 and parameters: {'n_estimators': 500, 'max_depth': 8, 'min_samples_leaf': 2}. Best is trial 1 with value: 0.9871830683652509.
+    Trial 4/40 (best val_r2=0.9872)
+  [HPO] Trial 4 started...
+  [HPO] Trial 4 finished in 2.8s (val_r2=0.9869)
+[I 2026-04-01 13:56:52,635] Trial 4 finished with value: 0.9868508574026768 and parameters: {'n_estimators': 200, 'max_depth': 25, 'min_samples_leaf': 2}. Best is trial 1 with value: 0.9871830683652509.
+    Trial 5/40 (best val_r2=0.9872)
+  [HPO] Trial 5 started...
+  [HPO] Trial 5 finished in 7.9s (val_r2=0.9868)
+[I 2026-04-01 13:57:00,523] Trial 5 finished with value: 0.9868156604224567 and parameters: {'n_estimators': 500, 'max_depth': 13, 'min_samples_leaf': 2}. Best is trial 1 with value: 0.9871830683652509.
+    Trial 6/40 (best val_r2=0.9872)
+  [HPO] Trial 6 started...
+  [HPO] Trial 6 finished in 2.6s (val_r2=0.9855)
+[I 2026-04-01 13:57:03,128] Trial 6 finished with value: 0.9854789103456305 and parameters: {'n_estimators': 200, 'max_depth': 15, 'min_samples_leaf': 4}. Best is trial 1 with value: 0.9871830683652509.
+    Trial 7/40 (best val_r2=0.9872)
+  [HPO] Trial 7 started...
+  [HPO] Trial 7 finished in 3.0s (val_r2=0.9854)
+[I 2026-04-01 13:57:06,153] Trial 7 finished with value: 0.9853966891687151 and parameters: {'n_estimators': 250, 'max_depth': 14, 'min_samples_leaf': 4}. Best is trial 1 with value: 0.9871830683652509.
+    Trial 8/40 (best val_r2=0.9872)
+  [HPO] Trial 8 started...
+  [HPO] Trial 8 finished in 2.2s (val_r2=0.9826)
+[I 2026-04-01 13:57:08,332] Trial 8 finished with value: 0.982615282723905 and parameters: {'n_estimators': 200, 'max_depth': 9, 'min_samples_leaf': 3}. Best is trial 1 with value: 0.9871830683652509.
+    Trial 9/40 (best val_r2=0.9872)
+  [HPO] Trial 9 started...
+  [HPO] Trial 9 finished in 6.2s (val_r2=0.9785)
+[I 2026-04-01 13:57:14,497] Trial 9 finished with value: 0.9784519681621852 and parameters: {'n_estimators': 550, 'max_depth': 8, 'min_samples_leaf': 3}. Best is trial 1 with value: 0.9871830683652509.
+    Trial 10/40 (best val_r2=0.9872)
+  [HPO] Trial 10 started...
+  [HPO] Trial 10 finished in 9.6s (val_r2=0.9879)
+[I 2026-04-01 13:57:24,133] Trial 10 finished with value: 0.9879121652018614 and parameters: {'n_estimators': 600, 'max_depth': 28, 'min_samples_leaf': 1}. Best is trial 10 with value: 0.9879121652018614.
+    Trial 11/40 (best val_r2=0.9879)
+  [HPO] Trial 11 started...
+  [HPO] Trial 11 finished in 10.6s (val_r2=0.9879)
+[I 2026-04-01 13:57:34,752] Trial 11 finished with value: 0.9879121652018614 and parameters: {'n_estimators': 600, 'max_depth': 28, 'min_samples_leaf': 1}. Best is trial 10 with value: 0.9879121652018614.
+    Trial 12/40 (best val_r2=0.9879)
+  [HPO] Trial 12 started...
+  [HPO] Trial 12 finished in 9.0s (val_r2=0.9879)
+[I 2026-04-01 13:57:43,791] Trial 12 finished with value: 0.9878944539485709 and parameters: {'n_estimators': 600, 'max_depth': 21, 'min_samples_leaf': 1}. Best is trial 10 with value: 0.9879121652018614.
+    Trial 13/40 (best val_r2=0.9879)
+  [HPO] Trial 13 started...
+  [HPO] Trial 13 finished in 5.0s (val_r2=0.9877)
+[I 2026-04-01 13:57:48,817] Trial 13 finished with value: 0.9877037748179607 and parameters: {'n_estimators': 350, 'max_depth': 28, 'min_samples_leaf': 1}. Best is trial 10 with value: 0.9879121652018614.
+    Trial 14/40 (best val_r2=0.9879)
+  [HPO] Trial 14 started...
+  [HPO] Trial 14 finished in 5.3s (val_r2=0.9880)
+[I 2026-04-01 13:57:54,162] Trial 14 finished with value: 0.9879573691321588 and parameters: {'n_estimators': 400, 'max_depth': 20, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 15/40 (best val_r2=0.9880)
+  [HPO] Trial 15 started...
+  [HPO] Trial 15 finished in 5.7s (val_r2=0.9877)
+[I 2026-04-01 13:57:59,866] Trial 15 finished with value: 0.987706254489021 and parameters: {'n_estimators': 350, 'max_depth': 19, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 16/40 (best val_r2=0.9880)
+  [HPO] Trial 16 started...
+  [HPO] Trial 16 finished in 6.5s (val_r2=0.9879)
+[I 2026-04-01 13:58:06,373] Trial 16 finished with value: 0.9879065810016917 and parameters: {'n_estimators': 400, 'max_depth': 22, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 17/40 (best val_r2=0.9880)
+  [HPO] Trial 17 started...
+  [HPO] Trial 17 finished in 4.5s (val_r2=0.9874)
+[I 2026-04-01 13:58:10,912] Trial 17 finished with value: 0.9874317042294677 and parameters: {'n_estimators': 300, 'max_depth': 16, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 18/40 (best val_r2=0.9880)
+  [HPO] Trial 18 started...
+  [HPO] Trial 18 finished in 5.4s (val_r2=0.9871)
+[I 2026-04-01 13:58:16,295] Trial 18 finished with value: 0.9870878547112493 and parameters: {'n_estimators': 400, 'max_depth': 19, 'min_samples_leaf': 2}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 19/40 (best val_r2=0.9880)
+  [HPO] Trial 19 started...
+  [HPO] Trial 19 finished in 6.2s (val_r2=0.9878)
+[I 2026-04-01 13:58:22,558] Trial 19 finished with value: 0.9878329153277029 and parameters: {'n_estimators': 450, 'max_depth': 25, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 20/40 (best val_r2=0.9880)
+  [HPO] Trial 20 started...
+  [HPO] Trial 20 finished in 4.5s (val_r2=0.9869)
+[I 2026-04-01 13:58:27,039] Trial 20 finished with value: 0.9868871232827583 and parameters: {'n_estimators': 350, 'max_depth': 22, 'min_samples_leaf': 2}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 21/40 (best val_r2=0.9880)
+  [HPO] Trial 21 started...
+  [HPO] Trial 21 finished in 8.9s (val_r2=0.9879)
+[I 2026-04-01 13:58:35,969] Trial 21 finished with value: 0.9879328924790624 and parameters: {'n_estimators': 550, 'max_depth': 27, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 22/40 (best val_r2=0.9880)
+  [HPO] Trial 22 started...
+  [HPO] Trial 22 finished in 8.5s (val_r2=0.9879)
+[I 2026-04-01 13:58:44,471] Trial 22 finished with value: 0.987921369310508 and parameters: {'n_estimators': 550, 'max_depth': 26, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 23/40 (best val_r2=0.9880)
+  [HPO] Trial 23 started...
+  [HPO] Trial 23 finished in 7.6s (val_r2=0.9879)
+[I 2026-04-01 13:58:52,101] Trial 23 finished with value: 0.987921369310508 and parameters: {'n_estimators': 550, 'max_depth': 26, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 24/40 (best val_r2=0.9880)
+  [HPO] Trial 24 started...
+  [HPO] Trial 24 finished in 6.6s (val_r2=0.9878)
+[I 2026-04-01 13:58:58,791] Trial 24 finished with value: 0.9878276420602894 and parameters: {'n_estimators': 450, 'max_depth': 23, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 25/40 (best val_r2=0.9880)
+  [HPO] Trial 25 started...
+  [HPO] Trial 25 finished in 9.2s (val_r2=0.9872)
+[I 2026-04-01 13:59:07,987] Trial 25 finished with value: 0.9871507765363976 and parameters: {'n_estimators': 550, 'max_depth': 26, 'min_samples_leaf': 2}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 26/40 (best val_r2=0.9880)
+  [HPO] Trial 26 started...
+  [HPO] Trial 26 finished in 9.3s (val_r2=0.9877)
+[I 2026-04-01 13:59:17,281] Trial 26 finished with value: 0.9876929512284959 and parameters: {'n_estimators': 500, 'max_depth': 20, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 27/40 (best val_r2=0.9880)
+  [HPO] Trial 27 started...
+  [HPO] Trial 27 finished in 6.5s (val_r2=0.9870)
+[I 2026-04-01 13:59:23,808] Trial 27 finished with value: 0.987028046792266 and parameters: {'n_estimators': 450, 'max_depth': 17, 'min_samples_leaf': 2}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 28/40 (best val_r2=0.9880)
+  [HPO] Trial 28 started...
+  [HPO] Trial 28 finished in 9.2s (val_r2=0.9879)
+[I 2026-04-01 13:59:33,038] Trial 28 finished with value: 0.987921369310508 and parameters: {'n_estimators': 550, 'max_depth': 26, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 29/40 (best val_r2=0.9880)
+  [HPO] Trial 29 started...
+  [HPO] Trial 29 finished in 4.0s (val_r2=0.9862)
+[I 2026-04-01 13:59:37,065] Trial 29 finished with value: 0.986169556063499 and parameters: {'n_estimators': 300, 'max_depth': 23, 'min_samples_leaf': 3}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 30/40 (best val_r2=0.9880)
+  [HPO] Trial 30 started...
+  [HPO] Trial 30 finished in 5.5s (val_r2=0.9879)
+[I 2026-04-01 13:59:42,647] Trial 30 finished with value: 0.9879129354650218 and parameters: {'n_estimators': 400, 'max_depth': 24, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 31/40 (best val_r2=0.9880)
+  [HPO] Trial 31 started...
+  [HPO] Trial 31 finished in 8.4s (val_r2=0.9879)
+[I 2026-04-01 13:59:51,082] Trial 31 finished with value: 0.987921369310508 and parameters: {'n_estimators': 550, 'max_depth': 26, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 32/40 (best val_r2=0.9880)
+  [HPO] Trial 32 started...
+  [HPO] Trial 32 finished in 7.1s (val_r2=0.9870)
+[I 2026-04-01 13:59:58,232] Trial 32 finished with value: 0.9869972587058937 and parameters: {'n_estimators': 550, 'max_depth': 11, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 33/40 (best val_r2=0.9880)
+  [HPO] Trial 33 started...
+  [HPO] Trial 33 finished in 9.0s (val_r2=0.9876)
+[I 2026-04-01 14:00:07,255] Trial 33 finished with value: 0.9876490206730596 and parameters: {'n_estimators': 500, 'max_depth': 26, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 34/40 (best val_r2=0.9880)
+  [HPO] Trial 34 started...
+  [HPO] Trial 34 finished in 10.9s (val_r2=0.9872)
+[I 2026-04-01 14:00:18,141] Trial 34 finished with value: 0.9871830683652509 and parameters: {'n_estimators': 600, 'max_depth': 27, 'min_samples_leaf': 2}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 35/40 (best val_r2=0.9880)
+  [HPO] Trial 35 started...
+  [HPO] Trial 35 finished in 7.3s (val_r2=0.9876)
+[I 2026-04-01 14:00:25,445] Trial 35 finished with value: 0.9876496345833928 and parameters: {'n_estimators': 500, 'max_depth': 25, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 36/40 (best val_r2=0.9880)
+  [HPO] Trial 36 started...
+  [HPO] Trial 36 finished in 8.9s (val_r2=0.9870)
+[I 2026-04-01 14:00:34,373] Trial 36 finished with value: 0.9870158052746442 and parameters: {'n_estimators': 450, 'max_depth': 24, 'min_samples_leaf': 2}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 37/40 (best val_r2=0.9880)
+  [HPO] Trial 37 started...
+  [HPO] Trial 37 finished in 7.4s (val_r2=0.9869)
+[I 2026-04-01 14:00:41,811] Trial 37 finished with value: 0.9869136158331888 and parameters: {'n_estimators': 500, 'max_depth': 27, 'min_samples_leaf': 2}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 38/40 (best val_r2=0.9880)
+  [HPO] Trial 38 started...
+  [HPO] Trial 38 finished in 8.5s (val_r2=0.9879)
+[I 2026-04-01 14:00:50,387] Trial 38 finished with value: 0.9879075070439765 and parameters: {'n_estimators': 550, 'max_depth': 21, 'min_samples_leaf': 1}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 39/40 (best val_r2=0.9880)
+  [HPO] Trial 39 started...
+  [HPO] Trial 39 finished in 11.5s (val_r2=0.9872)
+[I 2026-04-01 14:01:01,884] Trial 39 finished with value: 0.9871830683652509 and parameters: {'n_estimators': 600, 'max_depth': 27, 'min_samples_leaf': 2}. Best is trial 14 with value: 0.9879573691321588.
+    Trial 40/40 (best val_r2=0.9880)
+[4/6] Training nstxu_rf_t3_mirnov...
+[5/6] HPO for nstxu_mlp_t3_mirnov (40 trials)...
+[I 2026-04-01 14:01:11,010] A new study created in memory with name: nstxu_t3_mirnov_hpo-torch.mlp
+  [HPO] Trial 0 started...
+  [HPO] Trial 0 finished in 33.6s (val_r2=0.9958)
+[I 2026-04-01 14:01:44,620] Trial 0 finished with value: 0.9957724059213513 and parameters: {'hidden_layers_index': 3, 'dropout': 0.09501648801396492, 'learning_rate': 0.0025143428814176426, 'batch_size': 64, 'epochs': 153}. Best is trial 0 with value: 0.9957724059213513.
+    Trial 1/40 (best val_r2=0.9958)
+  [HPO] Trial 1 started...
+  [HPO] Trial 1 finished in 32.1s (val_r2=0.9957)
+[I 2026-04-01 14:02:16,763] Trial 1 finished with value: 0.995739606264396 and parameters: {'hidden_layers_index': 3, 'dropout': 0.2566453379036277, 'learning_rate': 0.0016853391697173288, 'batch_size': 64, 'epochs': 183}. Best is trial 0 with value: 0.9957724059213513.
+    Trial 2/40 (best val_r2=0.9958)
+  [HPO] Trial 2 started...
+  [HPO] Trial 2 finished in 27.7s (val_r2=0.9995)
+[I 2026-04-01 14:02:44,462] Trial 2 finished with value: 0.9995484141469755 and parameters: {'hidden_layers_index': 1, 'dropout': 0.2719391806312388, 'learning_rate': 0.0002725285130250698, 'batch_size': 128, 'epochs': 194}. Best is trial 2 with value: 0.9995484141469755.
+    Trial 3/40 (best val_r2=0.9995)
+  [HPO] Trial 3 started...
+  [HPO] Trial 3 finished in 20.0s (val_r2=0.9981)
+[I 2026-04-01 14:03:04,469] Trial 3 finished with value: 0.9981363479128463 and parameters: {'hidden_layers_index': 0, 'dropout': 0.12775654655214583, 'learning_rate': 0.00362466400156375, 'batch_size': 128, 'epochs': 185}. Best is trial 2 with value: 0.9995484141469755.
+    Trial 4/40 (best val_r2=0.9995)
+  [HPO] Trial 4 started...
+  [HPO] Trial 4 finished in 20.7s (val_r2=0.9932)
+[I 2026-04-01 14:03:25,149] Trial 4 finished with value: 0.9931626182408165 and parameters: {'hidden_layers_index': 0, 'dropout': 0.29863089479757504, 'learning_rate': 0.0024043227611998323, 'batch_size': 64, 'epochs': 138}. Best is trial 2 with value: 0.9995484141469755.
+    Trial 5/40 (best val_r2=0.9995)
+  [HPO] Trial 5 started...
+  [HPO] Trial 5 finished in 58.4s (val_r2=0.9999)
+[I 2026-04-01 14:04:23,530] Trial 5 finished with value: 0.9999199863549817 and parameters: {'hidden_layers_index': 3, 'dropout': 4.81342779403704e-06, 'learning_rate': 0.0002627903447762754, 'batch_size': 32, 'epochs': 164}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 6/40 (best val_r2=0.9999)
+  [HPO] Trial 6 started...
+  [HPO] Trial 6 finished in 25.7s (val_r2=0.9993)
+[I 2026-04-01 14:04:49,283] Trial 6 finished with value: 0.9992690642943617 and parameters: {'hidden_layers_index': 3, 'dropout': 0.09779028087919613, 'learning_rate': 0.0006001696958441087, 'batch_size': 128, 'epochs': 173}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 7/40 (best val_r2=0.9999)
+  [HPO] Trial 7 started...
+  [HPO] Trial 7 finished in 9.1s (val_r2=0.9976)
+[I 2026-04-01 14:04:58,396] Trial 7 finished with value: 0.9975829015841056 and parameters: {'hidden_layers_index': 0, 'dropout': 0.27443403167492536, 'learning_rate': 0.0008540385215381805, 'batch_size': 128, 'epochs': 98}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 8/40 (best val_r2=0.9999)
+  [HPO] Trial 8 started...
+  [HPO] Trial 8 finished in 53.0s (val_r2=0.9990)
+[I 2026-04-01 14:05:51,423] Trial 8 finished with value: 0.9990284914830824 and parameters: {'hidden_layers_index': 3, 'dropout': 0.27204200624185687, 'learning_rate': 0.0002533817781390946, 'batch_size': 32, 'epochs': 181}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 9/40 (best val_r2=0.9999)
+  [HPO] Trial 9 started...
+  [HPO] Trial 9 finished in 22.3s (val_r2=0.9995)
+[I 2026-04-01 14:06:13,743] Trial 9 finished with value: 0.9994933924266002 and parameters: {'hidden_layers_index': 1, 'dropout': 0.057948395618530046, 'learning_rate': 0.0002110412997403752, 'batch_size': 128, 'epochs': 185}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 10/40 (best val_r2=0.9999)
+  [HPO] Trial 10 started...
+  [HPO] Trial 10 finished in 32.7s (val_r2=0.9953)
+[I 2026-04-01 14:06:46,486] Trial 10 finished with value: 0.9952922723841255 and parameters: {'hidden_layers_index': 2, 'dropout': 0.3823249488402962, 'learning_rate': 0.00010575648042945282, 'batch_size': 32, 'epochs': 122}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 11/40 (best val_r2=0.9999)
+  [HPO] Trial 11 started...
+  [HPO] Trial 11 finished in 45.1s (val_r2=0.9982)
+[I 2026-04-01 14:07:31,612] Trial 11 finished with value: 0.9981538882456046 and parameters: {'hidden_layers_index': 1, 'dropout': 0.18623605417271238, 'learning_rate': 0.00035577138123997444, 'batch_size': 32, 'epochs': 199}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 12/40 (best val_r2=0.9999)
+  [HPO] Trial 12 started...
+  [HPO] Trial 12 finished in 40.1s (val_r2=0.9995)
+[I 2026-04-01 14:08:11,707] Trial 12 finished with value: 0.9995197540182035 and parameters: {'hidden_layers_index': 2, 'dropout': 0.002434429437378677, 'learning_rate': 0.00010797775052075032, 'batch_size': 32, 'epochs': 158}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 13/40 (best val_r2=0.9999)
+  [HPO] Trial 13 started...
+  [HPO] Trial 13 finished in 24.1s (val_r2=0.9996)
+[I 2026-04-01 14:08:35,854] Trial 13 finished with value: 0.999582616009565 and parameters: {'hidden_layers_index': 1, 'dropout': 0.18998785117014017, 'learning_rate': 0.0004910213232797471, 'batch_size': 128, 'epochs': 200}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 14/40 (best val_r2=0.9999)
+  [HPO] Trial 14 started...
+  [HPO] Trial 14 finished in 38.9s (val_r2=0.9978)
+[I 2026-04-01 14:09:14,769] Trial 14 finished with value: 0.9977952505509147 and parameters: {'hidden_layers_index': 2, 'dropout': 0.17571458003960955, 'learning_rate': 0.000562608503169392, 'batch_size': 32, 'epochs': 159}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 15/40 (best val_r2=0.9999)
+  [HPO] Trial 15 started...
+  [HPO] Trial 15 finished in 13.9s (val_r2=0.9997)
+[I 2026-04-01 14:09:28,678] Trial 15 finished with value: 0.999680257815151 and parameters: {'hidden_layers_index': 2, 'dropout': 0.026301778424576833, 'learning_rate': 0.0010700990126350472, 'batch_size': 128, 'epochs': 132}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 16/40 (best val_r2=0.9999)
+  [HPO] Trial 16 started...
+  [HPO] Trial 16 finished in 31.1s (val_r2=0.9994)
+[I 2026-04-01 14:09:59,758] Trial 16 finished with value: 0.999414526244915 and parameters: {'hidden_layers_index': 2, 'dropout': 0.03197529816347543, 'learning_rate': 0.001115884225564698, 'batch_size': 32, 'epochs': 123}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 17/40 (best val_r2=0.9999)
+  [HPO] Trial 17 started...
+  [HPO] Trial 17 finished in 25.5s (val_r2=0.9977)
+[I 2026-04-01 14:10:25,302] Trial 17 finished with value: 0.9976988447676164 and parameters: {'hidden_layers_index': 3, 'dropout': 0.0015759167527570062, 'learning_rate': 0.0011571355877362966, 'batch_size': 32, 'epochs': 92}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 18/40 (best val_r2=0.9999)
+  [HPO] Trial 18 started...
+  [HPO] Trial 18 finished in 14.1s (val_r2=0.9995)
+[I 2026-04-01 14:10:39,394] Trial 18 finished with value: 0.9995008044610458 and parameters: {'hidden_layers_index': 2, 'dropout': 0.0669582190085002, 'learning_rate': 0.0001536409454677495, 'batch_size': 128, 'epochs': 132}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 19/40 (best val_r2=0.9999)
+  [HPO] Trial 19 started...
+  [HPO] Trial 19 finished in 16.8s (val_r2=0.9981)
+[I 2026-04-01 14:10:56,148] Trial 19 finished with value: 0.9981477040338096 and parameters: {'hidden_layers_index': 3, 'dropout': 0.1359343584818297, 'learning_rate': 0.00038243985378321165, 'batch_size': 64, 'epochs': 108}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 20/40 (best val_r2=0.9999)
+  [HPO] Trial 20 started...
+  [HPO] Trial 20 finished in 15.4s (val_r2=0.9991)
+[I 2026-04-01 14:11:11,551] Trial 20 finished with value: 0.9990829078447938 and parameters: {'hidden_layers_index': 2, 'dropout': 0.0453889450456841, 'learning_rate': 0.004982911418552503, 'batch_size': 128, 'epochs': 149}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 21/40 (best val_r2=0.9999)
+  [HPO] Trial 21 started...
+  [HPO] Trial 21 finished in 21.2s (val_r2=0.9993)
+[I 2026-04-01 14:11:32,766] Trial 21 finished with value: 0.9993377086376336 and parameters: {'hidden_layers_index': 1, 'dropout': 0.33007287253966916, 'learning_rate': 0.0004152212769661426, 'batch_size': 128, 'epochs': 173}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 22/40 (best val_r2=0.9999)
+  [HPO] Trial 22 started...
+  [HPO] Trial 22 finished in 20.0s (val_r2=0.9997)
+[I 2026-04-01 14:11:52,747] Trial 22 finished with value: 0.9996786658745282 and parameters: {'hidden_layers_index': 1, 'dropout': 0.20297003792401883, 'learning_rate': 0.000800477733502285, 'batch_size': 128, 'epochs': 167}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 23/40 (best val_r2=0.9999)
+  [HPO] Trial 23 started...
+  [HPO] Trial 23 finished in 10.7s (val_r2=0.9985)
+[I 2026-04-01 14:12:03,435] Trial 23 finished with value: 0.9985478676171785 and parameters: {'hidden_layers_index': 1, 'dropout': 0.2315507701683673, 'learning_rate': 0.0008891574519900461, 'batch_size': 128, 'epochs': 80}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 24/40 (best val_r2=0.9999)
+  [HPO] Trial 24 started...
+  [HPO] Trial 24 finished in 16.9s (val_r2=0.9987)
+[I 2026-04-01 14:12:20,299] Trial 24 finished with value: 0.9986510144596185 and parameters: {'hidden_layers_index': 2, 'dropout': 0.14801035091602316, 'learning_rate': 0.0015384531533147931, 'batch_size': 128, 'epochs': 163}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 25/40 (best val_r2=0.9999)
+  [HPO] Trial 25 started...
+  [HPO] Trial 25 finished in 34.5s (val_r2=0.9987)
+[I 2026-04-01 14:12:54,771] Trial 25 finished with value: 0.9987039803397879 and parameters: {'hidden_layers_index': 1, 'dropout': 0.10011023055628691, 'learning_rate': 0.0008020982338017769, 'batch_size': 32, 'epochs': 139}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 26/40 (best val_r2=0.9999)
+  [HPO] Trial 26 started...
+  [HPO] Trial 26 finished in 18.2s (val_r2=0.9972)
+[I 2026-04-01 14:13:13,025] Trial 26 finished with value: 0.9972237954622891 and parameters: {'hidden_layers_index': 2, 'dropout': 0.234818117366478, 'learning_rate': 0.0013199760266945505, 'batch_size': 128, 'epochs': 148}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 27/40 (best val_r2=0.9999)
+  [HPO] Trial 27 started...
+  [HPO] Trial 27 finished in 24.5s (val_r2=0.9989)
+[I 2026-04-01 14:13:37,523] Trial 27 finished with value: 0.9988887459047849 and parameters: {'hidden_layers_index': 3, 'dropout': 0.027966317419248043, 'learning_rate': 0.002067213745914579, 'batch_size': 128, 'epochs': 166}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 28/40 (best val_r2=0.9999)
+  [HPO] Trial 28 started...
+  [HPO] Trial 28 finished in 14.7s (val_r2=0.9993)
+[I 2026-04-01 14:13:52,255] Trial 28 finished with value: 0.9993163950508438 and parameters: {'hidden_layers_index': 0, 'dropout': 0.07543493922509144, 'learning_rate': 0.0006200174216729173, 'batch_size': 64, 'epochs': 113}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 29/40 (best val_r2=0.9999)
+  [HPO] Trial 29 started...
+  [HPO] Trial 29 finished in 45.5s (val_r2=0.9992)
+[I 2026-04-01 14:14:37,762] Trial 29 finished with value: 0.9991681768072291 and parameters: {'hidden_layers_index': 3, 'dropout': 0.15298144331135372, 'learning_rate': 0.0001632963512299871, 'batch_size': 32, 'epochs': 147}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 30/40 (best val_r2=0.9999)
+  [HPO] Trial 30 started...
+  [HPO] Trial 30 finished in 19.0s (val_r2=0.9991)
+[I 2026-04-01 14:14:56,775] Trial 30 finished with value: 0.9991205995235587 and parameters: {'hidden_layers_index': 2, 'dropout': 0.1188294546881423, 'learning_rate': 0.0010123179563909191, 'batch_size': 64, 'epochs': 128}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 31/40 (best val_r2=0.9999)
+  [HPO] Trial 31 started...
+  [HPO] Trial 31 finished in 22.9s (val_r2=0.9994)
+[I 2026-04-01 14:15:19,701] Trial 31 finished with value: 0.9994099348788831 and parameters: {'hidden_layers_index': 1, 'dropout': 0.20605836127983626, 'learning_rate': 0.0004664411854390554, 'batch_size': 128, 'epochs': 200}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 32/40 (best val_r2=0.9999)
+  [HPO] Trial 32 started...
+  [HPO] Trial 32 finished in 23.1s (val_r2=0.9993)
+[I 2026-04-01 14:15:42,827] Trial 32 finished with value: 0.9993081029443864 and parameters: {'hidden_layers_index': 1, 'dropout': 0.21326077245256966, 'learning_rate': 0.00030737715996568193, 'batch_size': 128, 'epochs': 174}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 33/40 (best val_r2=0.9999)
+  [HPO] Trial 33 started...
+  [HPO] Trial 33 finished in 26.4s (val_r2=0.9990)
+[I 2026-04-01 14:16:09,270] Trial 33 finished with value: 0.9990286405108912 and parameters: {'hidden_layers_index': 1, 'dropout': 0.17159259394781223, 'learning_rate': 0.0004755583751731523, 'batch_size': 128, 'epochs': 192}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 34/40 (best val_r2=0.9999)
+  [HPO] Trial 34 started...
+  [HPO] Trial 34 finished in 27.9s (val_r2=0.9973)
+[I 2026-04-01 14:16:37,186] Trial 34 finished with value: 0.9972578608069746 and parameters: {'hidden_layers_index': 1, 'dropout': 0.33571860653464625, 'learning_rate': 0.0007024361524375964, 'batch_size': 128, 'epochs': 190}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 35/40 (best val_r2=0.9999)
+  [HPO] Trial 35 started...
+  [HPO] Trial 35 finished in 16.2s (val_r2=0.9998)
+[I 2026-04-01 14:16:53,374] Trial 35 finished with value: 0.9997621722186104 and parameters: {'hidden_layers_index': 0, 'dropout': 0.021917607409811395, 'learning_rate': 0.0002120873270846106, 'batch_size': 128, 'epochs': 153}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 36/40 (best val_r2=0.9999)
+  [HPO] Trial 36 started...
+  [HPO] Trial 36 finished in 21.4s (val_r2=0.9995)
+[I 2026-04-01 14:17:14,766] Trial 36 finished with value: 0.9994992280696552 and parameters: {'hidden_layers_index': 0, 'dropout': 0.020294901071950866, 'learning_rate': 0.00019845165745019017, 'batch_size': 64, 'epochs': 155}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 37/40 (best val_r2=0.9999)
+  [HPO] Trial 37 started...
+  [HPO] Trial 37 finished in 14.9s (val_r2=0.9991)
+[I 2026-04-01 14:17:29,702] Trial 37 finished with value: 0.999087708467874 and parameters: {'hidden_layers_index': 0, 'dropout': 0.07959355248374625, 'learning_rate': 0.00013830981071442843, 'batch_size': 128, 'epochs': 142}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 38/40 (best val_r2=0.9999)
+  [HPO] Trial 38 started...
+  [HPO] Trial 38 finished in 16.8s (val_r2=0.9996)
+[I 2026-04-01 14:17:46,498] Trial 38 finished with value: 0.9995806928827591 and parameters: {'hidden_layers_index': 0, 'dropout': 0.0470363173461234, 'learning_rate': 0.0019166062634020176, 'batch_size': 128, 'epochs': 168}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 39/40 (best val_r2=0.9999)
+  [HPO] Trial 39 started...
+  [HPO] Trial 39 finished in 17.6s (val_r2=0.9996)
+[I 2026-04-01 14:18:04,127] Trial 39 finished with value: 0.9996178440108391 and parameters: {'hidden_layers_index': 0, 'dropout': 0.11034751076699126, 'learning_rate': 0.0002621097515795136, 'batch_size': 128, 'epochs': 178}. Best is trial 5 with value: 0.9999199863549817.
+    Trial 40/40 (best val_r2=0.9999)
+[6/6] Training nstxu_mlp_t3_mirnov...
+[6/6] Done. Artifacts in runs/nstxu_t3_mirnov_hpo
+Workflow nstxu_t3_mirnov_hpo complete. Artifacts saved to runs/nstxu_t3_mirnov_hpo
+{
+  "run_tag": "nstxu_t3_mirnov_hpo",
+  "dataset": {
+    "file_path": "data/datasets/NSTX-U/nstxu_equil_curated.pkl",
+    "n_rows": 10000,
+    "n_inputs": 29,
+    "n_outputs": 1,
+    "output_groups": {},
+    "profile_groups": {},
+    "dataset_info": {
+      "shape": [
+        10000,
+        37
+      ],
+      "n_input_variables": 33,
+      "n_output_variables": 4,
+      "n_output_groups": 0,
+      "largest_output_group": 0,
+      "largest_output_group_name": null
+    }
+  },
+  "resources": {
+    "scheduler": null,
+    "n_cpus": 10,
+    "n_gpus": 0,
+    "gpu_type": null,
+    "device": "cpu",
+    "hostname": "asanche2-lt",
+    "extras": {
+      "platform": "macOS-26.3.1-arm64-arm-64bit"
+    }
+  },
+  "splits": {
+    "train": 6000,
+    "val": 2000,
+    "test": 2000
+  },
+  "scalers": {
+    "input_scaler": "runs/nstxu_t3_mirnov_hpo/scalers/inputs.joblib",
+    "output_scaler": "runs/nstxu_t3_mirnov_hpo/scalers/outputs.joblib"
+  },
+  "models": [
+    {
+      "name": "nstxu_rf_t3_mirnov",
+      "backend": "sklearn",
+      "params": {
+        "n_estimators": 400,
+        "max_depth": 20,
+        "min_samples_leaf": 1
+      },
+      "metrics": {
+        "train": {
+          "r2": 0.9991703578207117,
+          "rmse": 0.00028763865904984535,
+          "mae": 0.00013903844182395304,
+          "mape": 4127285169.6028743
+        },
+        "val": {
+          "r2": 0.9879573691321588,
+          "rmse": 0.0010368244793720518,
+          "mae": 0.00041813952274777117,
+          "mape": 0.0035413980374063595
+        },
+        "test": {
+          "r2": 0.9921394397424681,
+          "rmse": 0.0008430660368215364,
+          "mae": 0.0003760313639997534,
+          "mape": 0.0031852614759595387
+        }
+      },
+      "timings": {
+        "train_seconds": 8.525751541004865,
+        "train_inference_seconds": 0.13059966699802317,
+        "val_inference_seconds": 0.07673729199450463,
+        "train_inference_per_sample": 2.1766611166337196e-05,
+        "val_inference_per_sample": 3.8368645997252316e-05,
+        "test_inference_seconds": 0.1662047919962788,
+        "test_inference_per_sample": 8.31023959981394e-05
+      },
+      "artifacts": {
+        "model": "runs/nstxu_t3_mirnov_hpo/models/nstxu_rf_t3_mirnov.joblib",
+        "predictions": {
+          "train": "runs/nstxu_t3_mirnov_hpo/predictions/nstxu_rf_t3_mirnov_train.csv",
+          "val": "runs/nstxu_t3_mirnov_hpo/predictions/nstxu_rf_t3_mirnov_val.csv",
+          "test": "runs/nstxu_t3_mirnov_hpo/predictions/nstxu_rf_t3_mirnov_test.csv"
+        },
+        "hpo": "runs/nstxu_t3_mirnov_hpo/hpo/nstxu_rf_t3_mirnov_hpo.json"
+      }
+    },
+    {
+      "name": "nstxu_mlp_t3_mirnov",
+      "backend": "pytorch",
+      "params": {
+        "hidden_layers": [
+          384,
+          256,
+          128
+        ],
+        "dropout": 4.81342779403704e-06,
+        "epochs": 164,
+        "batch_size": 32,
+        "learning_rate": 0.0002627903447762754,
+        "mc_dropout_passes": 40,
+        "activation": "relu"
+      },
+      "metrics": {
+        "train": {
+          "r2": 0.9997205123443103,
+          "rmse": 0.0001669487451454156,
+          "mae": 0.00012645414958117857,
+          "mape": 6495868201.643698
+        },
+        "val": {
+          "r2": 0.999679428914052,
+          "rmse": 0.0001691635261454053,
+          "mae": 0.0001338415814481545,
+          "mape": 0.0011070993131195494
+        },
+        "test": {
+          "r2": 0.9996885586056823,
+          "rmse": 0.00016781199901977985,
+          "mae": 0.0001325422194564634,
+          "mape": 0.0010968690889769223
+        }
+      },
+      "timings": {
+        "train_seconds": 53.109913624997716,
+        "train_inference_seconds": 0.01835858399863355,
+        "val_inference_seconds": 0.0060421669913921505,
+        "train_inference_per_sample": 3.059763999772258e-06,
+        "val_inference_per_sample": 3.0210834956960753e-06,
+        "test_inference_seconds": 0.004530875012278557,
+        "test_inference_per_sample": 2.2654375061392783e-06
+      },
+      "artifacts": {
+        "model": "runs/nstxu_t3_mirnov_hpo/models/nstxu_mlp_t3_mirnov.joblib",
+        "predictions": {
+          "train": "runs/nstxu_t3_mirnov_hpo/predictions/nstxu_mlp_t3_mirnov_train.csv",
+          "val": "runs/nstxu_t3_mirnov_hpo/predictions/nstxu_mlp_t3_mirnov_val.csv",
+          "test": "runs/nstxu_t3_mirnov_hpo/predictions/nstxu_mlp_t3_mirnov_test.csv",
+          "val_uq": "runs/nstxu_t3_mirnov_hpo/predictions/nstxu_mlp_t3_mirnov_val_uq.json"
+        },
+        "hpo": "runs/nstxu_t3_mirnov_hpo/hpo/nstxu_mlp_t3_mirnov_hpo.json"
+      }
+    }
+  ],
+  "registry": "Registered Models:",
+  "artifacts": {
+    "root": "runs/nstxu_t3_mirnov_hpo",
+    "metrics": "runs/nstxu_t3_mirnov_hpo/metrics.json",
+    "summary": "runs/nstxu_t3_mirnov_hpo/workflow_summary.json",
+    "spec": "runs/nstxu_t3_mirnov_hpo/spec.yaml",
+    "train_data_ranges": "runs/nstxu_t3_mirnov_hpo/train_data_ranges.json"
+  }
+}
+======== 2026-04-01T14:18:59-04:00 OK nstxu_t3_mirnov_hpo ========
+
+Metrics summary: python scripts/nstxu/collect_nstxu_metrics.py

@@ -1,0 +1,10 @@
+
+Benchmark : tabular.digits  (task=classification, tier=1, shape=64→10)
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Model                                     Pass     test_accuracy   test_f1_macro      test_auroc       runtime_s
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sklearn.random_forest_classifier          PASS            0.9639          0.9634         0.9992*           1.22s
+sklearn.gradient_boosting_classifier      PASS            0.9528          0.9521          0.9989          30.96s
+sklearn.logistic_regression               PASS           0.9722*         0.9719*          0.9991          0.77s*
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  * = best  (↑ higher-is-better: accuracy, f1, auroc, r2 | ↓ lower-is-better: rmse, runtime)

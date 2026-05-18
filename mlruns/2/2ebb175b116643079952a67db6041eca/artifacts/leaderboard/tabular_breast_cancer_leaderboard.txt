@@ -1,0 +1,10 @@
+
+Benchmark : tabular.breast_cancer  (task=classification, tier=1, shape=30→2)
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Model                                     Pass     test_accuracy   test_f1_macro      test_auroc       runtime_s
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sklearn.random_forest_classifier          PASS            0.9561          0.9526          0.9939           0.82s
+sklearn.gradient_boosting_classifier      PASS            0.9561          0.9521          0.9907           3.26s
+sklearn.logistic_regression               PASS           0.9825*         0.9812*         0.9954*          0.02s*
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  * = best  (↑ higher-is-better: accuracy, f1, auroc, r2 | ↓ lower-is-better: rmse, runtime)

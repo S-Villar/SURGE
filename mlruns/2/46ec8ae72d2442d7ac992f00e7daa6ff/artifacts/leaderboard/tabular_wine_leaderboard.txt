@@ -1,0 +1,10 @@
+
+Benchmark : tabular.wine  (task=classification, tier=1, shape=13→3)
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Model                                     Pass     test_accuracy   test_f1_macro      test_auroc       runtime_s
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+sklearn.random_forest_classifier          PASS           1.0000*         1.0000*         1.0000*           1.90s
+sklearn.gradient_boosting_classifier      PASS            0.9778          0.9797          0.9986           4.21s
+sklearn.logistic_regression               PASS            1.0000          1.0000          1.0000          0.04s*
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  * = best  (↑ higher-is-better: accuracy, f1, auroc, r2 | ↓ lower-is-better: rmse, runtime)
