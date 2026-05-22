@@ -1,7 +1,7 @@
 # Benchmark policy (SURGE)
 
 This repo ships **CPU-only, sklearn-based** standard tasks (Tier 0–1) under
-`surge/benchmarks/`. Larger tiers (vision, PDE, ImageNet) are described in
+`surge/benchmarks/`. Larger tiers (image, field, ImageNet) are described in
 [SURGE_BENCHMARKS_VIZ_PLAN.md](../../SURGE_BENCHMARKS_VIZ_PLAN.md) and are not
 required for CI.
 
