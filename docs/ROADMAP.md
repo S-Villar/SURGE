@@ -25,6 +25,15 @@ Planned and in-progress work beyond what the current release claims as stable. F
 - **Status:** Generic plots and analysis utilities exist under `surge/viz/`; full “one YAML recipe → multi-panel EDA (e.g. ICRF-style six-panel)” with per-column labels/units and agent-assisted flow is not wired as a first-class spec feature yet.
 - **Target:** Enriched metadata (LaTeX labels, units, profile coordinate), recipe names, and optional agent/CLI to compose panels (violins, mean±σ profiles, heatmaps, etc.) from the same input layer the models use.
 
+## Multi-GPU / accelerator support for PyTorch backends
+
+- **Status:** All PyTorch backends (`ResNetCIFAR`, `ViT`, `AlexNet`, `FNO`, `DDPM`, `MLP`, `RNN`, etc.) pick a single device via `torch.device("cuda" if ... else "cpu")`. MPS (Apple Silicon) is not in the fallback chain, and there is no `DataParallel` or `DistributedDataParallel` support.
+- **Target:**
+  - Add MPS to the device fallback: `cuda → mps → cpu`. Immediate benefit on Apple Silicon; no interface change.
+  - Wrap `nn.Module` in `nn.DataParallel` when `torch.cuda.device_count() > 1`. Covers single-node multi-GPU without requiring a process launcher.
+  - Longer-term: `DistributedDataParallel` (DDP) via `torchrun` for multi-node HPC clusters (Perlmutter, Summit). Would require changes to the leaderboard runner to launch worker processes per benchmark.
+- **Motivation:** CIFAR-10 with ResNet-20 takes ~9h on Apple MPS; on a single A100 this drops to ~20 min. ResNet-56 and ViT are even more sensitive to compute.
+
 ## Other items
 
 - Unify the two model registry paths (`surge/model/registry.py` vs `surge/registry.py`).
