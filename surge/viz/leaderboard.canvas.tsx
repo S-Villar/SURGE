@@ -404,7 +404,7 @@ const DATA: Benchmark[] = [
     threshold: "Acc ≥ 0.99",
     thresholdNote: "Published LeNet-5: 99.05%; 98.9% with default epochs",
     results: [
-      { model: "pytorch.resnet20", acc: 0.9957, runtime: 0,   pass: false },
+      { model: "pytorch.resnet20", acc: 0.9957, runtime: 0,   pass: true  },
       { model: "pytorch.lenet5",   acc: 0.9897, f1: 0.9888, auroc: 0.9999, runtime: 431, pass: false },
       { model: "pytorch.vit",      acc: 0.9876, runtime: 0,   pass: false },
     ],
