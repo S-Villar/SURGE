@@ -570,6 +570,183 @@ function getPrimaryKey(bm: Benchmark): keyof ModelResult {
   return "r2";
 }
 
+type SpiderMetric = {
+  key: keyof ModelResult;
+  label: string;
+  lower: boolean;
+  pct?: boolean;
+};
+
+const SPIDER_COLORS = [
+  "#20F7FF",
+  "#FF3AF2",
+  "#6DFF8F",
+  "#FFD166",
+  "#8A7CFF",
+  "#FF7A45",
+];
+
+function spiderMetrics(bm: Benchmark): SpiderMetric[] {
+  const candidates: SpiderMetric[] = [
+    { key: "acc", label: "Accuracy", lower: false, pct: true },
+    { key: "f1", label: "F1", lower: false },
+    { key: "auroc", label: "AUROC", lower: false },
+    { key: "r2", label: "R²", lower: false },
+    { key: "rmse", label: "RMSE", lower: true },
+    { key: "nrmse", label: "NRMSE", lower: true },
+    { key: "rel_l2", label: "Rel-L2", lower: true },
+    { key: "runtime", label: "Runtime", lower: true },
+  ];
+  return candidates.filter((m) =>
+    bm.results.some((r) => {
+      const value = r[m.key] as number | undefined;
+      return typeof value === "number" && Number.isFinite(value) && (m.key !== "runtime" || value > 0);
+    }),
+  );
+}
+
+function scoreMetric(
+  value: number | undefined,
+  values: number[],
+  lower: boolean,
+): number {
+  if (value === undefined || !Number.isFinite(value) || !values.length) return 0;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  if (Math.abs(max - min) < 1e-12) return 1;
+  const score = lower ? (max - value) / (max - min) : (value - min) / (max - min);
+  return Math.max(0, Math.min(1, score));
+}
+
+function polarPoint(cx: number, cy: number, radius: number, angle: number, score: number): string {
+  const r = radius * score;
+  return `${(cx + Math.cos(angle) * r).toFixed(2)},${(cy + Math.sin(angle) * r).toFixed(2)}`;
+}
+
+function SpiderPlot({ bm }: { bm: Benchmark }) {
+  const metrics = spiderMetrics(bm);
+  if (metrics.length < 3) return null;
+
+  const pk = getPrimaryKey(bm);
+  const lowerPrimary = ["nrmse", "rel_l2"].includes(pk as string);
+  const models = [...bm.results]
+    .filter((r) => (r[pk] as number | undefined) !== undefined)
+    .sort((a, b) => {
+      const av = a[pk] as number;
+      const bv = b[pk] as number;
+      return lowerPrimary ? av - bv : bv - av;
+    })
+    .slice(0, 5);
+
+  const cx = 130;
+  const cy = 116;
+  const radius = 72;
+  const angles = metrics.map((_, i) => -Math.PI / 2 + (i * 2 * Math.PI) / metrics.length);
+  const rings = [0.25, 0.5, 0.75, 1];
+  const metricValues = new Map<keyof ModelResult, number[]>();
+  metrics.forEach((m) => {
+    metricValues.set(
+      m.key,
+      bm.results
+        .map((r) => r[m.key] as number | undefined)
+        .filter((v) => typeof v === "number" && Number.isFinite(v) && (m.key !== "runtime" || v > 0)) as number[],
+    );
+  });
+
+  return (
+    <Stack
+      gap={8}
+      style={{
+        border: "1px solid rgba(42, 246, 255, 0.35)",
+        borderRadius: 8,
+        padding: "12px 12px 10px",
+        background: "#050A14",
+        overflow: "hidden",
+      }}
+    >
+      <Text size="small" weight="medium" style={{ color: "#EAF8FF" }}>
+        Spider plot · normalized score
+      </Text>
+      <svg
+        role="img"
+        aria-label={`${bm.name} model spider plot`}
+        viewBox="0 0 260 248"
+        width="100%"
+        height="248"
+        style={{ display: "block" }}
+      >
+        <rect x="0" y="0" width="260" height="248" rx="8" fill="#050A14" />
+        <circle cx={cx} cy={cy} r={radius} fill="#11395A" opacity="0.14" />
+        {rings.map((ring) => {
+          const points = angles.map((a) => polarPoint(cx, cy, radius, a, ring)).join(" ");
+          return (
+            <polygon
+              key={ring}
+              points={points}
+              fill="none"
+              stroke="#2AF6FF"
+              strokeOpacity={ring === 1 ? 0.55 : 0.22}
+              strokeWidth={ring === 1 ? 1.2 : 0.8}
+            />
+          );
+        })}
+        {angles.map((angle, i) => {
+          const [x1, y1] = polarPoint(cx, cy, radius, angle, 0).split(",");
+          const [x2, y2] = polarPoint(cx, cy, radius, angle, 1).split(",");
+          const labelRadius = radius + 20;
+          const [lx, ly] = polarPoint(cx, cy, labelRadius, angle, 1).split(",");
+          return (
+            <g key={metrics[i].label}>
+              <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#7C5CFF" strokeOpacity="0.24" />
+              <text
+                x={lx}
+                y={ly}
+                textAnchor={Math.cos(angle) > 0.35 ? "start" : Math.cos(angle) < -0.35 ? "end" : "middle"}
+                dominantBaseline="middle"
+                fill="#EAF8FF"
+                fontSize="10"
+                fontWeight="700"
+              >
+                {metrics[i].label}
+              </text>
+            </g>
+          );
+        })}
+        {models.map((model, modelIdx) => {
+          const color = SPIDER_COLORS[modelIdx % SPIDER_COLORS.length];
+          const points = metrics
+            .map((m, i) => {
+              const raw = model[m.key] as number | undefined;
+              const score = scoreMetric(raw, metricValues.get(m.key) ?? [], m.lower);
+              return polarPoint(cx, cy, radius, angles[i], score);
+            })
+            .join(" ");
+          return (
+            <g key={model.model}>
+              <polygon points={points} fill={color} fillOpacity="0.13" stroke="none" />
+              <polygon points={points} fill="none" stroke={color} strokeOpacity="0.18" strokeWidth="8" />
+              <polygon points={points} fill="none" stroke={color} strokeWidth="2.4" />
+            </g>
+          );
+        })}
+        {models.map((model, modelIdx) => {
+          const color = SPIDER_COLORS[modelIdx % SPIDER_COLORS.length];
+          const y = 210 + modelIdx * 15;
+          return (
+            <g key={`${model.model}-legend`}>
+              <line x1="14" y1={y} x2="28" y2={y} stroke={color} strokeWidth="3" />
+              <circle cx="21" cy={y} r="2.5" fill="#050A14" stroke={color} strokeWidth="1.4" />
+              <text x="34" y={y + 3.5} fill="#EAF8FF" fontSize="10">
+                {model.model.replace(/^(sklearn|pytorch|xgboost|lgbm|catboost|botorch|gpflow)\./, "")}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </Stack>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Per-benchmark table + side chart
 // ─────────────────────────────────────────────────────────────────────────────
@@ -684,6 +861,7 @@ function BmTable({ bm }: { bm: Benchmark }) {
             height={Math.max(80, chartCategories.length * 26)}
             valueSuffix={pk === "acc" ? "%" : ""}
           />
+          <SpiderPlot bm={bm} />
         </Stack>
       </Grid>
     </Stack>
