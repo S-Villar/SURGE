@@ -32,6 +32,8 @@ type ModelResult = {
   pass: boolean;
 };
 
+type Feature = { name: string; desc: string };
+
 type Benchmark = {
   key: string;
   name: string;
@@ -44,6 +46,10 @@ type Benchmark = {
   primaryMetric: string;
   threshold: string;
   thresholdNote?: string;
+  inputs?: Feature[];
+  output?: Feature;
+  outputs?: Feature[];
+  ioNote?: string;
   results: ModelResult[];
 };
 
@@ -409,6 +415,23 @@ const DATA: Benchmark[] = [
       { model: "pytorch.vit",      acc: 0.9876, runtime: 0,   pass: false },
     ],
   },
+  {
+    key: "vision.cifar10",
+    name: "CIFAR-10 Image Classification",
+    citation: "Krizhevsky (2009) — Learning Multiple Layers of Features from Tiny Images",
+    url: "https://www.cs.toronto.edu/~kriz/cifar.html",
+    shape: "32×32×3 → 10",
+    n: "60,000",
+    capability: "Vision",
+    tier: 2,
+    primaryMetric: "Accuracy",
+    threshold: "Acc ≥ 0.91",
+    thresholdNote: "Prior ResNet-20 run (28% acc) was invalid — train/predict normalization mismatch + no val split. Fixed; re-run needed for official metrics.",
+    results: [
+      { model: "pytorch.resnet20", acc: 0, runtime: 0, pass: false },
+      { model: "pytorch.resnet56", acc: 0, runtime: 0, pass: false },
+    ],
+  },
   // ── Scientific Domain ─────────────────────────────────────────────────────
   {
     key: "fusion.m3dc1_sample",
@@ -449,15 +472,16 @@ const DATA: Benchmark[] = [
   },
   {
     key: "plasma.constellaration",
-    name: "Constellaration Stellarator Surrogate",
-    citation: "Zhu et al. (2022) Nucl. Fusion — VMEC equilibrium emulator",
-    url: "",
-    shape: "7 → 1",
-    n: "~10,000",
+    name: "ConStellaration Stellarator Surrogate",
+    citation: "Goodman et al. (2025) arXiv:2506.19583 — ConStellaration dataset",
+    url: "https://arxiv.org/abs/2506.19583",
+    shape: "90 → 1",
+    n: "10k / 26,897",
     capability: "Scientific Domain",
     tier: 2,
     primaryMetric: "R²",
     threshold: "R² ≥ 0.85",
+    thresholdNote: "log₁₀(qi) only; random 10k subsample from the paper-filtered NPZ when cached.",
     results: [
       { model: "sklearn.mlp",           r2: 0.8930, runtime: 0, pass: true  },
       { model: "pytorch.residual_mlp",  r2: 0.8771, runtime: 0, pass: true  },
@@ -474,16 +498,16 @@ const DATA: Benchmark[] = [
   },
   {
     key: "plasma.constellaration_paper",
-    name: "Constellaration Multi-output (Paper Benchmark)",
-    citation: "Zhu et al. (2022) Nucl. Fusion — 19-output mean R²",
-    url: "",
-    shape: "7 → 19",
-    n: "~10,000",
+    name: "ConStellaration Multi-output (Paper Benchmark)",
+    citation: "Goodman et al. (2025) arXiv:2506.19583 §A.4 — 12-metric protocol",
+    url: "https://arxiv.org/abs/2506.19583",
+    shape: "90 → 12",
+    n: "26,897",
     capability: "Scientific Domain",
     tier: 2,
-    primaryMetric: "R²",
-    threshold: "R² ≥ 0.85",
-    thresholdNote: "No model yet meets threshold on the full 19-output benchmark",
+    primaryMetric: "R² (mean)",
+    threshold: "mean R² ≥ 0.85",
+    thresholdNote: "12 models (one per metric); score = mean test R². Paper pass ≥ 0.97.",
     results: [
       { model: "pytorch.residual_mlp",      r2: 0.9286, runtime: 0, pass: false },
       { model: "pytorch.mlp",               r2: 0.9168, runtime: 0, pass: false },
@@ -497,16 +521,75 @@ const DATA: Benchmark[] = [
     ],
   },
   {
+    key: "plasma.constellaration_multioutput",
+    name: "ConStellaration Joint Multi-output",
+    citation: "Goodman et al. (2025) arXiv:2506.19583 — single 90→12 surrogate",
+    url: "https://arxiv.org/abs/2506.19583",
+    shape: "90 → 12",
+    n: "26,897",
+    capability: "Scientific Domain",
+    tier: 2,
+    primaryMetric: "R²",
+    threshold: "R² ≥ 0.85",
+    thresholdNote: "One model, all 12 metrics. Also logged: RMSE, min/max per-metric R², NRMSE. HPO: surge run -b constellaration_multi -m pytorch.residual_mlp --hpo",
+    inputs: [
+      { name: "r_cos[0:44]", desc: "45 R Fourier cos coefficients (VMEC boundary)" },
+      { name: "z_sin[0:44]", desc: "45 Z Fourier sin coefficients (VMEC boundary)" },
+    ],
+    outputs: [
+      { name: "aspect_ratio", desc: "Plasma aspect ratio" },
+      { name: "aspect_ratio_over_edge_rotational_transform", desc: "Aspect ratio / edge ι" },
+      { name: "max_elongation", desc: "Maximum elongation" },
+      { name: "axis_rotational_transform_over_n_field_periods", desc: "Axis ι / n_fp" },
+      { name: "edge_rotational_transform_over_n_field_periods", desc: "Edge ι / n_fp" },
+      { name: "axis_magnetic_mirror_ratio", desc: "Axis magnetic mirror ratio" },
+      { name: "edge_magnetic_mirror_ratio", desc: "Edge magnetic mirror ratio" },
+      { name: "average_triangularity", desc: "Average triangularity" },
+      { name: "vacuum_well", desc: "Vacuum magnetic well" },
+      { name: "minimum_normalized_magnetic_gradient_scale_length", desc: "Min normalised |∇B| scale length" },
+      { name: "flux_compression_in_regions_of_bad_curvature", desc: "Flux compression in bad-curvature regions" },
+      { name: "log_10_qi", desc: "log₁₀ quasi-isodynamic quality (lower = better QI)" },
+    ],
+    ioNote: "Joint multi-output benchmark (not the paper’s 12-model protocol). Workflow: examples/constellaration_multioutput_workflow.py",
+    results: [
+      { model: "pytorch.residual_mlp (HPO)",   r2: 0.9365, rmse: 0.532, runtime: 254, pass: true  },
+      { model: "pytorch.mlp",                    r2: 0.8798, rmse: 0.674, runtime: 89,  pass: true  },
+      { model: "sklearn.random_forest",          r2: 0.8261, rmse: 0.718, runtime: 37,  pass: false },
+      { model: "sklearn.mlp",                    r2: 0.7948, rmse: 0.622, runtime: 50,  pass: false },
+      { model: "sklearn.gradient_boosting",      r2: 0.7939, rmse: 0.898, runtime: 428, pass: false },
+      { model: "sklearn.ridge",                  r2: 0.6338, rmse: 1.283, runtime: 0.2, pass: false },
+    ],
+  },
+  {
     key: "plasma.qlknn_transport",
     name: "QLKNN Turbulent Transport Coefficient",
     citation: "van de Plassche et al. (2020) Phys. Plasmas — QuaLiKiz surrogate",
     url: "https://doi.org/10.1063/1.5134126",
-    shape: "9 → 1",
-    n: "~80,000",
+    shape: "10 → 1",
+    n: "7,475",
     capability: "Scientific Domain",
     tier: 2,
     primaryMetric: "R²",
     threshold: "R² ≥ 0.90",
+    inputs: [
+      { name: "Ati",       desc: "Normalised ion temperature gradient" },
+      { name: "Ate",       desc: "Normalised electron temperature gradient" },
+      { name: "Ane",       desc: "Normalised electron density gradient" },
+      { name: "Ani",       desc: "Normalised ion density gradient" },
+      { name: "q",         desc: "Safety factor" },
+      { name: "smag",      desc: "Magnetic shear" },
+      { name: "x",         desc: "Normalised minor radius" },
+      { name: "Ti_Te",     desc: "Ion-to-electron temperature ratio" },
+      { name: "LogNuStar", desc: "Log collisionality" },
+      { name: "normni",    desc: "Normalised ion density" },
+    ],
+    output: {
+      name: "efeITG",
+      desc: "Electron heat flux from the ITG mode (gyroBohm-normalised units)",
+    },
+    ioNote:
+      "Ground truth is the QLKNN_7_11 surrogate (fusion_surrogates); SURGE models emulate that mapping. "
+      + "Only samples with active ITG transport (efeITG > 0) are kept.",
     results: [
       { model: "pytorch.residual_mlp",      r2: 0.9481, runtime: 0, pass: true  },
       { model: "sklearn.mlp",               r2: 0.9218, runtime: 0, pass: true  },
@@ -751,6 +834,35 @@ function SpiderPlot({ bm }: { bm: Benchmark }) {
 // Per-benchmark table + side chart
 // ─────────────────────────────────────────────────────────────────────────────
 
+function IoPanel({ bm }: { bm: Benchmark }) {
+  if (!bm.inputs?.length && !bm.output && !bm.outputs?.length) return null;
+  return (
+    <Stack gap={4}>
+      {bm.inputs?.length ? (
+        <Table
+          headers={["Input", "Description"]}
+          rows={bm.inputs.map((f) => [f.name, f.desc])}
+        />
+      ) : null}
+      {bm.outputs?.length ? (
+        <Table
+          headers={["Output", "Description"]}
+          rows={bm.outputs.map((f) => [f.name, f.desc])}
+        />
+      ) : bm.output ? (
+        <Text size="small">
+          Output: {bm.output.name} — {bm.output.desc}
+        </Text>
+      ) : null}
+      {bm.ioNote ? (
+        <Text tone="secondary" size="small" style={{ fontStyle: "italic" }}>
+          {bm.ioNote}
+        </Text>
+      ) : null}
+    </Stack>
+  );
+}
+
 function BmTable({ bm }: { bm: Benchmark }) {
   const isClf   = bm.results.some((r) => r.acc     !== undefined);
   const hasFl2  = bm.results.some((r) => r.rel_l2  !== undefined);
@@ -843,6 +955,7 @@ function BmTable({ bm }: { bm: Benchmark }) {
           Note: {bm.thresholdNote}
         </Text>
       )}
+      <IoPanel bm={bm} />
       <Grid columns="3fr 2fr" gap={20} align="start">
         <Stack gap={4}>
           <Table headers={headers} rows={rows} rowTone={tones} />
@@ -1008,14 +1121,13 @@ function PendingTable() {
       <Table
         headers={["Key", "Dataset & Citation", "Capability", "Status"]}
         rows={[
-          ["vision.cifar10",          "CIFAR-10 · Krizhevsky (2009) · ResNet-20/56",          "Vision",              "Pending — GPU recommended; ResNet-20 published: 91.25%"],
           ["pdebench.burgers_1d",     "Takamoto et al. NeurIPS 2022 · HDF5 · 1024-pt grid",   "1D PDE (real data)",  "Ready — requires: curl <darus_url> > Burgers_Rr1.0.hdf5"],
           ["pdebench.darcy_2d",       "Takamoto et al. NeurIPS 2022 · Darcy Flow 128×128",    "2D PDE",              "Ready — requires HDF5 download"],
           ["pdebench.shallow_water",  "Takamoto et al. NeurIPS 2022 · Shallow Water 128×128", "2D PDE",              "Ready — requires HDF5 download"],
           ["thewell.gray_scott",      "Ohana et al. NeurIPS 2024 · Gray-Scott 2D",             "Reaction-Diffusion",  "Ready — requires: pip install the-well"],
           ["thewell.turbulence_2d",   "Ohana et al. NeurIPS 2024 · 2D turbulence",             "Turbulence",          "Ready — requires the-well pkg"],
           ["thewell.mhd",             "Ohana et al. NeurIPS 2024 · 3D MHD",                   "MHD Plasma",          "Ready — requires the-well pkg"],
-          ["plasma.constellaration",  "Zhu et al. (2022) Nucl. Fusion — increase target R²",  "Scientific Domain",   "In progress — best R²=0.929 (residual_mlp), threshold 0.85 not met on paper benchmark"],
+          ["plasma.constellaration_paper", "Goodman et al. (2025) §A.4 — 12×90→1 protocol", "Scientific Domain", "Active — best mean R²≈0.93 (residual_mlp); paper pass ≥0.97"],
         ]}
       />
     </Stack>
