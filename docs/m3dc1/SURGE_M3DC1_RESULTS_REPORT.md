@@ -1,12 +1,22 @@
 # SURGE × M3DC1 Surrogates — Workflow & Results Report
 
-_Status snapshot: 2026‑07‑01. Repo: **SURGE-exp**, branch `feat/m3dc1-on-model-bench`._
+_Status snapshot: **2026‑07‑01**. Repo: **SURGE-exp**, branch `feat/m3dc1-on-model-bench`._
 
 This report documents (1) how the data was generated and where it lives, (2) how the
 SURGE training workflow is run, (3) the model zoo and where each model lives, and
-(4) results so far for the three tasks that show real progress — **growth rate γ**,
-**δp̂ spectrum**, and **mode peak location (core/edge)** — including loss curves and
-per‑case eigenmode visuals.
+(4) results for the three M3D‑C1 AI tasks that show real progress — **growth rate γ**,
+**core/edge mode locator**, and the **eigenmode (δp̂ spectrum) predictor** — including
+loss curves, run comparisons, and per‑case eigenmode visuals.
+
+> **Headline update (this revision):** the δp̂ spectrum plateau was broken by
+> **per‑case max normalization** implemented inside SURGE. On the full dataset the
+> FNO2D validation R² jumped **0.605 → 0.836**, and per‑case *pattern* R² went from a
+> median of ≈ −0.9 (non‑normalized) to **median 0.74**, with **99 % of cases R² > 0.5**.
+> All new comparison figures and per‑case panels below come from this best model.
+
+> **Figures.** All images are committed next to this file under
+> [`docs/m3dc1/assets/`](assets) and referenced with relative paths, so they render on
+> GitHub and in the Markdown preview.
 
 ---
 
@@ -17,12 +27,14 @@ per‑case eigenmode visuals.
 | Raw M3DC1 batch | `/pscratch/sd/a/asvillar/mp288/jobs/batch_16/` (10,201 case dirs: `run*/sparc_*/`) |
 | Per‑case verification file | `csdata_deltap_b_ver.h5` (one per case dir) |
 | Grid / spectrum | 201×201 (R,Z), poloidal harmonics `m ∈ [−100, 100]`, full FFT |
-| Postprocess entry point | `m3dc1ml-run-batch` → [`m3dc1ml/src/m3dc1ml/postprocess/run_batch.py`](/global/homes/a/asvillar/src/SURGE/m3dc1ml/src/m3dc1ml/postprocess/run_batch.py) |
-| Generation script | [`m3dc1ml/scripts/build_csdata_deltap_b_ver.sh`](/global/homes/a/asvillar/src/SURGE/m3dc1ml/scripts/build_csdata_deltap_b_ver.sh) (+ `.slurm`) |
-| Scalars dataset (γ etc.) | [`data/datasets/SPARC/case_scalars_ver.parquet`](/global/homes/a/asvillar/src/SURGE/data/datasets/SPARC/case_scalars_ver.parquet) — **9,976 cases** |
-| Dataset metadata | [`case_scalars_ver_metadata.yaml`](/global/homes/a/asvillar/src/SURGE/data/datasets/SPARC/case_scalars_ver_metadata.yaml) |
+| Postprocess entry point | `m3dc1ml-run-batch` → [`m3dc1ml/.../postprocess/run_batch.py`](../../m3dc1ml/src/m3dc1ml/postprocess/run_batch.py) |
+| Generation script | [`m3dc1ml/scripts/build_csdata_deltap_b_ver.sh`](../../m3dc1ml/scripts/build_csdata_deltap_b_ver.sh) (+ `.slurm`) |
+| Scalars dataset (γ etc.) | [`data/datasets/SPARC/case_scalars_ver.parquet`](../../data/datasets/SPARC/case_scalars_ver.parquet) — **9,976 cases** |
+| Dataset metadata | [`case_scalars_ver_metadata.yaml`](../../data/datasets/SPARC/case_scalars_ver_metadata.yaml) |
+| Exploration notebook | [`m3dc1ml/notebooks/explore_csdata_deltap_b_test.ipynb`](../../m3dc1ml/notebooks/explore_csdata_deltap_b_test.ipynb) |
+| Curation / validation notebook | [`m3dc1ml/notebooks/curate_validate_mlm3dc1_predictions.ipynb`](../../m3dc1ml/notebooks/curate_validate_mlm3dc1_predictions.ipynb) |
 
-**What's inside each `csdata_deltap_b_ver.h5`** (`runs/run_0001/`):
+**What's inside each `csdata_deltap_b_ver.h5`:**
 `spectrum/{p,br,bz,bphi}` (complex `spec[t, m, ψ]` + `m_modes`, `psi_norm`),
 `pertfields/{p,p_hat,p_phi0,p_phiq,...}` (the δp field on the 201×201 R,Z grid),
 `equilibrium/` (ψ(R,Z), grad‑ψ, magnetic axis), `flux_average/{q,p,ne,...}`,
@@ -32,7 +44,13 @@ per‑case eigenmode visuals.
 per case. `m3dc1ml` postprocess uses the M3DC1 `fpy` bindings + `flux_coordinates`
 (PEST) to evaluate the perturbed pressure/field on the R,Z grid, poloidally
 Fourier‑transforms to `δp̂(m, ψ_N)`, and stores both the field and the spectrum
-(with a reconstruction self‑check). Code: [`postprocess/build_sdata.py`](/global/homes/a/asvillar/src/SURGE/m3dc1ml/src/m3dc1ml/postprocess/build_sdata.py).
+(with a reconstruction self‑check). Code:
+[`postprocess/build_sdata.py`](../../m3dc1ml/src/m3dc1ml/postprocess/build_sdata.py).
+
+**A representative case** (field δp(R,Z), spectrum |δp̂|(m,ψ), and profiles), rendered
+by the exploration notebook:
+
+![dataset case example](assets/dataset_case_example.png)
 
 Repositories:
 - SURGE (framework, experiments): **[github.com/S-Villar/SURGE-exp](https://github.com/S-Villar/SURGE-exp)** (branch `feat/m3dc1-on-model-bench`)
@@ -46,50 +64,66 @@ All tabular tasks share **one leakage‑free, case‑grouped split** so every mo
 exactly the same train/val/test partition. Grouping is by `run_id` + `eq_id`
 (`GroupShuffleSplit`), so all rows from one physical case stay in one split.
 
-- Engine / splitting: [`surge/engine.py`](/global/homes/a/asvillar/src/SURGE/surge/engine.py)
-- Workflow spec (YAML): [`surge/workflow/spec.py`](/global/homes/a/asvillar/src/SURGE/surge/workflow/spec.py)
-- Runner + artifacts: [`surge/workflow/run.py`](/global/homes/a/asvillar/src/SURGE/surge/workflow/run.py)
-- HPO recipes (optuna): [`surge/benchmarks/hpo.py`](/global/homes/a/asvillar/src/SURGE/surge/benchmarks/hpo.py)
+- Engine / splitting / scaling: [`surge/engine.py`](../../surge/engine.py)
+- Workflow spec (YAML): [`surge/workflow/spec.py`](../../surge/workflow/spec.py)
+- Runner + artifacts: [`surge/workflow/run.py`](../../surge/workflow/run.py)
+- HPO recipes (optuna): [`surge/benchmarks/hpo.py`](../../surge/benchmarks/hpo.py)
 
 Each run writes: `metrics.json`, `workflow_summary.json`, `splits.json`
 (+ `leakage_check`), `model_card_*.json`, `training_history_*.json`, and
 `plots/training_dashboard_*.png`.
+
+### 2.1 Preprocessing: per‑sample (per‑case) normalization — **new**
+
+The δp̂ eigenmode has an **arbitrary overall amplitude** (the eigenvector normalization
+is meaningless — cases range from `|δp|max ~ 1e4` to `~1e-7`); only the *shape* is
+physical. SURGE now supports **per‑sample output normalization** so a model learns the
+shape and the absolute scale is factored out:
+
+- Primitives: `per_sample_max_scale` / `invert_per_sample_max_scale` in
+  [`surge/preprocessing.py`](../../surge/preprocessing.py) (modes `max`, `absmax`, `l2`).
+- Wired through the engine (`EngineRunConfig.output_per_sample_norm`,
+  `ScalerBundle.output_per_sample_scale`): each output vector is divided by its own
+  magnitude **before** any log/standardization, and the stored per‑row scale is used to
+  invert predictions back to original units for metrics.
+- Configurable from the workflow spec via `output_per_sample_norm`.
+
+This is distinct from `StandardScaler` (global per‑column stats): it is parameter‑free
+per row and is exactly what the eigenmode problem needs.
 
 **Run a workflow (example — γ, all models):**
 ```bash
 conda activate /global/cfs/projectdirs/m3716/software/asvillar/envs/surge
 python scripts/m3dc1/internal/run_workflow.py configs/internal/m3dc1_gamma_ver_allmodels.yaml
 ```
-Configs live in [`configs/internal/`](/global/homes/a/asvillar/src/SURGE/configs/internal). Full how‑to:
-[`docs/m3dc1/TRAINING_RUNBOOK.md`](/global/homes/a/asvillar/src/SURGE/docs/m3dc1/TRAINING_RUNBOOK.md),
-HPO details: [`docs/m3dc1/HPO_COMPARISON.md`](/global/homes/a/asvillar/src/SURGE/docs/m3dc1/HPO_COMPARISON.md).
+Configs live in [`configs/internal/`](../../configs/internal). Full how‑to:
+[`docs/m3dc1/TRAINING_RUNBOOK.md`](TRAINING_RUNBOOK.md),
+spectrum how‑to: [`docs/m3dc1/SPECTRUM_TRAINING_RUNBOOK.md`](SPECTRUM_TRAINING_RUNBOOK.md),
+HPO details: [`docs/m3dc1/HPO_COMPARISON.md`](HPO_COMPARISON.md).
 
 ---
 
 ## 3. Model zoo — what they are & where they live
 
-| Model (key) | Type / architecture | Backend | Adapter |
-|---|---|---|---|
-| `ridge` | Linear regression, L2 penalty | sklearn | — |
-| `random_forest` | Bagged decision‑tree ensemble | sklearn | — |
-| `gradient_boosting` | Sequential boosted trees | sklearn | — |
-| `sk_mlp` | sklearn feed‑forward MLP | sklearn | — |
-| `torch_mlp` | PyTorch MLP (configurable depth/width) | — | [mlp](/global/homes/a/asvillar/src/SURGE/surge/model/adapters) |
-| `residual_mlp` | MLP with residual/skip blocks | [`residual_mlp.py`](/global/homes/a/asvillar/src/SURGE/surge/model/backends/residual_mlp.py) | [`residual_mlp.py`](/global/homes/a/asvillar/src/SURGE/surge/model/adapters/residual_mlp.py) |
-| `geom_residual_mlp` | Residual MLP + geometry‑aware feature map | — | [`geometric_residual_mlp.py`](/global/homes/a/asvillar/src/SURGE/surge/model/adapters/geometric_residual_mlp.py) |
-| `mlp_ensemble` | Deep ensemble of MLPs (mean + uncertainty) | [`mlp_ensemble.py`](/global/homes/a/asvillar/src/SURGE/surge/model/backends/mlp_ensemble.py) | [`mlp_ensemble.py`](/global/homes/a/asvillar/src/SURGE/surge/model/adapters/mlp_ensemble.py) |
-| `ft_transformer` | Feature‑Tokenizer Transformer (tabular attention) | [`ft_transformer.py`](/global/homes/a/asvillar/src/SURGE/surge/model/backends/ft_transformer.py) | [`ft_transformer.py`](/global/homes/a/asvillar/src/SURGE/surge/model/adapters/ft_transformer.py) |
-| `vae` | Variational auto‑encoder w/ regression head | [`vae.py`](/global/homes/a/asvillar/src/SURGE/surge/model/backends/vae.py) | [`vae.py`](/global/homes/a/asvillar/src/SURGE/surge/model/adapters/vae.py) |
-| **`fno2d`** | **2D Fourier Neural Operator** — spectral conv in Fourier space, resolution‑invariant operator learning | [`fno2d.py`](/global/homes/a/asvillar/src/SURGE/surge/model/backends/fno2d.py) | [`fno2d.py`](/global/homes/a/asvillar/src/SURGE/surge/model/adapters/fno2d.py) |
-| **`unet`** | **U‑Net** — encoder/decoder CNN with skip connections | [`unet.py`](/global/homes/a/asvillar/src/SURGE/surge/model/backends/unet.py) | [`unet.py`](/global/homes/a/asvillar/src/SURGE/surge/model/adapters/unet.py) |
-| `deeponet` | Operator net (branch/trunk) | [`deeponet.py`](/global/homes/a/asvillar/src/SURGE/surge/model/backends/deeponet.py) | [`deeponet.py`](/global/homes/a/asvillar/src/SURGE/surge/model/adapters/deeponet.py) |
-
-Full backend list: [`surge/model/backends/`](/global/homes/a/asvillar/src/SURGE/surge/model/backends) ·
-adapters: [`surge/model/adapters/`](/global/homes/a/asvillar/src/SURGE/surge/model/adapters).
+| Model (key) | Type / architecture | Backend |
+|---|---|---|
+| `ridge` | Linear regression, L2 penalty (baseline) | sklearn |
+| `random_forest` | Bagged decision‑tree ensemble | sklearn |
+| `gradient_boosting` | Sequential boosted trees | sklearn |
+| `sk_mlp` | sklearn feed‑forward MLP | sklearn |
+| `torch_mlp` | PyTorch MLP (configurable depth/width) | [adapters](../../surge/model/adapters) |
+| `residual_mlp` | MLP with residual/skip blocks | [`residual_mlp.py`](../../surge/model/backends/residual_mlp.py) |
+| `geom_residual_mlp` | Residual MLP + geometry‑aware feature map | [adapters](../../surge/model/adapters/geometric_residual_mlp.py) |
+| `mlp_ensemble` | Deep ensemble of MLPs (mean + uncertainty) | [`mlp_ensemble.py`](../../surge/model/backends/mlp_ensemble.py) |
+| `ft_transformer` | Feature‑Tokenizer Transformer (tabular attention) | [`ft_transformer.py`](../../surge/model/backends/ft_transformer.py) |
+| `vae` | Variational auto‑encoder w/ regression head | [`vae.py`](../../surge/model/backends/vae.py) |
+| **`fno2d`** | **2D Fourier Neural Operator** — spectral conv in Fourier space, resolution‑invariant operator learning | [`fno2d.py`](../../surge/model/backends/fno2d.py) |
+| **`unet`** | **U‑Net** — encoder/decoder CNN with skip connections | [`unet.py`](../../surge/model/backends/unet.py) |
+| `deeponet` | Operator net (branch/trunk) | [`deeponet.py`](../../surge/model/backends/deeponet.py) |
 
 The **spectrum‑image FNO2D/U‑Net** driver (2D `|δp̂|(m,ψ)` prediction with
 physics‑informed conditioning channels incl. the `m − n·q(ψ)` resonance channel):
-[`scripts/m3dc1/internal/train_spectrum_image.py`](/global/homes/a/asvillar/src/SURGE/scripts/m3dc1/internal/train_spectrum_image.py).
+[`scripts/m3dc1/internal/train_spectrum_image.py`](../../scripts/m3dc1/internal/train_spectrum_image.py).
 Net config: `_FNO2dNet(in=11, out=1, hidden=32, n_modes=16, n_layers=4)`,
 `_UNetNet(in=11, out=1, base=48, depth=4)`.
 
@@ -116,118 +150,187 @@ Run: `runs/m3dc1_gamma_ver_allmodels/` · HPO: `runs/m3dc1_gamma_ver_batch_hpo/`
 | geom_residual_mlp | 0.390 (→ 0.743 w/ HPO) | 0.0353 | 0.0232 |
 | ridge (linear baseline) | 0.531 | 0.0309 | 0.0186 |
 
-![gamma model comparison](/global/homes/a/asvillar/src/SURGE/runs/report_assets/gamma_r2_bar.png)
+![gamma model comparison](assets/gamma_r2_bar.png)
 
-Representative per‑model training dashboard (loss + pred‑vs‑true accuracy map):
+Best‑model predicted‑vs‑true and per‑model training dashboard:
 
-![gamma torch_mlp dashboard](/global/homes/a/asvillar/src/SURGE/runs/m3dc1_gamma_ver_allmodels/plots/training_dashboard_torch_mlp.png)
+![gamma best scatter](assets/gamma_best_scatter.png)
+
+![gamma torch_mlp dashboard](assets/gamma_dashboard_torch_mlp.png)
 
 **Takeaway:** γ is well‑predicted from equilibrium scalars — best **R² ≈ 0.87** (HPO
 torch_mlp), with a tight cluster of NN/ensemble/RF models around 0.85. Linear ridge
 (0.53) confirms the relationship is strongly nonlinear.
 
-### 4.2 δp̂ spectrum
+### 4.2 Core vs edge mode locator (regression → classification)
 
-**Progress across approaches:**
-
-![delta p progress](/global/homes/a/asvillar/src/SURGE/runs/report_assets/deltap_progress_bar.png)
-
-**(a) Per‑mode MLP** (`|δp̂|` magnitude, low‑|m| band, signed‑log target) —
-`runs/m3dc1_deltap_mag_residual_flex/`:
-
-| Model | test R² |
-|---|---:|
-| residual_mlp_flex (HPO, per‑layer integer widths) | 0.358 |
-| residual_mlp (baseline) | 0.316 |
-
-> The **real part** `Re(δp̂)` is **ill‑posed** (arbitrary eigenmode phase/normalization):
-> all models score R² ≈ 0 / negative (`runs/m3dc1_deltap_real_smoke/`). We therefore
-> model the phase‑invariant **magnitude**.
-
-**(b) Whole‑spectrum image (FNO2D)** — predicts the entire `log₁₀|δp̂|(m,ψ)` image per
-case, conditioned on equilibrium channels + `m − n·q(ψ)`. Run: `runs/spectrum_image/`.
-
-| Metric | Value |
-|---|---:|
-| Best **global** val R² (subset, 3,000 cases) | **0.654** (epoch 68) |
-| Full‑data run (9,976 cases) — in progress | 0.605 (epoch 15, climbing) |
-| Per‑case spectrum R² (subset val) | min −441 · median −0.87 · **max 0.948** |
-
-**Important nuance:** the global R² (0.65) is inflated by *between‑case* amplitude
-differences; **per‑case** R² is often poor because the **overall eigenmode
-normalization is arbitrary** and low‑SNR edge modes are noise‑dominated. This is the
-current plateau and the target of the next iteration (per‑case normalization).
-
-Per‑case eigenmode visuals (2×3: **rows = field δp(R,Z) / spectrum |δp̂|(m,ψ)**,
-**cols = truth / predicted / difference**). Predicted field = `|δp̂|_pred × true phase`
-(the model predicts magnitude only), reconstructed on the `fpy` flux grid.
-
-_Best case (R²=0.948) — ridge & RZ envelope captured:_
-![best case](/global/homes/a/asvillar/src/SURGE/runs/spectrum_image/plots/case_best_fno2d.png)
-
-_Median case (R²=−0.87) — low‑SNR edge mode, model smooths noise floor:_
-![median case](/global/homes/a/asvillar/src/SURGE/runs/spectrum_image/plots/case_median_fno2d.png)
-
-_Worst case (R²=−441) — anomalously large overall normalization (~10⁵), under‑predicted:_
-![worst case](/global/homes/a/asvillar/src/SURGE/runs/spectrum_image/plots/case_worst_fno2d.png)
-
-Regenerate/point at any case:
-```bash
-python scripts/m3dc1/internal/plot_spectrum_image_cases.py \
-    --run runs/spectrum_image --model fno2d --n-cases 3000 --grid 128
-# or specific validation-local indices:  --cases 12 45 130
-```
-
-### 4.3 Mode peak location → core vs edge
-
-New, well‑posed target: radial location of the mode,
-`ψ_peak = Σ(E·ψ)/ΣE` with `E(ψ)=Σ_m|δp̂|²`. Run: `runs/peak_location/`
-(script [`peak_location.py`](/global/homes/a/asvillar/src/SURGE/scripts/m3dc1/internal/peak_location.py), 3,998 cases).
+Well‑posed target: radial location of the mode,
+`ψ_peak = Σ(E·ψ)/ΣE` with `E(ψ)=Σ_m|δp̂|²`, then thresholded to core/edge.
+Run: `runs/peak_location/` (script `scripts/m3dc1/internal/peak_location.py`,
+3,998 cases; features + labels cached in `runs/peak_location/peak_location_dataset.parquet`,
+metrics in `runs/peak_location/peak_location_metrics.json`).
 
 | Task | Model | Metric |
 |---|---|---|
 | ψ_peak regression | **random_forest** | **R² = 0.911**, MAE = 0.046 |
 | ψ_peak regression | mlp | R² = 0.874 |
 | ψ_peak regression | grad_boost | R² = 0.851 |
-| **core vs edge** | random_forest (clf) | **acc = 0.954**, F1(edge) = 0.953 |
+| **core vs edge** | random_forest (clf) | **acc = 0.954**, F1(edge) = 0.953, ROC AUC = 0.988 |
 
-![peak location scatter](/global/homes/a/asvillar/src/SURGE/runs/peak_location/scatter_psi_peak_centroid.png)
+![peak location scatter](assets/peak_scatter_psi_centroid.png)
+
+Classifier diagnostics (confusion matrix, and ROC / precision‑recall):
+
+![core edge classifier](assets/peak_classifier_core_edge.png)
+
+![core edge ROC](assets/roc_core_edge.png)
+
+Examples of a clear **core** mode vs a clear **edge** mode (field + spectrum):
+
+| Core mode | Edge mode |
+|---|---|
+| ![core mode](assets/core_mode_example.png) | ![edge mode](assets/edge_mode_example.png) |
 
 **Takeaway:** where the mode sits radially (and core‑vs‑edge) is **highly predictable
-(R² ≈ 0.91 / 95% accuracy)** from equilibrium scalars — a strong, deployable result.
+(R² ≈ 0.91 / 95 % acc / AUC 0.99)** from equilibrium scalars — a strong, deployable
+result.
 
----
+### 4.3 Eigenmode predictor — δp̂ spectrum image (FNO2D)
 
-## 5. Training progress (loss curves)
+Predicts the entire `|δp̂|(m,ψ)` image per case, conditioned on equilibrium channels +
+the `m − n·q(ψ)` resonance channel. Driver:
+[`train_spectrum_image.py`](../../scripts/m3dc1/internal/train_spectrum_image.py).
 
-FNO2D, subset run (3,000 cases) — best val R² 0.654 @ epoch 68:
-![fno2d subset loss](/global/homes/a/asvillar/src/SURGE/runs/spectrum_image/loss_fno2d.png)
+#### The normalization breakthrough
 
-FNO2D, full‑data run (9,976 cases, GPU‑resident cache) — live, epoch 16:
-![fno2d full loss](/global/homes/a/asvillar/src/SURGE/runs/spectrum_image_full/loss_fno2d.png)
+The prior plateau (global val R² ≈ 0.60, **per‑case R² often negative**) was caused by
+the arbitrary per‑case amplitude dominating the loss. Applying **per‑case max
+normalization** (divide each spectrum by its own peak, then optionally `log10`) makes
+the target the *shape only*. Result on the **full dataset**:
 
-Live monitoring during a run:
+| Run | Target space | Best val R² |
+|---|---|---:|
+| `spectrum_image_full` (no norm) | log10 raw amplitude | 0.605 |
+| `spectrum_image_full_maxnorm_raw` | max‑norm, linear | 0.786 |
+| **`spectrum_image_full_maxnorm_log10`** | **max‑norm, log10** | **0.836** |
+| `spectrum_image_2500_maxnorm_log10` | max‑norm, log10 (2.5k subset) | 0.831 |
+
+![run comparison](assets/run_comparison_maxnorm.png)
+
+**Per‑case pattern R²** (best model, max‑norm log10), i.e. how well the *shape* of each
+individual spectrum is recovered — the physically meaningful metric:
+
+| Split | median | mean | R² > 0.5 | R² > 0.7 | p10 – p90 |
+|---|---:|---:|---:|---:|---:|
+| val (997) | **0.740** | 0.732 | 99 % | 73 % | 0.66 – 0.81 |
+| test (1995) | **0.742** | 0.730 | 99 % | 73 % | 0.66 – 0.81 |
+
+This is the key win: **essentially every case is now recovered with a positive,
+useful per‑case R²**, versus the non‑normalized model where the median per‑case R² was
+negative.
+
+#### Best‑model per‑case comparisons
+
+Validation examples spanning the R² range (columns: **ground truth / predicted /
+difference**; each is `log10|δp̂|(m, ψ_N)`):
+
+![spectrum cases max-norm](assets/spectrum_cases_maxnorm_log10.png)
+
+- **Best (R² = 0.91):** broad spectral envelope reproduced almost exactly.
+- **Median (R² = 0.74):** the dominant `m` ridge vs ψ is captured; residual is noise‑floor.
+- **Worst (R² = 0.01):** a very sharp, localized ridge — the model recovers the ridge
+  location/shape but under‑resolves its sharpness; still no catastrophic failure.
+
+#### Best‑model RZ field reconstruction
+
+Because the eigenmode **phase** is not learnable, we reconstruct the field by combining
+the model's **predicted magnitude** with the case's **true phase**, rescaled to the
+physical peak, inverse‑FFT'd along `m`, and mapped onto the `fpy` PEST flux grid. Each
+panel is 2×3 — **row 0 = spectrum `log10|δp̂|(m,ψ)`, row 1 = field `Re(δp)(R,Z)`**;
+columns are **ground truth / prediction / difference**. Generated by
+[`plot_case_field_recon.py`](../../scripts/m3dc1/internal/plot_case_field_recon.py).
+
+_Best (pattern R² = 0.91) — core crescent envelope reproduced (amplitude slightly under‑predicted):_
+![rz best](assets/rz_case_best_maxnorm_log10.png)
+
+_Median (pattern R² = 0.74) — outboard **edge / ballooning** ridge captured in both spectrum and RZ location:_
+![rz median](assets/rz_case_median_maxnorm_log10.png)
+
+_Worst (pattern R² = 0.01) — the model **misplaces a compact core mode toward the edge**; the RZ view makes the failure obvious where the spectrum alone is ambiguous:_
+![rz worst](assets/rz_case_worst_maxnorm_log10.png)
+
 ```bash
-# from a login node, regenerate curves from the streaming history
-python scripts/m3dc1/internal/train_spectrum_image.py --plot-only --out runs/spectrum_image_full
+python scripts/m3dc1/internal/plot_case_field_recon.py \
+    --run runs/spectrum_image_full_maxnorm_log10 --split val \
+    --out-dir docs/m3dc1/assets --tag maxnorm_log10
 ```
-Checkpoint policy: `ckpt_<model>.pt` is (over)written whenever **val loss beats the
-previous best** (stores `epoch`, `val_loss`, `val_r2`, `state_dict`); the run then
-auto‑loads the best checkpoint for final evaluation & figures.
+
+#### Training curves (full dataset, GPU‑resident cache)
+
+| Max‑norm **log10** (best) | Max‑norm **raw** |
+|---|---|
+| ![loss maxnorm log10](assets/loss_maxnorm_log10.png) | ![loss maxnorm raw](assets/loss_maxnorm_raw.png) |
+
+Non‑normalized full run (the plateau being broken):
+
+![loss no-norm full](assets/loss_nonorm_full.png)
 
 ---
 
-## 6. Summary of "what shows progress"
+## 5. Tooling: how to run, monitor, resume, and validate
+
+**Launch the spectrum surrogate (one command, handles `salloc`+`srun`):**
+```bash
+# fresh full-dataset run, max-norm log10
+scripts/m3dc1/internal/spectrum_train.sh log10 fresh 120
+# resume from the last checkpoint
+scripts/m3dc1/internal/spectrum_train.sh log10 resume 120
+```
+Runbook: [`SPECTRUM_TRAINING_RUNBOOK.md`](SPECTRUM_TRAINING_RUNBOOK.md).
+
+**Checkpoint policy & early stopping.** Every epoch writes `ckpt_<model>_last.pt`
+(weights + optimizer state) for resume; `ckpt_<model>.pt` is overwritten whenever
+**val loss beats the previous best**. Training early‑stops after `--patience` epochs
+without improvement and then reloads the best checkpoint for final evaluation. Resume
+with `--resume <ckpt>`.
+
+**Monitor any run (stats report + loss curves):**
+```bash
+python -m surge.check_training --run runs/spectrum_image_full_maxnorm_log10
+```
+Writes `check_training_loss.png` and prints epochs, best/latest val loss & R², trend,
+early‑stop status, and final test metrics.
+([`surge/check_training.py`](../../surge/check_training.py))
+
+**Export predictions for offline analysis:**
+```bash
+python scripts/m3dc1/internal/export_predictions_cache.py \
+    --run runs/spectrum_image_full_maxnorm_log10 --model fno2d
+```
+Produces `predictions_cache.npz` (GT, pred, per‑case R², γ, ntor, metadata) consumed by
+the curation notebook.
+([`export_predictions_cache.py`](../../scripts/m3dc1/internal/export_predictions_cache.py))
+
+**Interactively curate & validate predictions** (Bokeh/Panel: spectrum & field
+comparison, stable/unstable check, and γ‑vs‑time convergence per case):
+[`m3dc1ml/notebooks/curate_validate_mlm3dc1_predictions.ipynb`](../../m3dc1ml/notebooks/curate_validate_mlm3dc1_predictions.ipynb).
+
+---
+
+## 6. Summary — "what shows progress"
 
 | Task | Best result | Status |
 |---|---|---|
 | Growth rate γ | **R² 0.87** (HPO torch_mlp) | ✅ strong |
-| Mode peak ψ_N (core/edge) | **R² 0.91 / 95% acc** | ✅ strong |
-| δp̂ spectrum image (global) | **R² 0.65** (FNO2D) | 🟡 progressing; full‑data run live |
-| δp̂ per‑mode magnitude | R² 0.36 | 🟡 baseline |
+| Core/edge mode locator | **R² 0.91 / 95 % acc / AUC 0.99** | ✅ strong |
+| δp̂ spectrum image — global R² | **0.836** (FNO2D, max‑norm log10) | ✅ big jump (was 0.605) |
+| δp̂ spectrum image — per‑case shape R² | **median 0.74, 99 % > 0.5** | ✅ now positive everywhere |
+| δp̂ per‑mode magnitude (MLP) | R² 0.36 | 🟡 superseded by image model |
 | Re(δp̂) | ≈ 0 | ❌ ill‑posed (use magnitude) |
 
-**Next iteration (to break the δp plateau):** train the spectrum‑image model on
-**per‑case‑normalized** targets (remove the arbitrary global amplitude) so the network
-learns the *shape*; report per‑case pattern R². Full‑data FNO2D/U‑Net run
-(`runs/spectrum_image_full/`) is still training.
+**What moved the needle:** the per‑case max‑normalization preprocessing added to SURGE —
+learning the eigenmode *shape* instead of fighting its arbitrary amplitude.
+
+**Next steps:** (1) correlate per‑case prediction error with `gs_error`; (2) push the
+sharp‑ridge (worst) cases with a sharper loss / higher Fourier modes; (3) reconstruct
+δp(R,Z) from the normalized predicted spectra and score RZ‑field SSIM.
