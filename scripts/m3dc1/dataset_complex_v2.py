@@ -315,12 +315,35 @@ def load_single_complex_v2(
     return row
 
 
+def _sample_profile(
+    prof: np.ndarray,
+    psin: Optional[np.ndarray],
+    n_points: int,
+) -> Optional[np.ndarray]:
+    """Interpolate a flux-averaged profile onto ``n_points`` uniform psi_N in [0, 1]."""
+    prof = np.asarray(prof, dtype=np.float64).ravel()
+    if prof.size == 0:
+        return None
+    grid = np.linspace(0.0, 1.0, n_points)
+    if psin is not None:
+        psin = np.asarray(psin, dtype=np.float64).ravel()
+        if psin.size == prof.size and psin.size > 1:
+            order = np.argsort(psin)
+            return np.interp(grid, psin[order], prof[order])
+    # No matching psi axis: resample against the profile's own normalised index.
+    x = np.linspace(0.0, 1.0, prof.size)
+    return np.interp(grid, x, prof)
+
+
 def load_single_complex_v2_per_mode(
     file_path: Union[str, Path],
     *,
     spectrum_field: str = "p",
     spectrum_time_idx: int = -1,
     use_magnitude: bool = True,
+    component: Optional[str] = None,
+    profile_inputs: bool = False,
+    profile_points: int = 16,
 ) -> List[Dict[str, Any]]:
     """
     Load one file and return one row per (n, m) mode. Native resolution (no downsampling).
@@ -328,6 +351,19 @@ def load_single_complex_v2_per_mode(
     Each row: inputs (eq_*, input_*, q0, q95, ..., n, m) + outputs (200 profile values).
     So the model learns: given (equilibrium, n, m), predict δp_n,m(ψ_N) - the amplitude
     profile vs psi for that mode.
+
+    Parameters
+    ----------
+    component : {"real", "imag", "magnitude"}, optional
+        Which part of the complex δp spectrum to use as the target. Takes
+        precedence over ``use_magnitude`` when set. Default (None) falls back to
+        ``use_magnitude`` (magnitude) for backward compatibility.
+    profile_inputs : bool
+        If True, add q(psi_N) and p(psi_N) profile samples as input columns
+        (``q_prof_00..`` / ``p_prof_00..``), interpolated onto ``profile_points``
+        uniform psi_N points in [0, 1].
+    profile_points : int
+        Number of uniform psi_N samples for the profile inputs.
 
     Returns
     -------
@@ -368,19 +404,31 @@ def load_single_complex_v2_per_mode(
                     base[f"input_{name}"] = float(values[i])
         if "flux_average" in rg:
             fa = rg["flux_average"]
+            q_psin = None
             if "q" in fa and "profile" in fa["q"] and "psin" in fa["q"]:
                 qprof = np.asarray(fa["q"]["profile"])
-                psin = np.asarray(fa["q"]["psin"])
+                q_psin = np.asarray(fa["q"]["psin"])
                 if len(qprof) > 0:
                     base["q0"] = float(qprof[0])
                     base["qmin"] = float(np.min(qprof))
-                    if len(psin) > 1:
-                        idx95 = int(0.95 * (len(psin) - 1))
+                    if len(q_psin) > 1:
+                        idx95 = int(0.95 * (len(q_psin) - 1))
                         base["q95"] = float(qprof[min(idx95, len(qprof) - 1)])
+                    if profile_inputs:
+                        qs = _sample_profile(qprof, q_psin, profile_points)
+                        if qs is not None:
+                            for i, v in enumerate(qs):
+                                base[f"q_prof_{i:02d}"] = float(v)
             if "p" in fa and "profile" in fa["p"]:
                 pprof = np.asarray(fa["p"]["profile"])
                 if len(pprof) > 0:
                     base["p0"] = float(pprof[0])
+                    if profile_inputs:
+                        p_psin = np.asarray(fa["p"]["psin"]) if "psin" in fa["p"] else q_psin
+                        ps = _sample_profile(pprof, p_psin, profile_points)
+                        if ps is not None:
+                            for i, v in enumerate(ps):
+                                base[f"p_prof_{i:02d}"] = float(v)
         if "q95" in rg:
             base["q95"] = float(rg["q95"][()])
         if "growth_rate" in rg:
@@ -391,8 +439,14 @@ def load_single_complex_v2_per_mode(
         sp = rg["spectrum"][spectrum_field]
         spec = np.asarray(sp["spec"])
         m_modes = np.asarray(sp["m_modes"])
-        if np.iscomplexobj(spec) and use_magnitude:
-            spec = np.abs(spec)
+        if np.iscomplexobj(spec):
+            comp = component if component is not None else ("magnitude" if use_magnitude else "magnitude")
+            if comp == "real":
+                spec = spec.real
+            elif comp == "imag":
+                spec = spec.imag
+            else:  # "magnitude" (default / fallback keeps values real-valued)
+                spec = np.abs(spec)
         if spec.ndim == 3:
             spec = spec[spectrum_time_idx]
         n_m, n_psi = spec.shape
@@ -419,6 +473,9 @@ def build_dataframe_per_mode(
     spectrum_field: str = "p",
     spectrum_time_idx: int = -1,
     use_magnitude: bool = True,
+    component: Optional[str] = None,
+    profile_inputs: bool = False,
+    profile_points: int = 16,
     max_cases: Optional[int] = None,
     verbose: bool = True,
 ) -> pd.DataFrame:
@@ -449,6 +506,9 @@ def build_dataframe_per_mode(
                 spectrum_field=spectrum_field,
                 spectrum_time_idx=spectrum_time_idx,
                 use_magnitude=use_magnitude,
+                component=component,
+                profile_inputs=profile_inputs,
+                profile_points=profile_points,
             )
             all_rows.extend(rows)
         except Exception as e:
@@ -474,13 +534,32 @@ PER_MODE_INPUT_COLS = [
 
 def load_per_mode_for_surge(
     batch_dir: Union[str, Path],
+    *,
+    component: Optional[str] = None,
+    profile_inputs: bool = False,
+    profile_points: int = 16,
     **kwargs: Any,
 ) -> Tuple[pd.DataFrame, List[str], List[str]]:
     """
-    Load per-mode format for SURGE. 12 inputs, 200 profile outputs.
+    Load per-mode format for SURGE.
+
+    Base inputs are the 12 scalar features in ``PER_MODE_INPUT_COLS``. When
+    ``profile_inputs=True``, the sampled q(psi_N)/p(psi_N) columns are appended
+    to the input list. ``component`` selects real/imag/magnitude of the δp target.
     """
-    df = build_dataframe_per_mode(batch_dir, **kwargs)
+    df = build_dataframe_per_mode(
+        batch_dir,
+        component=component,
+        profile_inputs=profile_inputs,
+        profile_points=profile_points,
+        **kwargs,
+    )
     input_cols = [c for c in PER_MODE_INPUT_COLS if c in df.columns]
+    if profile_inputs:
+        prof_cols = sorted(
+            c for c in df.columns if c.startswith("q_prof_") or c.startswith("p_prof_")
+        )
+        input_cols = input_cols + prof_cols
     output_cols = [c for c in df.columns if c.startswith("output_p_")]
     return df, input_cols, output_cols
 

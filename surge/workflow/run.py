@@ -286,6 +286,8 @@ def run_surrogate_workflow(
             _batch_kw = {}
             if spec.batch_dir_filename:
                 _batch_kw["filename"] = spec.batch_dir_filename
+            if spec.dataset_kwargs:
+                _batch_kw.update(spec.dataset_kwargs)
             dataset = M3DC1Dataset.from_batch_dir_per_mode(
                 batch_dir,
                 verbose=True,
@@ -434,6 +436,12 @@ def run_surrogate_workflow(
                     pretrained_adapter=pretrained_adapter,
                     finetune_lr_scale=spec.finetune_lr_scale,
                 )
+            except Exception as exc:  # noqa: BLE001 - keep multi-model runs resilient
+                # In an "all models" benchmark, one failing adapter must not abort
+                # the whole workflow; record the failure and continue.
+                LOGGER.exception("Model %s failed; skipping: %s", model_name, exc)
+                workflow_metrics[model_name] = {"error": f"{type(exc).__name__}: {exc}"}
+                continue
             finally:
                 os.environ.pop("SURGE_TRAINING_PROGRESS_JSONL", None)
                 os.environ.pop("SURGE_CHECKPOINT_DIR", None)

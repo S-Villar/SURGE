@@ -79,6 +79,10 @@ class SurrogateWorkflowSpec:
     # HDF5 leaf name under run*/sparc_* (default: sdata_pertfields_grid_complex_v2.h5).
     # Use sdata_complex_v2.h5 on CFS-style trees where that file holds nonsymmetric δp modes.
     batch_dir_filename: Optional[str] = None
+    # Extra keyword arguments forwarded to the dataset loader (currently the
+    # M3DC1 per-mode loader). Example: {component: real, profile_inputs: true,
+    # profile_points: 16} to learn Re(delta p) with q(psi)/p(psi) profile inputs.
+    dataset_kwargs: Dict[str, Any] = field(default_factory=dict)
     notes: Optional[str] = None
     overwrite_existing_run: bool = False
     pretrained_run_dir: Optional[Union[str, Path]] = None

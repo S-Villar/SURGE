@@ -1,0 +1,36 @@
+# Growth-rate (gamma) surrogate: ALL tabular regression models on one shared
+# case-grouped split (group_columns: run_id, eq_id -> zero leakage, splits.json).
+# Model roster mirrors the benchmark framework's regression set for plasma tasks,
+# plus two extra NN regressors available in this env.
+#
+#   python -m surge.cli run configs/internal/m3dc1_gamma_ver_allmodels.yaml
+
+dataset_path: data/datasets/SPARC/case_scalars_ver.parquet
+dataset_format: parquet
+metadata_path: data/datasets/SPARC/case_scalars_ver_metadata.yaml
+
+group_columns: [run_id, eq_id]
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: [test]
+predictions_format: csv
+output_dir: .
+run_tag: m3dc1_gamma_ver_allmodels
+seed: 42
+
+models:
+  - {key: sklearn.ridge, name: ridge}
+  - {key: sklearn.random_forest, name: random_forest, params: {n_estimators: 400, max_depth: 18, min_samples_leaf: 2}}
+  - {key: sklearn.gradient_boosting_regressor, name: gradient_boosting}
+  - {key: sklearn.mlp, name: sk_mlp, params: {hidden_layer_sizes: [128, 64], max_iter: 400, early_stopping: true}}
+  - {key: lgbm.regressor, name: lightgbm}
+  - {key: catboost.regressor, name: catboost}
+  - {key: pytorch.mlp, name: torch_mlp, params: {hidden_layers: [128, 64], epochs: 200, batch_size: 64, learning_rate: 0.001}}
+  - {key: pytorch.residual_mlp, name: residual_mlp}
+  - {key: pytorch.geom_residual_mlp, name: geom_residual_mlp}
+  - {key: pytorch.mlp_ensemble, name: mlp_ensemble}
+  - {key: pytorch.ft_transformer, name: ft_transformer}
+  - {key: pytorch.kan, name: kan}
+  - {key: pytorch.vae, name: vae}

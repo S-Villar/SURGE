@@ -1,0 +1,40 @@
+# FLAGSHIP: Re(delta p) per-mode surrogate on csdata_deltap_b_ver.h5 (9976 cases,
+# ~2M rows). Inputs = shaping (eq_R0,a,kappa,delta) + scalar profile summaries
+# (q0,q95,qmin,p0) + n,m + drive (pscale,batemanscale) + q(psi_N)/p(psi_N)
+# profile samples (16 pts each). Target = Re(delta p)_{n,m}(psi_N), 201 points.
+#
+# All models share ONE case-grouped split (group_columns: run_id, eq_id) so modes
+# from the same physical case never leak across train/val/test (splits.json).
+# Missing-backend / multi-output-incompatible models are skipped, not fatal.
+#
+# Heavy — run as a SLURM job:
+#   sbatch scripts/m3dc1/internal/train_deltap_real_per_mode.slurm
+
+dataset_path: /pscratch/sd/a/asvillar/mp288/jobs/batch_16
+dataset_source: m3dc1_batch_per_mode
+batch_dir_filename: csdata_deltap_b_ver.h5
+dataset_kwargs:
+  component: real
+  profile_inputs: true
+  profile_points: 16
+
+group_columns: [run_id, eq_id]
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: [test]
+predictions_format: parquet
+output_dir: .
+run_tag: m3dc1_deltap_real_per_mode_ver_allmodels
+seed: 42
+
+models:
+  - {key: sklearn.ridge, name: ridge_deltap}
+  - {key: sklearn.random_forest, name: rf_deltap, params: {n_estimators: 40, max_depth: 18, min_samples_leaf: 10, n_jobs: -1}}
+  - {key: pytorch.mlp, name: torch_mlp_deltap_deep, params: {hidden_layers: [512, 256, 128], dropout: 0.1, epochs: 200, batch_size: 512, learning_rate: 0.001, restore_best_weights: true}}
+  - {key: pytorch.mlp, name: torch_mlp_deltap_wide, params: {hidden_layers: [768, 384], dropout: 0.15, epochs: 200, batch_size: 512, learning_rate: 0.001, restore_best_weights: true}}
+  - {key: pytorch.residual_mlp, name: residual_mlp_deltap}
+  - {key: pytorch.mlp_ensemble, name: mlp_ensemble_deltap}
+  - {key: pytorch.ft_transformer, name: ft_transformer_deltap}
+  - {key: pytorch.vae, name: vae_deltap}

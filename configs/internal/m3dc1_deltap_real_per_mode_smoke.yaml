@@ -1,0 +1,30 @@
+# SMOKE test: Re(delta p) per-mode with q/p profile inputs, small subset.
+# Validates the real-part + profile-input loader through the full workflow
+# (case-grouped split, splits.json, multi-output metrics) before the big SLURM run.
+#
+#   python scripts/m3dc1/internal/run_workflow.py configs/internal/m3dc1_deltap_real_per_mode_smoke.yaml
+
+dataset_path: /pscratch/sd/a/asvillar/mp288/jobs/batch_16
+dataset_source: m3dc1_batch_per_mode
+batch_dir_filename: csdata_deltap_b_ver.h5
+dataset_kwargs:
+  component: real
+  profile_inputs: true
+  profile_points: 16
+  max_cases: 40
+
+group_columns: [run_id, eq_id]
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: [test]
+predictions_format: parquet
+output_dir: .
+run_tag: m3dc1_deltap_real_smoke
+seed: 42
+
+models:
+  - {key: sklearn.random_forest, name: rf_deltap, params: {n_estimators: 60, max_depth: 14, min_samples_leaf: 3, n_jobs: -1}}
+  - {key: sklearn.ridge, name: ridge_deltap}
+  - {key: pytorch.mlp, name: torch_mlp_deltap, params: {hidden_layers: [256, 128], epochs: 60, batch_size: 256, learning_rate: 0.001}}
