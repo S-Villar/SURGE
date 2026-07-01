@@ -48,6 +48,9 @@ SI_TSPACE="${SI_TSPACE:-log10}"
 SI_PATIENCE="${SI_PATIENCE:-25}"
 SI_CKPT_EVERY="${SI_CKPT_EVERY:-0}"
 SI_RESUME="${SI_RESUME:-}"
+# Peak-weighted loss (0 = plain MSE); up-weights high-|dp| ridge/peak pixels.
+SI_PEAK_WEIGHT="${SI_PEAK_WEIGHT:-0}"
+SI_PEAK_POW="${SI_PEAK_POW:-2}"
 
 # Fewer fragmentation OOMs on shared A100s.
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
@@ -70,5 +73,6 @@ python scripts/m3dc1/internal/train_spectrum_image.py \
   --models $SI_MODELS --epochs "$SI_EPOCHS" --batch-size "$SI_BATCH" \
   --target-norm "$SI_TNORM" --target-space "$SI_TSPACE" \
   --patience "$SI_PATIENCE" --ckpt-every "$SI_CKPT_EVERY" \
+  --peak-weight "$SI_PEAK_WEIGHT" --peak-pow "$SI_PEAK_POW" \
   "${RESUME_ARG[@]}" --out "$SI_OUT"
 echo ">>> $(date)  Done"

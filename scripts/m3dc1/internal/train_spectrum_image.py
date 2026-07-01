@@ -231,7 +231,7 @@ def _loss_plot(hist_path: Path, name: str, out: Path) -> None:
 def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
                epochs: int, batch_size: int, lr: float, patience: int,
                gpu_cache: bool = True, resume: Optional[str] = None,
-               ckpt_every: int = 0):
+               ckpt_every: int = 0, peak_weight: float = 0.0, peak_pow: float = 1.0):
     """Custom loop: per-epoch train+val loss/R2 -> live JSONL, best-val checkpoint,
     val early-stop, live loss plot. Returns (best_net, n_params).
 
@@ -250,7 +250,24 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
     net = net.to(dev)
     n_params = sum(p.numel() for p in net.parameters())
     opt = torch.optim.Adam(net.parameters(), lr=lr)
-    lossf = torch.nn.MSELoss()
+    # Loss: plain MSE weights every pixel equally, so the ~90% noise-floor pixels
+    # dominate and the sharp high-amplitude ridge/peak is under-fit (its location
+    # and peak amplitude come out wrong). With peak_weight>0 we up-weight pixels by
+    # the ground-truth amplitude (per-image min-max ranked, so the peak -> 1),
+    # forcing the model to reproduce the peak/ridge accurately.
+    _mse = torch.nn.MSELoss()
+    if peak_weight and peak_weight > 0:
+        def lossf(pred, target):
+            with torch.no_grad():
+                tmin = target.amin(dim=(2, 3), keepdim=True)
+                tmax = target.amax(dim=(2, 3), keepdim=True)
+                s = ((target - tmin) / (tmax - tmin + 1e-8)).clamp_(0.0, 1.0)
+                w = 1.0 + peak_weight * s.pow(peak_pow)
+            return (w * (pred - target) ** 2).mean()
+        print(f"  [loss] peak-weighted MSE (alpha={peak_weight}, pow={peak_pow})", flush=True)
+    else:
+        def lossf(pred, target):
+            return _mse(pred, target)
     cache = gpu_cache and dev.type == "cuda"
     n_train = len(Xtr)
     if cache:
@@ -397,6 +414,14 @@ def main() -> None:
                          "Typically runs/<dir>/ckpt_<model>_last.pt.")
     ap.add_argument("--ckpt-every", type=int, default=0,
                     help="Also save a periodic ckpt_<model>_ep<N>.pt every N epochs.")
+    ap.add_argument("--peak-weight", type=float, default=0.0,
+                    help="Amplitude-weighted MSE: up-weight high-|dp| (peak/ridge) "
+                         "pixels by 1 + alpha*rank^pow so the peak location & amplitude "
+                         "are reproduced instead of the noise floor. 0 = plain MSE. "
+                         "Try 4-10.")
+    ap.add_argument("--peak-pow", type=float, default=2.0,
+                    help="Exponent sharpening the peak weighting (higher = focus "
+                         "more tightly on the very top amplitudes).")
     ap.add_argument("--no-gpu-cache", action="store_true",
                     help="Disable keeping the full train/val set resident on the GPU.")
     ap.add_argument("--test-frac", type=float, default=0.2)
@@ -443,6 +468,7 @@ def main() -> None:
         "seed": args.seed, "test_frac": args.test_frac, "val_frac": args.val_frac,
         "target_norm": args.target_norm, "target_space": args.target_space,
         "target": target_desc,
+        "peak_weight": args.peak_weight, "peak_pow": args.peak_pow,
     }, indent=2))
 
     rng = np.random.RandomState(args.seed)
@@ -469,7 +495,8 @@ def main() -> None:
         net, n_params = _train_net(
             net, name, out, Xn[tr], Yn[tr], Xn[va], Yn[va],
             epochs=args.epochs, batch_size=args.batch_size, lr=1e-3, patience=args.patience,
-            gpu_cache=not args.no_gpu_cache, resume=args.resume, ckpt_every=args.ckpt_every)
+            gpu_cache=not args.no_gpu_cache, resume=args.resume, ckpt_every=args.ckpt_every,
+            peak_weight=args.peak_weight, peak_pow=args.peak_pow)
         pred = _predict_net(net, Xn[te], args.batch_size)  # (n_test, H, W)
         yt = Yn[te]
         res = {"test_r2_global": r2(yt, pred),

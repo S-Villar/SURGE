@@ -20,9 +20,15 @@ set -uo pipefail
 SPACE="${1:-log10}"
 MODE="${2:-fresh}"
 EPOCHS="${3:-300}"
+# Peak-weighted loss (0 = plain MSE). Set e.g. PEAK_WEIGHT=8 to force the model to
+# reproduce the high-amplitude ridge/peak instead of the noise floor. Runs whose
+# PEAK_WEIGHT>0 go to a separate _peak<W> dir so they don't clobber the baseline.
+PEAK_WEIGHT="${PEAK_WEIGHT:-0}"
+PEAK_POW="${PEAK_POW:-2}"
 
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"   # SURGE repo root
 OUT="runs/spectrum_image_full_maxnorm_${SPACE}"
+if [[ "$PEAK_WEIGHT" != "0" ]]; then OUT="${OUT}_peak${PEAK_WEIGHT}"; fi
 mkdir -p "$OUT"
 
 # Resume: prefer the rolling "last" ckpt, fall back to the best-val ckpt.
@@ -41,7 +47,8 @@ TRAIN="python scripts/m3dc1/internal/train_spectrum_image.py \
   --batch-dir /pscratch/sd/a/asvillar/mp288/jobs/batch_16 \
   --filename csdata_deltap_b_ver.h5 --n-cases 0 --grid 128 --m-lo -80 --m-hi 20 \
   --models fno2d --target-norm max --target-space ${SPACE} \
-  --epochs ${EPOCHS} --patience 40 --ckpt-every 25 --batch-size 16 --out ${OUT}"
+  --epochs ${EPOCHS} --patience 40 --ckpt-every 25 --batch-size 16 \
+  --peak-weight ${PEAK_WEIGHT} --peak-pow ${PEAK_POW} --out ${OUT}"
 if [[ -n "$RESUME" ]]; then TRAIN="$TRAIN --resume $RESUME"; fi
 
 echo ">>> requesting interactive GPU node (salloc); training runs via srun ON the node"
