@@ -80,6 +80,11 @@ _SEARCH_SPACES: dict[str, dict[str, tuple]] = {
         "learning_rate_init": ("float_log", 1e-4, 1e-1),
         "alpha": ("float_log", 1e-5, 1e-1),
         "batch_size": ("categorical", [32, 64, 128, 256, "auto"]),
+        # Bound per-trial cost: without early stopping some configs run the full
+        # (large) max_iter on CPU for 10-20 min. early_stopping uses an internal
+        # validation split and stops on no improvement.
+        "max_iter": ("int", 200, 400),
+        "early_stopping": ("categorical", [True]),
     },
     "sklearn.random_forest_classifier": {
         "n_estimators": ("int", 50, 500),

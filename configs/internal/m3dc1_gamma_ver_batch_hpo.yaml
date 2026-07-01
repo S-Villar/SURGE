@@ -25,9 +25,9 @@ models:
   - {key: sklearn.ridge, name: ridge, hpo: {enabled: true, n_trials: 15, metric: val_rmse, direction: minimize}}
   - {key: sklearn.random_forest, name: random_forest, hpo: {enabled: true, n_trials: 30, metric: val_rmse, direction: minimize}}
   - {key: sklearn.gradient_boosting_regressor, name: gradient_boosting, hpo: {enabled: true, n_trials: 30, metric: val_rmse, direction: minimize}}
-  - {key: sklearn.mlp, name: sk_mlp, hpo: {enabled: true, n_trials: 30, metric: val_rmse, direction: minimize}}
+  - {key: sklearn.mlp, name: sk_mlp, hpo: {enabled: true, n_trials: 20, metric: val_rmse, direction: minimize}}
   - {key: pytorch.mlp, name: torch_mlp, hpo: {enabled: true, n_trials: 30, metric: val_rmse, direction: minimize}}
   - {key: pytorch.residual_mlp, name: residual_mlp, hpo: {enabled: true, n_trials: 25, metric: val_rmse, direction: minimize}}
   - {key: pytorch.geom_residual_mlp, name: geom_residual_mlp, hpo: {enabled: true, n_trials: 25, metric: val_rmse, direction: minimize}}
-  - {key: pytorch.ft_transformer, name: ft_transformer, hpo: {enabled: true, n_trials: 25, metric: val_rmse, direction: minimize}}
-  - {key: pytorch.mlp_ensemble, name: mlp_ensemble, hpo: {enabled: true, n_trials: 10, metric: val_rmse, direction: minimize}}
+  - {key: pytorch.ft_transformer, name: ft_transformer, hpo: {enabled: true, n_trials: 20, metric: val_rmse, direction: minimize}}
+  - {key: pytorch.mlp_ensemble, name: mlp_ensemble, hpo: {enabled: true, n_trials: 8, metric: val_rmse, direction: minimize}}
