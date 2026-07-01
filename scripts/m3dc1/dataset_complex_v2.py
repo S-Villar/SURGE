@@ -335,6 +335,30 @@ def _sample_profile(
     return np.interp(grid, x, prof)
 
 
+def _apply_target_transform(
+    values: np.ndarray, transform: Optional[str], eps: float
+) -> np.ndarray:
+    """Optional element-wise target transform (inverse: see ``invert_target_transform``)."""
+    if transform in (None, "none", "identity"):
+        return values
+    if transform == "signed_log":
+        # Compresses heavy-tailed spectral amplitudes; sign-preserving so it also
+        # works for real/imag components, and reduces to log1p for magnitudes.
+        return np.sign(values) * np.log1p(np.abs(values) / eps)
+    raise ValueError(f"Unknown target_transform: {transform!r}")
+
+
+def invert_target_transform(
+    values: np.ndarray, transform: Optional[str], eps: float
+) -> np.ndarray:
+    """Inverse of :func:`_apply_target_transform` (back to physical units)."""
+    if transform in (None, "none", "identity"):
+        return values
+    if transform == "signed_log":
+        return np.sign(values) * eps * np.expm1(np.abs(values))
+    raise ValueError(f"Unknown target_transform: {transform!r}")
+
+
 def load_single_complex_v2_per_mode(
     file_path: Union[str, Path],
     *,
@@ -344,6 +368,9 @@ def load_single_complex_v2_per_mode(
     component: Optional[str] = None,
     profile_inputs: bool = False,
     profile_points: int = 16,
+    mode_abs_max: Optional[int] = None,
+    target_transform: Optional[str] = None,
+    target_transform_eps: float = 0.1,
 ) -> List[Dict[str, Any]]:
     """
     Load one file and return one row per (n, m) mode. Native resolution (no downsampling).
@@ -453,10 +480,17 @@ def load_single_complex_v2_per_mode(
 
         n_val = float(base.get("input_ntor", base.get("input_n", 0)))
         for m_idx in range(n_m):
+            m_here = int(m_modes[m_idx])
+            if mode_abs_max is not None and abs(m_here) > mode_abs_max:
+                continue
             row = dict(base)
             row["n"] = n_val
-            row["m"] = int(m_modes[m_idx])
-            profile = spec[m_idx, :]
+            row["m"] = m_here
+            profile = _apply_target_transform(
+                np.asarray(spec[m_idx, :], dtype=np.float64),
+                target_transform,
+                target_transform_eps,
+            )
             for i, v in enumerate(profile):
                 row[f"output_p_{i}"] = float(v)
             rows.append(row)
@@ -476,6 +510,9 @@ def build_dataframe_per_mode(
     component: Optional[str] = None,
     profile_inputs: bool = False,
     profile_points: int = 16,
+    mode_abs_max: Optional[int] = None,
+    target_transform: Optional[str] = None,
+    target_transform_eps: float = 0.1,
     max_cases: Optional[int] = None,
     verbose: bool = True,
 ) -> pd.DataFrame:
@@ -509,6 +546,9 @@ def build_dataframe_per_mode(
                 component=component,
                 profile_inputs=profile_inputs,
                 profile_points=profile_points,
+                mode_abs_max=mode_abs_max,
+                target_transform=target_transform,
+                target_transform_eps=target_transform_eps,
             )
             all_rows.extend(rows)
         except Exception as e:

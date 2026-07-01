@@ -1,0 +1,43 @@
+# |delta p hat| per-mode: residual-MLP surrogates with FLEXIBLE per-layer widths.
+#
+# Why magnitude (not the real part): M3DC1 eigenmodes are defined only up to an
+# arbitrary complex constant (amplitude AND phase), so Re(delta p hat) is not
+# well-posed across cases (R2 ~ 0 for every model/transform). The magnitude is
+# phase-invariant and learnable. We restrict to low-|m| (the physically dominant
+# resonant modes) and apply a signed-log transform to tame the heavy tail.
+#
+# residual_mlp_flex HPO samples each layer's width as an independent INTEGER in
+# [1, max_hidden_width] (not a categorical choice) + n_layers in [1,6], on the
+# shared case-grouped split. Compared against a default residual_mlp baseline.
+#
+#   python scripts/m3dc1/internal/run_workflow.py configs/internal/m3dc1_deltap_mag_residual_flex.yaml
+
+dataset_path: /pscratch/sd/a/asvillar/mp288/jobs/batch_16
+dataset_source: m3dc1_batch_per_mode
+batch_dir_filename: csdata_deltap_b_ver.h5
+dataset_kwargs:
+  component: magnitude
+  profile_inputs: true
+  profile_points: 16
+  mode_abs_max: 20            # low-|m| resonant band (41 modes/case)
+  target_transform: signed_log
+  target_transform_eps: 0.1
+  max_cases: 4000
+
+group_columns: [run_id, eq_id]
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: [test]
+predictions_format: parquet
+output_dir: .
+run_tag: m3dc1_deltap_mag_residual_flex
+seed: 42
+
+models:
+  - {key: pytorch.residual_mlp, name: residual_mlp_default,
+     params: {hidden_layers: [128, 128], n_epochs: 60, learning_rate: 0.001}}
+  - {key: pytorch.residual_mlp_flex, name: residual_mlp_flex_hpo,
+     params: {n_epochs: 60},
+     hpo: {enabled: true, n_trials: 15, metric: val_rmse, direction: minimize}}
