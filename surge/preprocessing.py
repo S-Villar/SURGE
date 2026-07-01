@@ -42,6 +42,65 @@ OUTPUT_PREFIXES = (
 
 INPUT_PREFIXES = ("x", "inp", "input", "feature", "eq", "geom", "basis")
 
+
+# --------------------------------------------------------------------------- #
+# Per-sample (row-wise) output preprocessing
+# --------------------------------------------------------------------------- #
+# These primitives implement "normalize each output vector by its own
+# magnitude" -- e.g. for the M3DC1 |delta p hat|(m, psi_N) spectrum where the
+# per-case overall amplitude is an arbitrary eigenmode normalization and only
+# the *shape* is physically meaningful. Unlike StandardScaler (which fits global
+# per-column stats on the train split), this is parameter-free per row: each
+# sample is divided by its own scale, so a model learns the shape and the
+# absolute amplitude is factored out. The returned ``scale`` lets you invert the
+# transform on rows whose scale you know (the workflow's own train/val/test
+# splits) to recover original-scale predictions and metrics.
+
+
+def per_sample_max_scale(
+    y: np.ndarray, mode: str = "max", eps: float = 1e-12
+) -> tuple:
+    """Divide each row of ``y`` by its own magnitude so its peak becomes 1.
+
+    Parameters
+    ----------
+    y : array (n_samples, n_targets)
+    mode : {"max", "absmax", "l2"}
+        * "max"    -> divide by max(y) per row   (assumes non-negative, e.g.
+                      a magnitude spectrum; peak -> 1).
+        * "absmax" -> divide by max(|y|) per row (signed data; peak |.| -> 1).
+        * "l2"     -> divide by the L2 norm per row (unit-energy rows).
+    eps : float
+        Floor added to the scale to avoid division by zero.
+
+    Returns
+    -------
+    (y_scaled, scale) where ``scale`` has shape (n_samples, 1) so that
+    ``y_scaled * scale`` recovers the original ``y``.
+    """
+    y = np.asarray(y, dtype=np.float64)
+    if y.ndim == 1:
+        y = y[:, None]
+    if mode == "max":
+        scale = np.max(y, axis=1, keepdims=True)
+    elif mode == "absmax":
+        scale = np.max(np.abs(y), axis=1, keepdims=True)
+    elif mode == "l2":
+        scale = np.sqrt(np.sum(y * y, axis=1, keepdims=True))
+    else:
+        raise ValueError(f"unknown per-sample norm mode: {mode!r}")
+    scale = scale + eps
+    return y / scale, scale
+
+
+def invert_per_sample_max_scale(y_scaled: np.ndarray, scale: np.ndarray) -> np.ndarray:
+    """Undo :func:`per_sample_max_scale` given the stored per-row ``scale``."""
+    y_scaled = np.asarray(y_scaled, dtype=np.float64)
+    scale = np.asarray(scale, dtype=np.float64)
+    if scale.ndim == 1:
+        scale = scale[:, None]
+    return y_scaled * scale
+
 PATTERNS = [
     re.compile(r"^(?P<base>.+?)[\-_](?P<idx>\d+)$"),
     re.compile(r"^(?P<base>.+?)\[(?P<idx>\d+)\]$"),

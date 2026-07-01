@@ -33,6 +33,11 @@ class EngineRunConfig:
     val_fraction: float = 0.1
     standardize_inputs: bool = True
     standardize_outputs: bool = False
+    # Per-sample (row-wise) output normalization applied before the global output
+    # scaler; one of {None, "max", "absmax", "l2"}. Factors out an arbitrary
+    # per-case output amplitude so the model learns the output shape. Predictions
+    # are inverted back to original scale for known (train/val/test) rows.
+    output_per_sample_norm: Optional[str] = None
     shuffle: bool = True
     random_state: Optional[int] = 42
     metrics: Tuple[str, ...] = ("r2", "rmse", "mae", "mape")
@@ -92,6 +97,10 @@ class ProcessedSplits:
 class ScalerBundle:
     input_scaler: Optional[StandardScaler]
     output_scaler: Optional[StandardScaler]
+    # Per-sample output scales (n_rows, 1) captured when output_per_sample_norm
+    # is active, keyed by split ("train"/"val"/"test"). Used to invert
+    # predictions back to the original scale for those known rows.
+    output_per_sample_scale: Optional[Dict[str, Optional[np.ndarray]]] = None
 
 
 @dataclass
@@ -433,6 +442,19 @@ class SurrogateEngine:
             X_val = input_scaler.transform(X_val)
             X_test = input_scaler.transform(X_test) if X_test is not None else None
 
+        per_sample_scale: Optional[Dict[str, Optional[np.ndarray]]] = None
+        if cfg.output_per_sample_norm:
+            from .preprocessing import per_sample_max_scale
+
+            mode = cfg.output_per_sample_norm
+            y_train, s_tr = per_sample_max_scale(y_train, mode=mode)
+            y_val, s_va = per_sample_max_scale(y_val, mode=mode)
+            if y_test is not None:
+                y_test, s_te = per_sample_max_scale(y_test, mode=mode)
+            else:
+                s_te = None
+            per_sample_scale = {"train": s_tr, "val": s_va, "test": s_te}
+
         if cfg.standardize_outputs:
             output_scaler = StandardScaler()
             output_scaler.fit(y_train)
@@ -451,7 +473,11 @@ class SurrogateEngine:
             val_index=raw.val_index,
             test_index=raw.test_index,
         )
-        scalers = ScalerBundle(input_scaler=input_scaler, output_scaler=output_scaler)
+        scalers = ScalerBundle(
+            input_scaler=input_scaler,
+            output_scaler=output_scaler,
+            output_per_sample_scale=per_sample_scale,
+        )
         return processed, scalers
 
     def _standardize_with_pretrained(
@@ -607,6 +633,18 @@ class SurrogateEngine:
             y_pred_val = np.asarray(y_pred_val)
             if y_pred_test is not None:
                 y_pred_test = np.asarray(y_pred_test)
+
+        # Undo per-sample output normalization for rows whose scale we know.
+        pss = self._scalers.output_per_sample_scale
+        if pss is not None:
+            from .preprocessing import invert_per_sample_max_scale
+
+            if pss.get("train") is not None:
+                y_pred_train = invert_per_sample_max_scale(y_pred_train, pss["train"])
+            if pss.get("val") is not None:
+                y_pred_val = invert_per_sample_max_scale(y_pred_val, pss["val"])
+            if y_pred_test is not None and pss.get("test") is not None:
+                y_pred_test = invert_per_sample_max_scale(y_pred_test, pss["test"])
 
         if spec.store_predictions:
             train_indices = (

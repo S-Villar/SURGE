@@ -61,6 +61,15 @@ class SurrogateWorkflowSpec:
     group_columns: Optional[Sequence[str]] = None
     standardize_inputs: bool = True
     standardize_outputs: bool = False
+    # Optional per-sample (row-wise) output preprocessing applied BEFORE the
+    # global output StandardScaler. Use to factor out an arbitrary per-case
+    # amplitude and let the model learn the output *shape* (e.g. the M3DC1
+    # |delta p| spectrum, whose overall eigenmode normalization is arbitrary).
+    # One of {None, "max", "absmax", "l2"}. Predictions are inverted back to the
+    # original scale for the workflow's own train/val/test rows (whose scale is
+    # known), so reported metrics stay on the original scale. Default None keeps
+    # the classic behaviour unchanged.
+    output_per_sample_norm: Optional[str] = None
     # Optional, reserved for a future k-fold path: k>0 is accepted but the unified
     # workflow currently performs a single random split only (see docs/ROADMAP.md).
     cv_folds: int = 0

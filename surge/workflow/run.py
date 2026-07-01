@@ -311,6 +311,7 @@ def run_surrogate_workflow(
                 val_fraction=spec.val_fraction,
                 standardize_inputs=spec.standardize_inputs,
                 standardize_outputs=spec.standardize_outputs,
+                output_per_sample_norm=spec.output_per_sample_norm,
                 random_state=spec.seed,
                 group_columns=tuple(spec.group_columns) if spec.group_columns else None,
                 resources=spec.resources,

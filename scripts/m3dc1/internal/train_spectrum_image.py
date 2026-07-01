@@ -117,8 +117,19 @@ def build_dataset(
     batch_dir: str, filename: str, n_cases: Optional[int], grid: int,
     m_lo: float, m_hi: float, spectrum_field: str, eps: float,
     shaping_keys: Tuple[str, ...] = ("kappa", "delta", "epsilon", "pscale", "batemanscale"),
-) -> Tuple[np.ndarray, np.ndarray, List[str], List[str]]:
-    """Return X (N,C,H,W), Y (N,H,W) log10-magnitude, channel names, case keys."""
+    target_norm: str = "none", target_space: str = "log10",
+    return_paths: bool = False,
+):
+    """Return X (N,C,H,W), Y (N,H,W) target, channel names, case keys.
+
+    target_norm : {"none", "max"}
+        "max" divides each case's magnitude spectrum by its own peak so the max
+        amplitude becomes 1 BEFORE any log -- this factors out the arbitrary
+        per-case eigenmode normalization and leaves the model to learn the shape.
+    target_space : {"log10", "raw"}
+        "log10" -> target is log10(mag[+norm] + eps); "raw" -> target is the
+        (optionally max-normalized) magnitude itself.
+    """
     paths = find_complex_v2_files(batch_dir, filename=filename)
     if n_cases:
         paths = paths[:n_cases]
@@ -132,6 +143,7 @@ def build_dataset(
     Xs: List[np.ndarray] = []
     Ys: List[np.ndarray] = []
     keys: List[str] = []
+    kept: List[str] = []
     t0 = time.time()
     for i, p in enumerate(paths):
         c = _read_case(Path(p), spectrum_field)
@@ -141,10 +153,18 @@ def build_dataset(
         sel = (m_modes >= m_lo) & (m_modes <= m_hi)
         if sel.sum() < 4:
             continue
-        logmag = np.log10(mag[sel, :] + eps)              # (nmc, npsi)
+        field = mag[sel, :]                                # (nmc, npsi), >= 0
+        # Per-case magnitude normalization: peak -> 1 (before any log).
+        if target_norm == "max":
+            cmax = float(field.max())
+            if cmax > 0:
+                field = field / cmax
+        if target_space == "log10":
+            field = np.log10(field + eps)
+        # else: "raw" -> keep (optionally max-normalized) magnitude
         m_vals = m_modes[sel]
         # interp along psi (cols) onto uniform psi_grid
-        tmp = np.vstack([_interp_to(psi_grid, psi, row) for row in logmag])  # (nmc,W)
+        tmp = np.vstack([_interp_to(psi_grid, psi, row) for row in field])  # (nmc,W)
         # interp along m (rows) onto uniform m_grid
         img = np.vstack([_interp_to(m_grid, m_vals, tmp[:, j]) for j in range(grid)]).T  # (H,W)
         q_on = _interp_to(psi_grid, c["qpsin"], c["qprof"])
@@ -158,10 +178,13 @@ def build_dataset(
         const = [np.full((grid, grid), float(sh.get(k, 0.0))) for k in shaping_keys]
         X = np.stack([PSI, M, Q, P, RES, PROX, *const], axis=0).astype(np.float32)  # (C,H,W)
         Xs.append(X); Ys.append(img.astype(np.float32)); keys.append(f"{c['run_id']}_{c['eq_id']}")
+        kept.append(str(p))
         if (i + 1) % 500 == 0:
             print(f"  {i+1}/{len(paths)} ({time.time()-t0:.0f}s)")
     X = np.stack(Xs); Y = np.stack(Ys)
     print(f"  Built X={X.shape} Y={Y.shape} in {time.time()-t0:.0f}s")
+    if return_paths:
+        return X, Y, chan_names, keys, kept
     return X, Y, chan_names, keys
 
 
@@ -185,6 +208,9 @@ def _loss_plot(hist_path: Path, name: str, out: Path) -> None:
     except Exception:
         return
     rows = [json.loads(l) for l in hist_path.read_text().splitlines() if l.strip()]
+    # Drop non-epoch marker rows (e.g. the {"early_stop": true} sentinel) that
+    # lack the per-epoch loss keys.
+    rows = [r for r in rows if "train_loss" in r and "val_loss" in r]
     if not rows:
         return
     ep = [r["epoch"] for r in rows]
@@ -204,12 +230,19 @@ def _loss_plot(hist_path: Path, name: str, out: Path) -> None:
 
 def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
                epochs: int, batch_size: int, lr: float, patience: int,
-               gpu_cache: bool = True):
+               gpu_cache: bool = True, resume: Optional[str] = None,
+               ckpt_every: int = 0):
     """Custom loop: per-epoch train+val loss/R2 -> live JSONL, best-val checkpoint,
     val early-stop, live loss plot. Returns (best_net, n_params).
 
     gpu_cache: keep the whole train/val set resident on the GPU (removes the
     per-batch host->device copy that otherwise dominates FNO/U-Net epoch time).
+    resume: path to a checkpoint (.pt) to continue training from -- restores the
+        model weights, the Adam optimizer state, the epoch counter, and the
+        best-val-so-far, and *appends* to the existing history JSONL.
+    ckpt_every: if >0, also write a periodic ckpt_<name>_ep<N>.pt every N epochs
+        (in addition to the best-val ckpt_<name>.pt and the rolling
+        ckpt_<name>_last.pt that always carries the latest resumable state).
     """
     import torch
     from torch.utils.data import DataLoader, TensorDataset
@@ -230,10 +263,35 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
     Xv = torch.tensor(Xva, dtype=torch.float32).to(dev)
     hist_path = out / f"history_{name}.jsonl"
     ckpt_path = out / f"ckpt_{name}.pt"
-    hist_path.write_text("")  # truncate for a fresh run
+    last_path = out / f"ckpt_{name}_last.pt"
     best_val = float("inf"); best_state = None; no_improve = 0
+    start_epoch = 0
+    if resume:
+        rp = Path(resume)
+        ck = torch.load(rp, map_location=dev)
+        net.load_state_dict(ck["state_dict"])
+        if ck.get("optimizer") is not None:
+            try:
+                opt.load_state_dict(ck["optimizer"])
+            except Exception as exc:
+                print(f"  [resume] could not restore optimizer state: {exc}")
+        start_epoch = int(ck.get("epoch", 0))
+        best_val = float(ck.get("best_val", ck.get("val_loss", float("inf"))))
+        best_state = {k: v.detach().cpu().clone() for k, v in net.state_dict().items()}
+        print(f"  [resume] {rp} -> start at epoch {start_epoch+1}, "
+              f"best_val={best_val:.5f}", flush=True)
+    if not resume:
+        hist_path.write_text("")  # truncate only for a fresh run
     yv_np = Yva[:, None]
-    for epoch in range(1, epochs + 1):
+
+    def _save(path, epoch, vl, vr2):
+        torch.save({"state_dict": {k: v.detach().cpu().clone()
+                                   for k, v in net.state_dict().items()},
+                    "optimizer": opt.state_dict(), "epoch": epoch,
+                    "val_loss": vl, "val_r2": vr2, "best_val": best_val,
+                    "model": name}, path)
+
+    for epoch in range(start_epoch + 1, epochs + 1):
         net.train(); tl = 0.0
         if cache:
             perm = torch.randperm(n_train, device=dev)
@@ -259,11 +317,15 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
         if improved:
             best_val = vl; no_improve = 0
             best_state = {k: v.detach().cpu().clone() for k, v in net.state_dict().items()}
-            torch.save({"state_dict": best_state, "epoch": epoch, "val_loss": vl,
-                        "val_r2": vr2, "model": name}, ckpt_path)
+            _save(ckpt_path, epoch, vl, vr2)
             rec["checkpoint"] = True
         else:
             no_improve += 1
+        # Always keep a rolling "last" checkpoint (with optimizer state) so the
+        # run can be resumed from exactly where it stopped, even mid-plateau.
+        _save(last_path, epoch, vl, vr2)
+        if ckpt_every > 0 and epoch % ckpt_every == 0:
+            _save(out / f"ckpt_{name}_ep{epoch}.pt", epoch, vl, vr2)
         with hist_path.open("a") as fh:
             fh.write(json.dumps(rec) + "\n"); fh.flush()
         if epoch % 5 == 0 or improved or epoch == 1:
@@ -318,10 +380,23 @@ def main() -> None:
     ap.add_argument("--m-lo", type=float, default=-80.0)
     ap.add_argument("--m-hi", type=float, default=20.0)
     ap.add_argument("--eps", type=float, default=1e-12)
+    ap.add_argument("--target-norm", choices=["none", "max"], default="none",
+                    help="Per-case magnitude normalization: 'max' scales each "
+                         "case's spectrum so its peak is 1 (before any log).")
+    ap.add_argument("--target-space", choices=["log10", "raw"], default="log10",
+                    help="'log10' -> log10(mag+eps); 'raw' -> (normalized) magnitude.")
     ap.add_argument("--models", nargs="+", default=["fno2d", "unet"])
     ap.add_argument("--epochs", type=int, default=80)
-    ap.add_argument("--patience", type=int, default=25)
+    ap.add_argument("--patience", type=int, default=25,
+                    help="Early-stop after this many epochs with no val-loss "
+                         "improvement. Use 0 to disable early stopping.")
     ap.add_argument("--batch-size", type=int, default=16)
+    ap.add_argument("--resume", default=None,
+                    help="Continue training from a checkpoint .pt (restores "
+                         "weights, optimizer, epoch, best-val; appends history). "
+                         "Typically runs/<dir>/ckpt_<model>_last.pt.")
+    ap.add_argument("--ckpt-every", type=int, default=0,
+                    help="Also save a periodic ckpt_<model>_ep<N>.pt every N epochs.")
     ap.add_argument("--no-gpu-cache", action="store_true",
                     help="Disable keeping the full train/val set resident on the GPU.")
     ap.add_argument("--test-frac", type=float, default=0.2)
@@ -350,8 +425,25 @@ def main() -> None:
 
     X, Y, chan_names, keys = build_dataset(
         args.batch_dir, args.filename, args.n_cases, args.grid,
-        args.m_lo, args.m_hi, args.spectrum_field, args.eps)
+        args.m_lo, args.m_hi, args.spectrum_field, args.eps,
+        target_norm=args.target_norm, target_space=args.target_space)
     N = X.shape[0]
+
+    # Persist the run configuration so `python -m surge.check_training` (and the
+    # user) can see exactly what preprocessing/target this run used.
+    target_desc = (("max-normalized " if args.target_norm == "max" else "")
+                   + ("log10|dp|" if args.target_space == "log10" else "|dp|")
+                   + ", global z-score")
+    (out / "run_config.json").write_text(json.dumps({
+        "batch_dir": args.batch_dir, "filename": args.filename,
+        "spectrum_field": args.spectrum_field, "n_cases": args.n_cases,
+        "grid": args.grid, "m_window": [args.m_lo, args.m_hi],
+        "models": list(args.models), "epochs": args.epochs,
+        "batch_size": args.batch_size, "patience": args.patience,
+        "seed": args.seed, "test_frac": args.test_frac, "val_frac": args.val_frac,
+        "target_norm": args.target_norm, "target_space": args.target_space,
+        "target": target_desc,
+    }, indent=2))
 
     rng = np.random.RandomState(args.seed)
     perm = rng.permutation(N)
@@ -377,7 +469,7 @@ def main() -> None:
         net, n_params = _train_net(
             net, name, out, Xn[tr], Yn[tr], Xn[va], Yn[va],
             epochs=args.epochs, batch_size=args.batch_size, lr=1e-3, patience=args.patience,
-            gpu_cache=not args.no_gpu_cache)
+            gpu_cache=not args.no_gpu_cache, resume=args.resume, ckpt_every=args.ckpt_every)
         pred = _predict_net(net, Xn[te], args.batch_size)  # (n_test, H, W)
         yt = Yn[te]
         res = {"test_r2_global": r2(yt, pred),
@@ -393,7 +485,8 @@ def main() -> None:
         _save_examples(out, name, X, Yn, te, pred, chan_names, args)
 
     summary = {"n_cases": N, "grid": args.grid, "channels": chan_names,
-               "m_window": [args.m_lo, args.m_hi], "target": "log10|dp|, global z-score",
+               "m_window": [args.m_lo, args.m_hi], "target": target_desc,
+               "target_norm": args.target_norm, "target_space": args.target_space,
                "y_mean": ym, "y_std": ysd, "results": results,
                "per_mode_baseline_test_r2": 0.358}
     (out / "spectrum_image_metrics.json").write_text(json.dumps(summary, indent=2))
