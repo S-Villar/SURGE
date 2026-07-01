@@ -165,6 +165,118 @@ def build_dataset(
     return X, Y, chan_names, keys
 
 
+def _build_net(name: str, in_channels: int):
+    """Build a raw torch net from the SURGE backend modules (own training loop)."""
+    if name == "fno2d":
+        from surge.model.backends.fno2d import _FNO2dNet
+        return _FNO2dNet(in_channels, 1, hidden_channels=32, n_modes=16, n_layers=4)
+    if name == "unet":
+        from surge.model.backends.unet import _UNetNet
+        return _UNetNet(in_channels, 1, base_channels=48, depth=4)
+    return None
+
+
+def _loss_plot(hist_path: Path, name: str, out: Path) -> None:
+    """(Re)generate a train/val loss-curve PNG from the live history JSONL."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except Exception:
+        return
+    rows = [json.loads(l) for l in hist_path.read_text().splitlines() if l.strip()]
+    if not rows:
+        return
+    ep = [r["epoch"] for r in rows]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4))
+    a1.plot(ep, [r["train_loss"] for r in rows], label="train")
+    a1.plot(ep, [r["val_loss"] for r in rows], label="val")
+    best = min(rows, key=lambda r: r["val_loss"])
+    a1.axvline(best["epoch"], color="k", ls=":", lw=1, label=f"best ep {best['epoch']}")
+    a1.set_xlabel("epoch"); a1.set_ylabel("MSE loss"); a1.set_yscale("log")
+    a1.set_title(f"{name}: loss"); a1.legend()
+    a2.plot(ep, [r["val_r2"] for r in rows], color="C2", label="val R2")
+    a2.axhline(0.358, color="r", ls="--", lw=1, label="per-mode 0.358")
+    a2.set_xlabel("epoch"); a2.set_ylabel("val R2"); a2.set_title(f"{name}: val R2")
+    a2.legend()
+    fig.tight_layout(); fig.savefig(out / f"loss_{name}.png", dpi=110); plt.close(fig)
+
+
+def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
+               epochs: int, batch_size: int, lr: float, patience: int):
+    """Custom loop: per-epoch train+val loss/R2 -> live JSONL, best-val checkpoint,
+    val early-stop, live loss plot. Returns (best_net, n_params)."""
+    import torch
+    from torch.utils.data import DataLoader, TensorDataset
+    dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    net = net.to(dev)
+    n_params = sum(p.numel() for p in net.parameters())
+    opt = torch.optim.Adam(net.parameters(), lr=lr)
+    lossf = torch.nn.MSELoss()
+    Xt = torch.tensor(Xtr, dtype=torch.float32)
+    Yt = torch.tensor(Ytr[:, None], dtype=torch.float32)
+    Xv = torch.tensor(Xva, dtype=torch.float32).to(dev)
+    Yv = torch.tensor(Yva[:, None], dtype=torch.float32).to(dev)
+    loader = DataLoader(TensorDataset(Xt, Yt), batch_size=batch_size, shuffle=True)
+    hist_path = out / f"history_{name}.jsonl"
+    ckpt_path = out / f"ckpt_{name}.pt"
+    hist_path.write_text("")  # truncate for a fresh run
+    best_val = float("inf"); best_state = None; no_improve = 0
+    yv_np = Yva[:, None]
+    for epoch in range(1, epochs + 1):
+        net.train(); tl = 0.0
+        for xb, yb in loader:
+            xb, yb = xb.to(dev), yb.to(dev)
+            opt.zero_grad(); loss = lossf(net(xb), yb); loss.backward(); opt.step()
+            tl += loss.item() * len(xb)
+        tl /= len(Xt)
+        net.eval()
+        with torch.no_grad():
+            vp = []
+            for i in range(0, len(Xv), batch_size):
+                vp.append(net(Xv[i:i + batch_size]).cpu().numpy())
+            vp = np.concatenate(vp)
+            vl = float(np.mean((vp - yv_np) ** 2)); vr2 = r2(yv_np, vp)
+        rec = {"epoch": epoch, "train_loss": tl, "val_loss": vl, "val_r2": vr2}
+        improved = vl < best_val
+        if improved:
+            best_val = vl; no_improve = 0
+            best_state = {k: v.detach().cpu().clone() for k, v in net.state_dict().items()}
+            torch.save({"state_dict": best_state, "epoch": epoch, "val_loss": vl,
+                        "val_r2": vr2, "model": name}, ckpt_path)
+            rec["checkpoint"] = True
+        else:
+            no_improve += 1
+        with hist_path.open("a") as fh:
+            fh.write(json.dumps(rec) + "\n"); fh.flush()
+        if epoch % 5 == 0 or improved or epoch == 1:
+            _loss_plot(hist_path, name, out)
+        if epoch % 10 == 0 or epoch == 1:
+            print(f"  [{name}] epoch {epoch}/{epochs} train={tl:.4f} "
+                  f"val={vl:.4f} val_r2={vr2:.4f}{'  *best' if improved else ''}", flush=True)
+        if patience > 0 and no_improve >= patience:
+            print(f"  [{name}] early stop at epoch {epoch} (best val {best_val:.4f})", flush=True)
+            with hist_path.open("a") as fh:
+                fh.write(json.dumps({"epoch": epoch, "early_stop": True}) + "\n")
+            break
+    if best_state is not None:
+        net.load_state_dict(best_state)
+    _loss_plot(hist_path, name, out)
+    return net, n_params
+
+
+def _predict_net(net, X, batch_size: int) -> np.ndarray:
+    import torch
+    dev = next(net.parameters()).device
+    net.eval()
+    Xt = torch.tensor(X, dtype=torch.float32)
+    out = []
+    with torch.no_grad():
+        for i in range(0, len(Xt), batch_size):
+            out.append(net(Xt[i:i + batch_size].to(dev)).cpu().numpy())
+    return np.concatenate(out).squeeze(1)  # (B, H, W)
+
+
 def r2(a: np.ndarray, b: np.ndarray) -> float:
     a = a.ravel(); b = b.ravel()
     ss_res = np.sum((a - b) ** 2)
@@ -191,15 +303,31 @@ def main() -> None:
     ap.add_argument("--eps", type=float, default=1e-12)
     ap.add_argument("--models", nargs="+", default=["fno2d", "unet"])
     ap.add_argument("--epochs", type=int, default=80)
+    ap.add_argument("--patience", type=int, default=25)
     ap.add_argument("--batch-size", type=int, default=16)
     ap.add_argument("--test-frac", type=float, default=0.2)
     ap.add_argument("--val-frac", type=float, default=0.1)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--out", default="runs/spectrum_image")
+    ap.add_argument("--plot-only", action="store_true",
+                    help="Regenerate loss curves from history_*.jsonl in --out and exit "
+                         "(use to monitor a running job from the login node).")
     args = ap.parse_args()
 
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
     (out / "plots").mkdir(exist_ok=True)
+
+    if args.plot_only:
+        for hp in sorted(out.glob("history_*.jsonl")):
+            name = hp.stem.replace("history_", "")
+            _loss_plot(hp, name, out)
+            rows = [json.loads(l) for l in hp.read_text().splitlines() if l.strip()]
+            live = [r for r in rows if "val_r2" in r]
+            if live:
+                b = max(live, key=lambda r: r["val_r2"])
+                print(f"{name}: {len(live)} epochs logged; best val_r2={b['val_r2']:.4f} "
+                      f"@epoch {b['epoch']} -> {out/f'loss_{name}.png'}")
+        return
 
     X, Y, chan_names, keys = build_dataset(
         args.batch_dir, args.filename, args.n_cases, args.grid,
@@ -220,35 +348,28 @@ def main() -> None:
     ym = float(Y[tr].mean()); ysd = float(Y[tr].std() + 1e-8)
     Yn = (Y - ym) / ysd
 
-    from surge.model.backends.fno2d import FNO2dModel
-    from surge.model.backends.unet import UNetModel
-
     results: Dict[str, Dict] = {}
     for name in args.models:
         print(f"\n=== Training {name} ===")
         t0 = time.time()
-        if name == "fno2d":
-            model = FNO2dModel(in_channels=X.shape[1], out_channels=1, hidden_channels=48,
-                               n_modes=24, n_layers=4, n_epochs=args.epochs,
-                               batch_size=args.batch_size, learning_rate=1e-3, patience=20,
-                               verbose=True)
-        elif name == "unet":
-            model = UNetModel(in_channels=X.shape[1], out_channels=1, base_channels=48,
-                              depth=4, n_epochs=args.epochs, batch_size=args.batch_size,
-                              learning_rate=1e-3, patience=20, verbose=True)
-        else:
+        net = _build_net(name, X.shape[1])
+        if net is None:
             print(f"  unknown model {name}, skipping"); continue
-        model.fit(Xn[tr], Yn[tr][:, None])
-        pred = model.predict(Xn[te])            # (n_test, H, W)
+        net, n_params = _train_net(
+            net, name, out, Xn[tr], Yn[tr], Xn[va], Yn[va],
+            epochs=args.epochs, batch_size=args.batch_size, lr=1e-3, patience=args.patience)
+        pred = _predict_net(net, Xn[te], args.batch_size)  # (n_test, H, W)
         yt = Yn[te]
         res = {"test_r2_global": r2(yt, pred),
                "test_pattern_r2": pattern_r2(yt, pred),
                "train_seconds": time.time() - t0,
-               "n_params": sum(p.numel() for p in model._net.parameters())}
+               "n_params": n_params,
+               "checkpoint": str(out / f"ckpt_{name}.pt"),
+               "history": str(out / f"history_{name}.jsonl")}
         results[name] = res
         print(f"  {name}: test R2(global)={res['test_r2_global']:.4f} "
               f"pattern R2={res['test_pattern_r2']:.4f} "
-              f"({res['n_params']/1e6:.2f}M params, {res['train_seconds']:.0f}s)")
+              f"({n_params/1e6:.2f}M params, {res['train_seconds']:.0f}s)")
         _save_examples(out, name, X, Yn, te, pred, chan_names, args)
 
     summary = {"n_cases": N, "grid": args.grid, "channels": chan_names,
