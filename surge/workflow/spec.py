@@ -54,6 +54,11 @@ class SurrogateWorkflowSpec:
     models: List[ModelConfig] = field(default_factory=list)
     test_fraction: float = 0.2
     val_fraction: float = 0.1
+    # Optional case-grouped splitting. When set (e.g. ["run_id", "eq_id"]), rows
+    # sharing these column values are kept within a single split so per-mode rows
+    # from the same physical case never leak across train/val/test. Requires the
+    # columns to be present in the loaded dataframe (they are for M3DC1 loaders).
+    group_columns: Optional[Sequence[str]] = None
     standardize_inputs: bool = True
     standardize_outputs: bool = False
     # Optional, reserved for a future k-fold path: k>0 is accepted but the unified

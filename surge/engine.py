@@ -15,7 +15,7 @@ from sklearn.metrics import (
     mean_squared_error,
     r2_score,
 )
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GroupShuffleSplit, train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from .hpc import ResourceSpec
@@ -36,6 +36,11 @@ class EngineRunConfig:
     shuffle: bool = True
     random_state: Optional[int] = 42
     metrics: Tuple[str, ...] = ("r2", "rmse", "mae", "mape")
+    # Optional case-grouped splitting: when set, rows sharing the same value of
+    # these columns are kept entirely within one split (train/val/test). This
+    # prevents leakage for per-mode datasets where many rows belong to the same
+    # physical case. When None (default), the legacy row-random split is used.
+    group_columns: Optional[Tuple[str, ...]] = None
     # Declarative compute request propagated into every model trained by
     # this engine (device, num_workers, strict policy). See
     # surge.hpc.policy.ResourceSpec for semantics.
@@ -260,6 +265,26 @@ class SurrogateEngine:
         test_fraction = max(0.0, min(0.9, cfg.test_fraction))
         val_fraction = max(0.0, min(0.9, cfg.val_fraction))
 
+        group_cols = cfg.group_columns
+        if group_cols:
+            missing = [c for c in group_cols if c not in df.columns]
+            if missing:
+                LOGGER.warning(
+                    "group_columns %s not found in dataframe; falling back to "
+                    "row-random split.",
+                    missing,
+                )
+            else:
+                groups = (
+                    df[list(group_cols)]
+                    .astype(str)
+                    .agg("\u0001".join, axis=1)
+                    .to_numpy()
+                )
+                return self._build_grouped_splits(
+                    X, y, indices, groups, test_fraction, val_fraction
+                )
+
         if test_fraction > 0:
             (
                 X_train_val,
@@ -325,6 +350,66 @@ class SurrogateEngine:
             X_test=X_test,
             y_test=y_test,
             test_index=idx_test,
+        )
+
+    def _build_grouped_splits(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        indices: np.ndarray,
+        groups: np.ndarray,
+        test_fraction: float,
+        val_fraction: float,
+    ) -> RawSplits:
+        """Case-grouped train/val/test split.
+
+        Whole groups (e.g. one physical (run_id, eq_id) case) are assigned to a
+        single split so that rows from the same case never leak across splits.
+        """
+        cfg = self.config
+        n = len(X)
+        all_pos = np.arange(n)
+
+        if test_fraction > 0:
+            gss_test = GroupShuffleSplit(
+                n_splits=1, test_size=test_fraction, random_state=cfg.random_state
+            )
+            train_val_pos, test_pos = next(gss_test.split(X, y, groups))
+        else:
+            train_val_pos = all_pos
+            test_pos = None
+
+        if val_fraction <= 0:
+            raise ValueError(
+                "Validation split is required for workflow orchestration. "
+                "Consider setting val_fraction > 0."
+            )
+
+        denom = 1.0 - test_fraction
+        if denom <= 0:
+            raise ValueError("test_fraction must be < 1.0 when val_fraction > 0.")
+        relative_val = max(0.0, min(0.9, val_fraction / denom))
+
+        gss_val = GroupShuffleSplit(
+            n_splits=1, test_size=relative_val, random_state=cfg.random_state
+        )
+        tv_X = X[train_val_pos]
+        tv_y = y[train_val_pos]
+        tv_groups = groups[train_val_pos]
+        train_rel, val_rel = next(gss_val.split(tv_X, tv_y, tv_groups))
+        train_pos = train_val_pos[train_rel]
+        val_pos = train_val_pos[val_rel]
+
+        return RawSplits(
+            X_train=X[train_pos],
+            y_train=y[train_pos],
+            train_index=indices[train_pos],
+            X_val=X[val_pos],
+            y_val=y[val_pos],
+            val_index=indices[val_pos],
+            X_test=X[test_pos] if test_pos is not None else None,
+            y_test=y[test_pos] if test_pos is not None else None,
+            test_index=indices[test_pos] if test_pos is not None else None,
         )
 
     def _standardize_raw_splits(

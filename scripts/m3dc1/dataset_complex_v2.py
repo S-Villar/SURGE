@@ -56,6 +56,93 @@ def _decode(value: Any) -> Any:
     return value
 
 
+def extract_equilibrium_scalars(rg: Any) -> Dict[str, float]:
+    """
+    Equilibrium shape and profile scalars from a ``runs/<group>`` HDF5 group.
+
+    Keys: R0, a, kappa, delta, epsilon, p0, q0, q95, qmin (when present).
+    """
+    out: Dict[str, float] = {}
+    if "miller" in rg:
+        for k in ("R0", "a", "kappa", "delta"):
+            if k in rg["miller"]:
+                out[k] = float(rg["miller"][k][()])
+        if "R0" in out and "a" in out and out["R0"] != 0.0:
+            out["epsilon"] = out["a"] / out["R0"]
+
+    if "flux_average" in rg:
+        fa = rg["flux_average"]
+        if "q" in fa and "profile" in fa["q"]:
+            qprof = np.asarray(fa["q"]["profile"], dtype=np.float64)
+            if qprof.size:
+                out["q0"] = float(qprof[0])
+                out["qmin"] = float(np.min(qprof))
+                if "psin" in fa["q"]:
+                    psin = np.asarray(fa["q"]["psin"], dtype=np.float64)
+                    if psin.size == qprof.size and psin.size > 1:
+                        out["q95"] = float(np.interp(0.95, psin, qprof))
+                    elif qprof.size > 1:
+                        idx95 = int(0.95 * (qprof.size - 1))
+                        out["q95"] = float(qprof[min(idx95, qprof.size - 1)])
+                elif qprof.size > 1:
+                    idx95 = int(0.95 * (qprof.size - 1))
+                    out["q95"] = float(qprof[min(idx95, qprof.size - 1)])
+        if "p" in fa and "profile" in fa["p"]:
+            pprof = np.asarray(fa["p"]["profile"], dtype=np.float64)
+            if pprof.size:
+                out["p0"] = float(pprof[0])
+
+    if "q95" in rg:
+        out["q95"] = float(rg["q95"][()])
+
+    return out
+
+
+def index_complex_v2_batch(
+    batch_dir: Union[str, Path],
+    *,
+    run_pattern: str = "run*",
+    sparc_pattern: str = "sparc_*",
+    filename: str = COMPLEX_V2_FILENAME,
+) -> Dict[str, Any]:
+    """
+    Hierarchical index: run folder (parameters) → sparc_* (equilibrium) → HDF5 path.
+
+    Returns dict with:
+      - flat_paths: list[Path] (same order as find_complex_v2_files)
+      - run_names: sorted run* directory names
+      - paths_by_run: {run_name: [Path, ...]} sorted by sparc_* name
+      - flat_index: {str(path.resolve()): int}
+    """
+    import re
+
+    flat_paths = find_complex_v2_files(
+        batch_dir,
+        run_pattern=run_pattern,
+        sparc_pattern=sparc_pattern,
+        filename=filename,
+    )
+    paths_by_run: Dict[str, List[Path]] = {}
+    for p in flat_paths:
+        run_name = p.parent.parent.name
+        paths_by_run.setdefault(run_name, []).append(p)
+    for run_name in paths_by_run:
+        paths_by_run[run_name] = sorted(paths_by_run[run_name], key=lambda x: x.parent.name)
+
+    def _run_sort_key(name: str):
+        m = re.search(r"(\d+)", name)
+        return int(m.group(1)) if m else name
+
+    run_names = sorted(paths_by_run.keys(), key=_run_sort_key)
+    flat_index = {str(p.resolve()): i for i, p in enumerate(flat_paths)}
+    return {
+        "flat_paths": flat_paths,
+        "run_names": run_names,
+        "paths_by_run": paths_by_run,
+        "flat_index": flat_index,
+    }
+
+
 def find_complex_v2_files(
     batch_dir: Union[str, Path],
     *,
@@ -525,7 +612,185 @@ def load_complex_v2_for_surge(
     return df, input_cols, output_cols
 
 
+def inspect_complex_v2_h5(
+    file_path: Union[str, Path],
+    *,
+    run_group: Optional[str] = None,
+    print_summary: bool = True,
+) -> Dict[str, Any]:
+    """
+    Summarize HDF5 layout for one per-case complex_v2 file (``runs/<name>/...``).
+
+    Returns a dict with root keys, run group name, child groups, and spectrum shapes.
+    """
+    if not H5PY_AVAILABLE:
+        raise ImportError("h5py required. pip install h5py")
+
+    file_path = Path(file_path)
+    out: Dict[str, Any] = {"file_path": str(file_path), "root_keys": [], "run_group": None, "children": {}}
+
+    with h5py.File(file_path, "r") as f:
+        out["root_keys"] = list(f.keys())
+        if "runs" not in f:
+            out["error"] = "No 'runs' group"
+            return out
+        run_names = list(f["runs"].keys())
+        if not run_names:
+            out["error"] = "Empty 'runs' group"
+            return out
+        rname = run_group if run_group in run_names else run_names[0]
+        out["run_group"] = rname
+        rg = f["runs"][rname]
+        for key in rg.keys():
+            item = rg[key]
+            if isinstance(item, h5py.Group):
+                sub: Dict[str, Any] = {"type": "group", "keys": list(item.keys())}
+                if key == "spectrum":
+                    sub["fields"] = {}
+                    for fld in item.keys():
+                        g = item[fld]
+                        if isinstance(g, h5py.Group) and "spec" in g:
+                            spec = g["spec"]
+                            sub["fields"][fld] = {
+                                "spec_shape": tuple(spec.shape),
+                                "spec_dtype": str(spec.dtype),
+                                "m_modes_shape": tuple(g["m_modes"].shape) if "m_modes" in g else None,
+                                "psi_norm_shape": tuple(g["psi_norm"].shape) if "psi_norm" in g else None,
+                            }
+                out["children"][key] = sub
+            else:
+                try:
+                    val = item[()]
+                    if hasattr(val, "shape"):
+                        out["children"][key] = {"type": "dataset", "shape": tuple(val.shape), "dtype": str(val.dtype)}
+                    else:
+                        out["children"][key] = {"type": "dataset", "value": _decode(val)}
+                except Exception:
+                    out["children"][key] = {"type": "dataset"}
+
+    if print_summary:
+        print(f"File: {file_path}")
+        print(f"  root: {out['root_keys']}")
+        print(f"  runs/{out['run_group']}: {list(out['children'].keys())}")
+        sp = out["children"].get("spectrum", {})
+        for fld, info in (sp.get("fields") or {}).items():
+            print(f"    spectrum/{fld}: spec={info['spec_shape']} dtype={info['spec_dtype']}")
+            if info.get("m_modes_shape"):
+                print(f"      m_modes={info['m_modes_shape']}, psi_norm={info.get('psi_norm_shape')}")
+
+    return out
+
+
+def load_complex_v2_case(
+    file_path: Union[str, Path],
+    *,
+    spectrum_field: str = "p",
+    spectrum_time_idx: int = -1,
+    run_group: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Load one case file: complex spectrum, magnitude, phase, coordinates, and scalar inputs.
+
+    Intended for interactive exploration before building surrogate datasets.
+    Does not flatten to SURGE ``output_p_*`` columns; use ``load_single_complex_v2`` for that.
+    """
+    if not H5PY_AVAILABLE:
+        raise ImportError("h5py required. pip install h5py")
+
+    file_path = Path(file_path)
+    bundle: Dict[str, Any] = {
+        "file_path": str(file_path.resolve()),
+        "case_label": f"{file_path.parent.parent.name}/{file_path.parent.name}",
+    }
+
+    with h5py.File(file_path, "r") as f:
+        if "runs" not in f:
+            raise ValueError(f"No 'runs' group in {file_path}")
+        run_names = list(f["runs"].keys())
+        rname = run_group if run_group and run_group in run_names else run_names[0]
+        rg = f["runs"][rname]
+        bundle["h5_run_group"] = rname
+        bundle["run_id"] = _decode(rg.get("runID", rname))
+        bundle["eq_id"] = _decode(rg.get("eqID", "eq"))
+
+        if "spectrum" not in rg or spectrum_field not in rg["spectrum"]:
+            raise ValueError(f"No spectrum/{spectrum_field} in {file_path}")
+        sp = rg["spectrum"][spectrum_field]
+        spec = np.asarray(sp["spec"])
+        if spec.ndim == 3:
+            bundle["n_time_slices"] = spec.shape[0]
+            spec = spec[spectrum_time_idx]
+            bundle["spectrum_time_idx"] = spectrum_time_idx
+        else:
+            bundle["n_time_slices"] = 1
+            bundle["spectrum_time_idx"] = 0
+
+        bundle["spec_complex"] = np.asarray(spec, dtype=np.complex128 if np.iscomplexobj(spec) else np.float64)
+        if np.iscomplexobj(bundle["spec_complex"]):
+            bundle["spec_magnitude"] = np.abs(bundle["spec_complex"])
+            bundle["spec_phase"] = np.angle(bundle["spec_complex"])
+        else:
+            bundle["spec_magnitude"] = np.asarray(spec, dtype=np.float64)
+            bundle["spec_phase"] = None
+
+        bundle["m_modes"] = np.asarray(sp["m_modes"]).astype(int) if "m_modes" in sp else np.arange(spec.shape[0])
+        if "psi_norm" in sp:
+            bundle["psi_norm"] = np.asarray(sp["psi_norm"], dtype=np.float64).ravel()
+        else:
+            bundle["psi_norm"] = np.linspace(0.0001, 1.0, spec.shape[1])
+
+        bundle["miller"] = {}
+        if "miller" in rg:
+            for k in ["R0", "a", "kappa", "delta"]:
+                if k in rg["miller"]:
+                    bundle["miller"][k] = float(rg["miller"][k][()])
+
+        bundle["parset"] = {}
+        if "parset" in rg:
+            names = rg["parset"]["names"]
+            values = rg["parset"]["values"]
+            for i, n in enumerate(names):
+                name = _decode(n) if hasattr(n, "decode") else str(n)
+                if i < len(values):
+                    bundle["parset"][name] = float(values[i])
+
+        bundle["flux_average"] = {}
+        if "flux_average" in rg:
+            fa = rg["flux_average"]
+            for prof_name in fa.keys():
+                pg = fa[prof_name]
+                if isinstance(pg, h5py.Group) and "profile" in pg:
+                    bundle["flux_average"][prof_name] = {
+                        "psin": np.asarray(pg["psin"]) if "psin" in pg else None,
+                        "profile": np.asarray(pg["profile"]),
+                    }
+
+        if "growth_rate" in rg:
+            gr0 = rg["growth_rate"].get("0")
+            if gr0 is not None:
+                bundle["gamma"] = float(gr0[()])
+
+        if "time_index" in rg:
+            bundle["time_index"] = np.asarray(rg["time_index"])
+
+        bundle["equilibrium"] = extract_equilibrium_scalars(rg)
+        bundle["case_dir"] = str(file_path.parent.resolve())
+
+    # Flat scalars compatible with surrogate row (no output_p_*)
+    bundle["surrogate_inputs"] = load_single_complex_v2(
+        file_path,
+        spectrum_field=spectrum_field,
+        spectrum_time_idx=spectrum_time_idx,
+        use_magnitude=True,
+    )
+    out_keys = [k for k in bundle["surrogate_inputs"] if not str(k).startswith("output_p_")]
+    bundle["surrogate_inputs"] = {k: bundle["surrogate_inputs"][k] for k in out_keys}
+
+    return bundle
+
+
 __all__ = [
+    "index_complex_v2_batch",
     "find_complex_v2_files",
     "load_single_complex_v2",
     "load_single_complex_v2_per_mode",
@@ -533,6 +798,9 @@ __all__ = [
     "load_per_mode_for_surge",
     "build_dataframe_from_batch",
     "load_complex_v2_for_surge",
+    "inspect_complex_v2_h5",
+    "load_complex_v2_case",
     "COMPLEX_V2_FILENAME",
     "SDATA_COMPLEX_V2_FILENAME",
+    "PER_MODE_INPUT_COLS",
 ]
