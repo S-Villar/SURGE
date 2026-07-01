@@ -34,11 +34,19 @@ export SURGE_CONDA_ENV="${SURGE_CONDA_ENV:-/global/cfs/projectdirs/m3716/softwar
 source "$SURGE_ROOT/scripts/m3dc1/surge_slurm_env.sh"
 surge_slurm_setup_python
 
-echo ">>> $(date)  spectrum-image surrogate (FNO2D + U-Net) on |delta p hat|"
+# Overridable via env: SI_NCASES, SI_OUT, SI_EPOCHS, SI_GRID, SI_BATCH, SI_MODELS
+SI_NCASES="${SI_NCASES:-3000}"
+SI_OUT="${SI_OUT:-runs/spectrum_image}"
+SI_EPOCHS="${SI_EPOCHS:-120}"
+SI_GRID="${SI_GRID:-128}"
+SI_BATCH="${SI_BATCH:-16}"
+SI_MODELS="${SI_MODELS:-fno2d unet}"
+
+echo ">>> $(date)  spectrum-image surrogate ($SI_MODELS) on |delta p hat| — n_cases=$SI_NCASES out=$SI_OUT"
 python scripts/m3dc1/internal/train_spectrum_image.py \
   --batch-dir /pscratch/sd/a/asvillar/mp288/jobs/batch_16 \
   --filename csdata_deltap_b_ver.h5 \
-  --n-cases 3000 --grid 128 --m-lo -80 --m-hi 20 \
-  --models fno2d unet --epochs 120 --batch-size 16 \
-  --out runs/spectrum_image
+  --n-cases "$SI_NCASES" --grid "$SI_GRID" --m-lo -80 --m-hi 20 \
+  --models $SI_MODELS --epochs "$SI_EPOCHS" --batch-size "$SI_BATCH" \
+  --out "$SI_OUT"
 echo ">>> $(date)  Done"

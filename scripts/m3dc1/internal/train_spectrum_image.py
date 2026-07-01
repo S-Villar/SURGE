@@ -203,9 +203,14 @@ def _loss_plot(hist_path: Path, name: str, out: Path) -> None:
 
 
 def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
-               epochs: int, batch_size: int, lr: float, patience: int):
+               epochs: int, batch_size: int, lr: float, patience: int,
+               gpu_cache: bool = True):
     """Custom loop: per-epoch train+val loss/R2 -> live JSONL, best-val checkpoint,
-    val early-stop, live loss plot. Returns (best_net, n_params)."""
+    val early-stop, live loss plot. Returns (best_net, n_params).
+
+    gpu_cache: keep the whole train/val set resident on the GPU (removes the
+    per-batch host->device copy that otherwise dominates FNO/U-Net epoch time).
+    """
     import torch
     from torch.utils.data import DataLoader, TensorDataset
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -213,11 +218,16 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
     n_params = sum(p.numel() for p in net.parameters())
     opt = torch.optim.Adam(net.parameters(), lr=lr)
     lossf = torch.nn.MSELoss()
-    Xt = torch.tensor(Xtr, dtype=torch.float32)
-    Yt = torch.tensor(Ytr[:, None], dtype=torch.float32)
+    cache = gpu_cache and dev.type == "cuda"
+    n_train = len(Xtr)
+    if cache:
+        Xg = torch.tensor(Xtr, dtype=torch.float32, device=dev)
+        Yg = torch.tensor(Ytr[:, None], dtype=torch.float32, device=dev)
+    else:
+        Xt = torch.tensor(Xtr, dtype=torch.float32)
+        Yt = torch.tensor(Ytr[:, None], dtype=torch.float32)
+        loader = DataLoader(TensorDataset(Xt, Yt), batch_size=batch_size, shuffle=True)
     Xv = torch.tensor(Xva, dtype=torch.float32).to(dev)
-    Yv = torch.tensor(Yva[:, None], dtype=torch.float32).to(dev)
-    loader = DataLoader(TensorDataset(Xt, Yt), batch_size=batch_size, shuffle=True)
     hist_path = out / f"history_{name}.jsonl"
     ckpt_path = out / f"ckpt_{name}.pt"
     hist_path.write_text("")  # truncate for a fresh run
@@ -225,11 +235,18 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
     yv_np = Yva[:, None]
     for epoch in range(1, epochs + 1):
         net.train(); tl = 0.0
-        for xb, yb in loader:
-            xb, yb = xb.to(dev), yb.to(dev)
-            opt.zero_grad(); loss = lossf(net(xb), yb); loss.backward(); opt.step()
-            tl += loss.item() * len(xb)
-        tl /= len(Xt)
+        if cache:
+            perm = torch.randperm(n_train, device=dev)
+            for i in range(0, n_train, batch_size):
+                idx = perm[i:i + batch_size]
+                opt.zero_grad(); loss = lossf(net(Xg[idx]), Yg[idx]); loss.backward(); opt.step()
+                tl += loss.item() * len(idx)
+        else:
+            for xb, yb in loader:
+                xb, yb = xb.to(dev), yb.to(dev)
+                opt.zero_grad(); loss = lossf(net(xb), yb); loss.backward(); opt.step()
+                tl += loss.item() * len(xb)
+        tl /= n_train
         net.eval()
         with torch.no_grad():
             vp = []
@@ -305,6 +322,8 @@ def main() -> None:
     ap.add_argument("--epochs", type=int, default=80)
     ap.add_argument("--patience", type=int, default=25)
     ap.add_argument("--batch-size", type=int, default=16)
+    ap.add_argument("--no-gpu-cache", action="store_true",
+                    help="Disable keeping the full train/val set resident on the GPU.")
     ap.add_argument("--test-frac", type=float, default=0.2)
     ap.add_argument("--val-frac", type=float, default=0.1)
     ap.add_argument("--seed", type=int, default=42)
@@ -357,7 +376,8 @@ def main() -> None:
             print(f"  unknown model {name}, skipping"); continue
         net, n_params = _train_net(
             net, name, out, Xn[tr], Yn[tr], Xn[va], Yn[va],
-            epochs=args.epochs, batch_size=args.batch_size, lr=1e-3, patience=args.patience)
+            epochs=args.epochs, batch_size=args.batch_size, lr=1e-3, patience=args.patience,
+            gpu_cache=not args.no_gpu_cache)
         pred = _predict_net(net, Xn[te], args.batch_size)  # (n_test, H, W)
         yt = Yn[te]
         res = {"test_r2_global": r2(yt, pred),
