@@ -1,0 +1,58 @@
+# Flagship delta-p per-mode surrogate on csdata_deltap_b_ver.h5 (batch_16).
+# One row per (run_id, eq_id, n, m); output = |delta p|(psi_N) profile.
+# Loaded directly from the batch dir (no pre-build step) via M3DC1Dataset.
+#
+# Multiple models share ONE case-grouped split (group_columns: run_id, eq_id),
+# so modes from the same physical case never leak across train/val/test.
+# The split is persisted to splits.json for reuse by every model/eval task.
+#
+# Heavy (~2M rows). Run as a SLURM job:
+#   sbatch scripts/m3dc1/internal/train_deltap_per_mode_ver_multimodel.slurm
+
+dataset_path: /pscratch/sd/a/asvillar/mp288/jobs/batch_16
+dataset_source: m3dc1_batch_per_mode
+batch_dir_filename: csdata_deltap_b_ver.h5
+
+group_columns: [run_id, eq_id]
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: [test]
+predictions_format: parquet
+output_dir: .
+run_tag: m3dc1_deltap_per_mode_ver_multimodel
+seed: 42
+
+models:
+  - key: pytorch.mlp
+    name: torch_mlp_deltap_deep
+    params:
+      hidden_layers: [512, 256, 128]
+      dropout: 0.1
+      epochs: 200
+      batch_size: 256
+      learning_rate: 0.001
+      restore_best_weights: true
+    hpo:
+      enabled: false
+  - key: pytorch.mlp
+    name: torch_mlp_deltap_wide
+    params:
+      hidden_layers: [768, 384]
+      dropout: 0.15
+      epochs: 200
+      batch_size: 256
+      learning_rate: 0.001
+      restore_best_weights: true
+    hpo:
+      enabled: false
+  - key: sklearn.random_forest
+    name: rf_deltap
+    params:
+      n_estimators: 80
+      max_depth: 16
+      min_samples_leaf: 3
+      n_jobs: -1
+    hpo:
+      enabled: false

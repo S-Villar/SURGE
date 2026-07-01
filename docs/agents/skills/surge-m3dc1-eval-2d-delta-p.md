@@ -8,11 +8,11 @@ academy_blueprint_hint: null
 
 ## Objective
 
-Run **`eval_test_delta_p_2d_maps.py`** with a **consistent** run directory, **model key**, and **checkpoint** so 2D δ*p* test visuals match the trained **`torch_mlp_profiles_deltap`** (or configured) model.
+Run **`scripts/m3dc1/internal/eval_test_delta_p_2d_maps.py`** with a **consistent** run directory, **workflow model `name`** (`--model`), and **checkpoint** so 2D δ*p* test visuals match the trained **`torch_mlp_profiles_deltap`** (or configured) model.
 
 ## When to apply (triggers)
 
-- User invokes **`scripts/m3dc1/eval_test_delta_p_2d_maps.py`** with a **`runs/...`** path.
+- User invokes **`scripts/m3dc1/internal/eval_test_delta_p_2d_maps.py`** with a **`runs/...`** path.
 - User sees TensorFlow/XLA **registration warnings** or GPflow notices and wonders if the run failed.
 
 ## Preconditions
@@ -22,7 +22,7 @@ Run **`eval_test_delta_p_2d_maps.py`** with a **consistent** run directory, **mo
 
 ## Procedure
 
-1. Confirm **`--model`** matches the **registry name** used in training (e.g. **`torch_mlp_profiles_deltap`**).
+1. Confirm **`--model`** matches the workflow **`name`** field in **`spec.yaml`** / **`models`** (e.g. **`torch_mlp_profiles_deltap`**). The SURGE registry **`key`** is usually **`pytorch.mlp`**.
 2. Set **`--checkpoint`** to a file under **`runs/<run_tag>/checkpoints/...`** that belongs to that model.
 3. Pass **`--m-source`** and m-range flags consistent with the evaluation design (e.g. **`range --m-min -100 --m-max 100`**).
 4. **`--plot-mode none`** still allows other outputs (e.g. error panels); adjust per user need.
@@ -42,7 +42,8 @@ Run **`eval_test_delta_p_2d_maps.py`** with a **consistent** run directory, **mo
 
 ## Artifacts & code references
 
-- `scripts/m3dc1/eval_test_delta_p_2d_maps.py`
+- `scripts/m3dc1/internal/eval_test_delta_p_2d_maps.py`
+- Full pipeline: `docs/m3dc1/M3DC1_DELTA_P_SPECTRA_SURROGATE_WORKFLOW.md`
 - Example run tag pattern: **`m3dc1_trial12_e500_bs128_withval_*`**
 - Curated example figure (may differ): `m3dc1/figures/delta_p_2d_test_mlp_side_by_side_example.png`
 

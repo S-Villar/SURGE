@@ -329,3 +329,7 @@ docs/api_reference/generated/
 # Keeping it ignored is what avoids the CI vs local collision (see
 # commits 6f33d89 and ead0177 for the bug and fix).
 /surge/models/
+
+# m3dc1ml is maintained as a separate repository (github.com/S-Villar/m3dc1ml).
+# It lives here as an untracked working copy; keep it out of the SURGE index.
+m3dc1ml/

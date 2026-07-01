@@ -29,7 +29,7 @@ Resolve user questions about **“latest results,” R², RMSE, or plots** by ro
 3. **If δ*p*:**
    - Metrics: **`runs/<run_tag>/metrics.json`**
    - Configs: e.g. **`configs/m3dc1_delta_p_per_mode_cfs_mlp_trial12_single.yaml`**
-   - Eval / maps: **`scripts/m3dc1/eval_test_delta_p_2d_maps.py`**, **`runs/.../plots/`**
+   - Eval / maps: **`scripts/m3dc1/internal/eval_test_delta_p_2d_maps.py`**, **`runs/.../plots/`**; workflow doc **`docs/m3dc1/M3DC1_DELTA_P_SPECTRA_SURROGATE_WORKFLOW.md`**
 4. Note **`runs/`** may be absent on a fresh clone; **`m3dc1/results.md`** may still hold **snapshots**.
 
 ## Verification

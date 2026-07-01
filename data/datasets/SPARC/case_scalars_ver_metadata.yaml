@@ -1,0 +1,18 @@
+inputs:
+- eq_R0
+- eq_a
+- eq_kappa
+- eq_delta
+- q0
+- q95
+- qmin
+- p0
+- input_ntor
+- input_pscale
+- input_batemanscale
+outputs:
+- gamma
+group_columns:
+- run_id
+- eq_id
+notes: Per-case scalars from csdata_deltap_b_ver.h5; target=gamma.

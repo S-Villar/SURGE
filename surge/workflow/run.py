@@ -52,6 +52,76 @@ def _safe_model_artifact_tag(name: str) -> str:
     return slug or "model"
 
 
+def _save_splits_manifest(
+    root: Path,
+    dataset: Any,
+    raw_splits: Any,
+    group_columns: Optional[Sequence[str]],
+) -> None:
+    """Persist the exact train/val/test partition so every model and every
+    downstream task reuses identical rows/cases.
+
+    Writes ``splits.json`` with per-split row indices and, when
+    ``group_columns`` are available, the unique case groups per split plus a
+    leakage check confirming no group appears in more than one split.
+    """
+    df = getattr(dataset, "df", None)
+    group_cols: List[str] = []
+    if group_columns and df is not None:
+        group_cols = [c for c in group_columns if c in df.columns]
+
+    manifest: Dict[str, Any] = {
+        "group_columns": group_cols,
+        "splits": {},
+    }
+    group_sets: Dict[str, set] = {}
+
+    for name, idx in (
+        ("train", raw_splits.train_index),
+        ("val", raw_splits.val_index),
+        ("test", raw_splits.test_index),
+    ):
+        if idx is None:
+            manifest["splits"][name] = {"n_rows": 0, "row_index": []}
+            group_sets[name] = set()
+            continue
+        rows = [int(i) for i in np.asarray(idx).tolist()]
+        entry: Dict[str, Any] = {"n_rows": len(rows), "row_index": rows}
+        if group_cols:
+            sub = df.loc[idx, group_cols].drop_duplicates()
+            groups = [
+                {c: _json_safe(v) for c, v in zip(group_cols, row)}
+                for row in sub.to_numpy().tolist()
+            ]
+            entry["n_groups"] = len(groups)
+            entry["groups"] = groups
+            group_sets[name] = {
+                "\u0001".join(str(v) for v in row) for row in sub.to_numpy().tolist()
+            }
+        manifest["splits"][name] = entry
+
+    if group_cols:
+        manifest["leakage_check"] = {
+            "train_val_overlap": len(group_sets["train"] & group_sets["val"]),
+            "train_test_overlap": len(group_sets["train"] & group_sets["test"]),
+            "val_test_overlap": len(group_sets["val"] & group_sets["test"]),
+        }
+
+    with (root / "splits.json").open("w", encoding="utf-8") as fh:
+        json.dump(manifest, fh, indent=2)
+
+
+def _json_safe(value: Any) -> Any:
+    """Coerce numpy scalars/strings into JSON-serialisable Python types."""
+    if isinstance(value, (np.integer,)):
+        return int(value)
+    if isinstance(value, (np.floating,)):
+        return float(value)
+    if isinstance(value, (np.bool_,)):
+        return bool(value)
+    return value
+
+
 def _registry_backend(registry: Any, model_key: str) -> str:
     """Return backend name across legacy/new registry APIs."""
     # New registry API (surge.registry.ModelRegistry)
@@ -240,6 +310,7 @@ def run_surrogate_workflow(
                 standardize_inputs=spec.standardize_inputs,
                 standardize_outputs=spec.standardize_outputs,
                 random_state=spec.seed,
+                group_columns=tuple(spec.group_columns) if spec.group_columns else None,
                 resources=spec.resources,
             )
         )
@@ -301,6 +372,7 @@ def run_surrogate_workflow(
             if spec_src:
                 copy_invoked_config_source(paths, Path(spec_src))
         save_spec(spec.to_dict(), paths)
+        _save_splits_manifest(paths.root, dataset, raw_splits, spec.group_columns)
 
         # Save training data min/max for in-distribution checks on new datastreamsets
         proc = engine.get_processed_splits()
