@@ -63,6 +63,9 @@ try:
 
     if _PTA:
         register_model(ResidualMLPAdapter, key='pytorch.residual_mlp', aliases=['residual_mlp'])
+        # Same adapter, dedicated key for the *flexible* HPO recipe that samples
+        # each layer's width as an independent integer (not a categorical choice).
+        register_model(ResidualMLPAdapter, key='pytorch.residual_mlp_flex', aliases=['residual_mlp_flex'])
         from .adapters.geometric_residual_mlp import GeometricResidualMLPAdapter
         register_model(
             GeometricResidualMLPAdapter,

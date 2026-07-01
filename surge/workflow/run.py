@@ -687,14 +687,21 @@ def _run_hpo(
                 "HPO enabled without a search_space, but the built-in recipe "
                 f"table could not be imported: {exc}"
             ) from exc
-        recipe_key = _adapter_key_for_hpo(base_spec.key)
-        if recipe_key not in set(list_hpo_models()):
-            raise KeyError(
-                f"No built-in HPO recipe for model '{base_spec.key}'. Either add "
-                f"one to surge.benchmarks.hpo._SEARCH_SPACES or provide an "
-                f"explicit hpo.search_space in the workflow config. Models with "
-                f"recipes: {', '.join(list_hpo_models())}"
-            )
+        # Prefer the recipe registered under the model's own key (e.g. the
+        # per-layer-integer 'residual_mlp_flex' special suggester). Only fall
+        # back to the adapter-key alias when the model key itself has no recipe.
+        recipes = set(list_hpo_models())
+        if base_spec.key in recipes:
+            recipe_key = base_spec.key
+        else:
+            recipe_key = _adapter_key_for_hpo(base_spec.key)
+            if recipe_key not in recipes:
+                raise KeyError(
+                    f"No built-in HPO recipe for model '{base_spec.key}'. Either add "
+                    f"one to surge.benchmarks.hpo._SEARCH_SPACES or provide an "
+                    f"explicit hpo.search_space in the workflow config. Models with "
+                    f"recipes: {', '.join(sorted(recipes))}"
+                )
 
     sampler = None
     if config.sampler == "botorch" and BOTORCH_AVAILABLE:

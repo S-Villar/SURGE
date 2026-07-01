@@ -1,0 +1,36 @@
+# Re(delta p) per-mode: residual-MLP surrogates with FLEXIBLE per-layer widths.
+# residual_mlp_flex HPO samples each layer's neuron count as an independent
+# INTEGER in [1, max_hidden_width] (not a categorical choice) + n_layers in
+# [1,6]. Compared against a default residual_mlp baseline on the SAME shared
+# case-grouped split. Capped case subset so it runs interactively on one GPU.
+#
+#   python scripts/m3dc1/internal/run_workflow.py configs/internal/m3dc1_deltap_real_residual_flex.yaml
+
+dataset_path: /pscratch/sd/a/asvillar/mp288/jobs/batch_16
+dataset_source: m3dc1_batch_per_mode
+batch_dir_filename: csdata_deltap_b_ver.h5
+dataset_kwargs:
+  component: real
+  profile_inputs: true
+  profile_points: 16
+  max_cases: 1500      # ~300k rows for an interactive GPU run
+
+group_columns: [run_id, eq_id]
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: [test]
+predictions_format: parquet
+output_dir: .
+run_tag: m3dc1_deltap_real_residual_flex
+seed: 42
+
+models:
+  # Baseline: fixed [128,128] residual MLP, no HPO.
+  - {key: pytorch.residual_mlp, name: residual_mlp_default,
+     params: {hidden_layers: [128, 128], n_epochs: 40, learning_rate: 0.001}}
+  # Flexible per-layer-integer HPO (the requested "random neurons per layer").
+  - {key: pytorch.residual_mlp_flex, name: residual_mlp_flex_hpo,
+     params: {n_epochs: 40},
+     hpo: {enabled: true, n_trials: 15, metric: val_rmse, direction: minimize}}
