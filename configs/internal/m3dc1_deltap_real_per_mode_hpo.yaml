@@ -1,0 +1,43 @@
+# Re(delta p) per-mode HPO (recipe-based) on a capped case subset so the search
+# is tractable; the best hyperparameters transfer to the full flagship run.
+# hpo.enabled + empty search_space -> built-in per-model recipe, every trial
+# evaluated on the shared case-grouped split (splits.json).
+#
+#   sbatch scripts/m3dc1/internal/train_deltap_real_per_mode_hpo.slurm
+
+dataset_path: /pscratch/sd/a/asvillar/mp288/jobs/batch_16
+dataset_source: m3dc1_batch_per_mode
+batch_dir_filename: csdata_deltap_b_ver.h5
+dataset_kwargs:
+  component: real
+  profile_inputs: true
+  profile_points: 16
+  max_cases: 3000   # ~600k rows for the search; drop for the full run
+
+group_columns: [run_id, eq_id]
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: [test]
+predictions_format: parquet
+output_dir: .
+run_tag: m3dc1_deltap_real_per_mode_hpo
+seed: 42
+
+models:
+  # epochs kept modest for the search; recipe tunes width/lr/dropout/batch_size.
+  - key: pytorch.mlp
+    name: torch_mlp_deltap
+    params: {epochs: 60, restore_best_weights: true}
+    hpo: {enabled: true, n_trials: 20, metric: val_rmse, direction: minimize}
+  - key: pytorch.residual_mlp
+    name: residual_mlp_deltap
+    hpo: {enabled: true, n_trials: 15, metric: val_rmse, direction: minimize}
+  - key: pytorch.ft_transformer
+    name: ft_transformer_deltap
+    hpo: {enabled: true, n_trials: 15, metric: val_rmse, direction: minimize}
+  - key: sklearn.random_forest
+    name: rf_deltap
+    params: {n_jobs: -1}
+    hpo: {enabled: true, n_trials: 15, metric: val_rmse, direction: minimize}

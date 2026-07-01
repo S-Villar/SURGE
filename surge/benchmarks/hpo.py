@@ -102,6 +102,9 @@ _SEARCH_SPACES: dict[str, dict[str, tuple]] = {
     "sklearn.gpr": {
         "alpha": ("float_log", 1e-6, 1e-1),
     },
+    "sklearn.ridge": {
+        "alpha": ("float_log", 1e-3, 1e3),
+    },
     # ------------------------------------------------------------------
     # XGBoost
     # ------------------------------------------------------------------
@@ -149,6 +152,13 @@ _SEARCH_SPACES: dict[str, dict[str, tuple]] = {
     },
     "pytorch.residual_mlp_flex": "_special",
     "pytorch.geom_residual_mlp": "_special",
+    "pytorch.mlp_ensemble": {
+        "hidden_dim": ("categorical", [128, 256, 512]),
+        "n_layers": ("int", 2, 4),
+        "learning_rate": ("float_log", 1e-4, 1e-2),
+        "dropout": ("float", 0.0, 0.3),
+        "batch_size": ("categorical", [64, 128, 256]),
+    },
     "pytorch.mlp_classifier": {
         "hidden_layers": ("categorical", [
             [64, 32], [128, 64], [256, 128],

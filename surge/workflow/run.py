@@ -235,7 +235,7 @@ def run_surrogate_workflow(
 
         # Total steps: 1 load dataset, 1 prepare, then per model: 1 (HPO if enabled) + 1 (train)
         n_model_steps = sum(
-            2 if (c.hpo and c.hpo.enabled and c.hpo.search_space) else 1 for c in spec.models
+            2 if (c.hpo and c.hpo.enabled) else 1 for c in spec.models
         )
         total_steps = 2 + n_model_steps
         step = 0
@@ -408,10 +408,21 @@ def run_surrogate_workflow(
             model_spec = _model_spec_from_config(model_cfg)
             model_name = model_spec.name or model_spec.key
             hpo_artifact = None
-            if model_cfg.hpo and model_cfg.hpo.enabled and model_cfg.hpo.search_space:
-                next_step(f"HPO for {model_name} ({model_cfg.hpo.n_trials} trials)...")
-                model_spec, hpo_summary = _run_hpo(engine, model_spec, model_cfg.hpo, run_tag, paths)
-                hpo_artifact = str(save_hpo_results(hpo_summary, paths, filename=f"{model_spec.name}_hpo.json"))
+            # HPO runs when enabled. If no explicit search_space is given, the
+            # built-in per-model recipe (surge.benchmarks.hpo._SEARCH_SPACES) is
+            # used instead — so HPO happens on this workflow's shared,
+            # case-grouped split (splits.json) rather than the benchmark
+            # runner's own row-random split.
+            if model_cfg.hpo and model_cfg.hpo.enabled:
+                mode = "recipe" if not model_cfg.hpo.search_space else "custom space"
+                next_step(f"HPO for {model_name} ({model_cfg.hpo.n_trials} trials, {mode})...")
+                try:
+                    model_spec, hpo_summary = _run_hpo(engine, model_spec, model_cfg.hpo, run_tag, paths)
+                    hpo_artifact = str(save_hpo_results(hpo_summary, paths, filename=f"{model_spec.name}_hpo.json"))
+                except Exception as exc:  # noqa: BLE001 - keep multi-model runs resilient
+                    LOGGER.exception("HPO for %s failed; skipping model: %s", model_name, exc)
+                    workflow_metrics[model_name] = {"error": f"HPO {type(exc).__name__}: {exc}"}
+                    continue
 
             next_step(f"Training {model_name}...")
             pretrained_adapter = pretrained_models.get(model_name) if pretrained_dir else None
@@ -657,6 +668,34 @@ def _run_hpo(
 ) -> Tuple[ModelSpec, Dict[str, Any]]:
     if not OPTUNA_AVAILABLE:
         raise ImportError("Optuna must be installed to enable HPO.")
+
+    # Bridge: when no explicit search_space is provided, fall back to the
+    # built-in per-model recipe from the benchmark HPO module. This keeps HPO on
+    # this workflow's shared, case-grouped split (splits.json).
+    use_recipe = not config.search_space
+    recipe_key: Optional[str] = None
+    recipe_suggest = None
+    if use_recipe:
+        try:
+            from surge.benchmarks.hpo import (
+                _adapter_key_for_hpo,
+                list_hpo_models,
+                suggest_params as recipe_suggest,
+            )
+        except Exception as exc:  # pragma: no cover - import guard
+            raise ImportError(
+                "HPO enabled without a search_space, but the built-in recipe "
+                f"table could not be imported: {exc}"
+            ) from exc
+        recipe_key = _adapter_key_for_hpo(base_spec.key)
+        if recipe_key not in set(list_hpo_models()):
+            raise KeyError(
+                f"No built-in HPO recipe for model '{base_spec.key}'. Either add "
+                f"one to surge.benchmarks.hpo._SEARCH_SPACES or provide an "
+                f"explicit hpo.search_space in the workflow config. Models with "
+                f"recipes: {', '.join(list_hpo_models())}"
+            )
+
     sampler = None
     if config.sampler == "botorch" and BOTORCH_AVAILABLE:
         sampler = BoTorchSampler()
@@ -718,7 +757,11 @@ def _run_hpo(
         print(f"  [HPO] Trial {trial.number} started...", flush=True)
         t0 = _time_module.perf_counter()
         try:
-            sampled_params = _sample_hpo_params(trial, config.search_space)
+            if use_recipe:
+                assert recipe_suggest is not None and recipe_key is not None
+                sampled_params = recipe_suggest(recipe_key, trial)
+            else:
+                sampled_params = _sample_hpo_params(trial, config.search_space)
             trial_spec = replace(
                 base_spec,
                 params={**base_spec.params, **sampled_params},
@@ -836,20 +879,29 @@ def _run_hpo(
             if tqdm_pbar is not None:
                 tqdm_pbar.close()
 
-    # Resolve _index params (categoricals with list/tuple choices) back to actual values
-    best_params = dict(base_spec.params)
-    for k, v in study.best_trial.params.items():
-        if k.endswith("_index") and k[:-6] in config.search_space:
-            cat_spec = config.search_space[k[:-6]]
-            if cat_spec.get("type") == "categorical":
-                choices = cat_spec["choices"]
-                normalized = [
-                    tuple(c) if isinstance(c, list) else c for c in choices
-                ]
-                val = normalized[v]
-                best_params[k[:-6]] = list(val) if isinstance(val, tuple) else val
-                continue
-        best_params[k] = v
+    if use_recipe:
+        # Recipe categoricals store an integer index in trial.params; replay the
+        # suggester with a FixedTrial to recover the actual parameter values.
+        assert recipe_suggest is not None and recipe_key is not None
+        from optuna.trial import FixedTrial
+
+        best_sampled = recipe_suggest(recipe_key, FixedTrial(study.best_trial.params))
+        best_params = {**base_spec.params, **best_sampled}
+    else:
+        # Resolve _index params (categoricals with list/tuple choices) back to actual values
+        best_params = dict(base_spec.params)
+        for k, v in study.best_trial.params.items():
+            if k.endswith("_index") and k[:-6] in config.search_space:
+                cat_spec = config.search_space[k[:-6]]
+                if cat_spec.get("type") == "categorical":
+                    choices = cat_spec["choices"]
+                    normalized = [
+                        tuple(c) if isinstance(c, list) else c for c in choices
+                    ]
+                    val = normalized[v]
+                    best_params[k[:-6]] = list(val) if isinstance(val, tuple) else val
+                    continue
+            best_params[k] = v
     updated_spec = replace(base_spec, params=best_params)
 
     hpo_summary: Dict[str, Any] = {

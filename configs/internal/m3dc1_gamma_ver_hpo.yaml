@@ -1,0 +1,26 @@
+# HPO validation on gamma: recipe-based HPO (no explicit search_space) driven
+# through the WORKFLOW so every trial uses the shared case-grouped split.
+# hpo.enabled + empty search_space -> built-in per-model recipe is used.
+#
+#   python scripts/m3dc1/internal/run_workflow.py configs/internal/m3dc1_gamma_ver_hpo.yaml
+
+dataset_path: data/datasets/SPARC/case_scalars_ver.parquet
+dataset_format: parquet
+metadata_path: data/datasets/SPARC/case_scalars_ver_metadata.yaml
+
+group_columns: [run_id, eq_id]
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: [test]
+predictions_format: csv
+output_dir: .
+run_tag: m3dc1_gamma_ver_hpo
+seed: 42
+
+models:
+  - {key: sklearn.ridge, name: ridge, hpo: {enabled: true, n_trials: 8, metric: val_rmse, direction: minimize}}
+  - {key: sklearn.random_forest, name: random_forest, hpo: {enabled: true, n_trials: 8, metric: val_rmse, direction: minimize}}
+  - {key: pytorch.mlp, name: torch_mlp, hpo: {enabled: true, n_trials: 8, metric: val_rmse, direction: minimize}}
+  - {key: pytorch.mlp_ensemble, name: mlp_ensemble, hpo: {enabled: true, n_trials: 6, metric: val_rmse, direction: minimize}}
