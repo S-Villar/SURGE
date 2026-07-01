@@ -105,6 +105,23 @@ _SEARCH_SPACES: dict[str, dict[str, tuple]] = {
     "sklearn.ridge": {
         "alpha": ("float_log", 1e-3, 1e3),
     },
+    # GPflow GP regressors (untested here — gpflow/TF backend optional).
+    "gpflow.gpr": {
+        "kernel_type": ("categorical", ["matern32", "matern52", "rbf", "rq"]),
+        "variance": ("float_log", 1e-2, 10.0),
+        "noise_variance": ("float_log", 1e-4, 1.0),
+        "maxiter": ("int", 200, 1500),
+        "add_linear": ("categorical", [True, False]),
+    },
+    "gpflow.multi_kernel": {
+        "kernel_combinations": ("categorical", [
+            ["rbf", "matern32"], ["matern32", "matern52"],
+            ["rbf", "linear"], ["matern52", "rq"],
+        ]),
+        "variance": ("float_log", 1e-2, 10.0),
+        "noise_variance": ("float_log", 1e-4, 1.0),
+        "maxiter": ("int", 200, 1500),
+    },
     # ------------------------------------------------------------------
     # XGBoost
     # ------------------------------------------------------------------
@@ -125,6 +142,49 @@ _SEARCH_SPACES: dict[str, dict[str, tuple]] = {
         "colsample_bytree": ("float", 0.4, 1.0),
         "reg_alpha": ("float_log", 1e-5, 10.0),
         "reg_lambda": ("float_log", 1e-2, 10.0),
+    },
+    # ------------------------------------------------------------------
+    # LightGBM (untested here — backend optional: pip install lightgbm)
+    # ------------------------------------------------------------------
+    "lgbm.regressor": {
+        "n_estimators": ("int", 100, 800),
+        "learning_rate": ("float_log", 1e-3, 0.3),
+        "num_leaves": ("int", 15, 255),
+        "max_depth": ("categorical", [-1, 4, 6, 8, 12]),
+        "min_child_samples": ("int", 5, 100),
+        "subsample": ("float", 0.5, 1.0),
+        "colsample_bytree": ("float", 0.4, 1.0),
+        "reg_alpha": ("float_log", 1e-5, 10.0),
+        "reg_lambda": ("float_log", 1e-3, 10.0),
+    },
+    "lgbm.classifier": {
+        "n_estimators": ("int", 100, 800),
+        "learning_rate": ("float_log", 1e-3, 0.3),
+        "num_leaves": ("int", 15, 255),
+        "max_depth": ("categorical", [-1, 4, 6, 8, 12]),
+        "min_child_samples": ("int", 5, 100),
+        "subsample": ("float", 0.5, 1.0),
+        "colsample_bytree": ("float", 0.4, 1.0),
+        "reg_alpha": ("float_log", 1e-5, 10.0),
+        "reg_lambda": ("float_log", 1e-3, 10.0),
+    },
+    # ------------------------------------------------------------------
+    # CatBoost (untested here — backend optional: pip install catboost)
+    # subsample omitted (requires bootstrap_type=Bernoulli/Poisson).
+    # ------------------------------------------------------------------
+    "catboost.regressor": {
+        "iterations": ("int", 100, 800),
+        "learning_rate": ("float_log", 1e-3, 0.3),
+        "depth": ("int", 3, 10),
+        "l2_leaf_reg": ("float_log", 1.0, 30.0),
+        "border_count": ("categorical", [32, 64, 128, 254]),
+    },
+    "catboost.classifier": {
+        "iterations": ("int", 100, 800),
+        "learning_rate": ("float_log", 1e-3, 0.3),
+        "depth": ("int", 3, 10),
+        "l2_leaf_reg": ("float_log", 1.0, 30.0),
+        "border_count": ("categorical", [32, 64, 128, 254]),
     },
     # ------------------------------------------------------------------
     # PyTorch

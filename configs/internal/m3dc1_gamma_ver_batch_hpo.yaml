@@ -1,0 +1,33 @@
+# Batch HPO on gamma: optimize every usable regressor with its recipe on the
+# SAME shared case-grouped split, then compare against the non-HPO baseline
+# (runs/m3dc1_gamma_ver_allmodels). Recipe HPO = hpo.enabled + no search_space.
+# Sampler defaults to Optuna TPE; set `sampler: botorch` per model for Bayesian
+# optimization via BoTorch (botorch/gpytorch are installed).
+#
+#   python scripts/m3dc1/internal/run_workflow.py configs/internal/m3dc1_gamma_ver_batch_hpo.yaml
+
+dataset_path: data/datasets/SPARC/case_scalars_ver.parquet
+dataset_format: parquet
+metadata_path: data/datasets/SPARC/case_scalars_ver_metadata.yaml
+
+group_columns: [run_id, eq_id]
+test_fraction: 0.2
+val_fraction: 0.2
+standardize_inputs: true
+standardize_outputs: true
+predictions_scope: [test]
+predictions_format: csv
+output_dir: .
+run_tag: m3dc1_gamma_ver_batch_hpo
+seed: 42
+
+models:
+  - {key: sklearn.ridge, name: ridge, hpo: {enabled: true, n_trials: 15, metric: val_rmse, direction: minimize}}
+  - {key: sklearn.random_forest, name: random_forest, hpo: {enabled: true, n_trials: 30, metric: val_rmse, direction: minimize}}
+  - {key: sklearn.gradient_boosting_regressor, name: gradient_boosting, hpo: {enabled: true, n_trials: 30, metric: val_rmse, direction: minimize}}
+  - {key: sklearn.mlp, name: sk_mlp, hpo: {enabled: true, n_trials: 30, metric: val_rmse, direction: minimize}}
+  - {key: pytorch.mlp, name: torch_mlp, hpo: {enabled: true, n_trials: 30, metric: val_rmse, direction: minimize}}
+  - {key: pytorch.residual_mlp, name: residual_mlp, hpo: {enabled: true, n_trials: 25, metric: val_rmse, direction: minimize}}
+  - {key: pytorch.geom_residual_mlp, name: geom_residual_mlp, hpo: {enabled: true, n_trials: 25, metric: val_rmse, direction: minimize}}
+  - {key: pytorch.ft_transformer, name: ft_transformer, hpo: {enabled: true, n_trials: 25, metric: val_rmse, direction: minimize}}
+  - {key: pytorch.mlp_ensemble, name: mlp_ensemble, hpo: {enabled: true, n_trials: 10, metric: val_rmse, direction: minimize}}
