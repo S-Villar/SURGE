@@ -116,7 +116,9 @@ def main() -> None:
     xs = X[tr].std((0, 2, 3), keepdims=True) + 1e-8
     ym = float(Y[tr].mean()); ysd = float(Y[tr].std() + 1e-8)
 
-    net = T._build_net(args.model, X.shape[1])
+    net = T._build_net(args.model, X.shape[1],
+                       fno_modes=int(cfg.get("fno_modes", 16)),
+                       fno_hidden=int(cfg.get("fno_hidden", 32)))
     state = torch.load(ckpt, map_location="cpu")
     net.load_state_dict(state["state_dict"])
     net = net.to(dev).eval()

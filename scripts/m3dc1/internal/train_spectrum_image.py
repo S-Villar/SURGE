@@ -188,11 +188,18 @@ def build_dataset(
     return X, Y, chan_names, keys
 
 
-def _build_net(name: str, in_channels: int):
-    """Build a raw torch net from the SURGE backend modules (own training loop)."""
+def _build_net(name: str, in_channels: int, fno_modes: int = 16,
+               fno_hidden: int = 32):
+    """Build a raw torch net from the SURGE backend modules (own training loop).
+
+    fno_modes / fno_hidden control the FNO spectral-truncation width and channel
+    width. On a 128 grid the FFT has ~64 modes/axis; n_modes=16 keeps only ~25%
+    of the band (blurs sharp peaks), while 48 keeps ~75% (resolves the ridge).
+    """
     if name == "fno2d":
         from surge.model.backends.fno2d import _FNO2dNet
-        return _FNO2dNet(in_channels, 1, hidden_channels=32, n_modes=16, n_layers=4)
+        return _FNO2dNet(in_channels, 1, hidden_channels=fno_hidden,
+                         n_modes=fno_modes, n_layers=4)
     if name == "unet":
         from surge.model.backends.unet import _UNetNet
         return _UNetNet(in_channels, 1, base_channels=48, depth=4)
@@ -231,7 +238,8 @@ def _loss_plot(hist_path: Path, name: str, out: Path) -> None:
 def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
                epochs: int, batch_size: int, lr: float, patience: int,
                gpu_cache: bool = True, resume: Optional[str] = None,
-               ckpt_every: int = 0, peak_weight: float = 0.0, peak_pow: float = 1.0):
+               ckpt_every: int = 0, peak_weight: float = 0.0, peak_pow: float = 1.0,
+               loc_weight: float = 0.0, marg_weight: float = 0.0, loc_beta: float = 8.0):
     """Custom loop: per-epoch train+val loss/R2 -> live JSONL, best-val checkpoint,
     val early-stop, live loss plot. Returns (best_net, n_params).
 
@@ -256,18 +264,65 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
     # the ground-truth amplitude (per-image min-max ranked, so the peak -> 1),
     # forcing the model to reproduce the peak/ridge accurately.
     _mse = torch.nn.MSELoss()
-    if peak_weight and peak_weight > 0:
-        def lossf(pred, target):
+
+    # --- pixel term (plain or amplitude-weighted MSE) ---------------------- #
+    def _pixel_loss(pred, target):
+        if peak_weight and peak_weight > 0:
             with torch.no_grad():
                 tmin = target.amin(dim=(2, 3), keepdim=True)
                 tmax = target.amax(dim=(2, 3), keepdim=True)
                 s = ((target - tmin) / (tmax - tmin + 1e-8)).clamp_(0.0, 1.0)
                 w = 1.0 + peak_weight * s.pow(peak_pow)
             return (w * (pred - target) ** 2).mean()
-        print(f"  [loss] peak-weighted MSE (alpha={peak_weight}, pow={peak_pow})", flush=True)
-    else:
-        def lossf(pred, target):
-            return _mse(pred, target)
+        return _mse(pred, target)
+
+    # --- location-aware / marginal terms ---------------------------------- #
+    # The pixel MSE (even amplitude-weighted) gives no direct gradient on *where*
+    # the ridge sits, and in log space the noise floor dominates. These extra
+    # terms optimize the shape explicitly:
+    #   loc  = squared error of the soft-argmax psi_N of the peak (energy centroid
+    #          of a temperature-sharpened softmax over the whole image). Standardi-
+    #          zation/log are monotone so the max stays the max; this pulls the
+    #          predicted mode to the correct radial location (core vs edge).
+    #   marg = MSE of the psi-marginal and m-marginal profiles (energy vs psi_N and
+    #          vs m), emphasizing the 1-D structure over the flat background.
+    use_loc = loc_weight and loc_weight > 0
+    use_marg = marg_weight and marg_weight > 0
+    _psi_map = None  # lazily built (H*W,) psi_N coordinate for the soft-argmax
+
+    def _psi_softloc(z, psi_flat):
+        B = z.shape[0]
+        zf = z.reshape(B, -1)
+        zf = zf - zf.amax(dim=1, keepdim=True)
+        p = torch.softmax(loc_beta * zf, dim=1)
+        return (p * psi_flat).sum(dim=1)             # (B,) expected psi_N of peak
+
+    def lossf(pred, target):
+        nonlocal _psi_map
+        loss = _pixel_loss(pred, target)
+        if use_loc:
+            if _psi_map is None:
+                W = target.shape[-1]; H = target.shape[-2]
+                psi = torch.linspace(0.0, 1.0, W, device=target.device)
+                _psi_map = psi.view(1, W).expand(H, W).reshape(-1)
+            lp = _psi_softloc(pred, _psi_map)
+            with torch.no_grad():
+                lt = _psi_softloc(target, _psi_map)
+            loss = loss + loc_weight * ((lp - lt) ** 2).mean()
+        if use_marg:
+            # dim2 = m (rows), dim3 = psi (cols)
+            marg = (_mse(pred.mean(dim=2), target.mean(dim=2))     # psi-marginal
+                    + _mse(pred.mean(dim=3), target.mean(dim=3)))  # m-marginal
+            loss = loss + marg_weight * marg
+        return loss
+
+    _terms = ["MSE" if not (peak_weight and peak_weight > 0)
+              else f"peakMSE(a={peak_weight},p={peak_pow})"]
+    if use_loc:
+        _terms.append(f"loc(w={loc_weight},beta={loc_beta})")
+    if use_marg:
+        _terms.append(f"marg(w={marg_weight})")
+    print(f"  [loss] composite = {' + '.join(_terms)}", flush=True)
     cache = gpu_cache and dev.type == "cuda"
     n_train = len(Xtr)
     if cache:
@@ -422,6 +477,20 @@ def main() -> None:
     ap.add_argument("--peak-pow", type=float, default=2.0,
                     help="Exponent sharpening the peak weighting (higher = focus "
                          "more tightly on the very top amplitudes).")
+    ap.add_argument("--fno-modes", type=int, default=16,
+                    help="FNO spectral modes per axis (128 grid -> Nyquist ~64). "
+                         "16 blurs sharp peaks; try 48 to resolve the ridge.")
+    ap.add_argument("--fno-hidden", type=int, default=32,
+                    help="FNO hidden channel width (raise with --fno-modes, e.g. 64).")
+    ap.add_argument("--loc-weight", type=float, default=0.0,
+                    help="Weight of the soft-argmax peak-location loss (psi_N of the "
+                         "mode peak). Directly targets core-vs-edge location. Try 0.5-5.")
+    ap.add_argument("--marg-weight", type=float, default=0.0,
+                    help="Weight of the psi/m marginal-profile MSE (energy-vs-psi_N "
+                         "and energy-vs-m). Emphasizes 1-D structure. Try 0.5-2.")
+    ap.add_argument("--loc-beta", type=float, default=8.0,
+                    help="Softmax temperature for the soft-argmax peak locator "
+                         "(higher = sharper toward the true argmax).")
     ap.add_argument("--no-gpu-cache", action="store_true",
                     help="Disable keeping the full train/val set resident on the GPU.")
     ap.add_argument("--test-frac", type=float, default=0.2)
@@ -469,6 +538,9 @@ def main() -> None:
         "target_norm": args.target_norm, "target_space": args.target_space,
         "target": target_desc,
         "peak_weight": args.peak_weight, "peak_pow": args.peak_pow,
+        "fno_modes": args.fno_modes, "fno_hidden": args.fno_hidden,
+        "loc_weight": args.loc_weight, "marg_weight": args.marg_weight,
+        "loc_beta": args.loc_beta,
     }, indent=2))
 
     rng = np.random.RandomState(args.seed)
@@ -489,14 +561,17 @@ def main() -> None:
     for name in args.models:
         print(f"\n=== Training {name} ===")
         t0 = time.time()
-        net = _build_net(name, X.shape[1])
+        net = _build_net(name, X.shape[1], fno_modes=args.fno_modes,
+                         fno_hidden=args.fno_hidden)
         if net is None:
             print(f"  unknown model {name}, skipping"); continue
         net, n_params = _train_net(
             net, name, out, Xn[tr], Yn[tr], Xn[va], Yn[va],
             epochs=args.epochs, batch_size=args.batch_size, lr=1e-3, patience=args.patience,
             gpu_cache=not args.no_gpu_cache, resume=args.resume, ckpt_every=args.ckpt_every,
-            peak_weight=args.peak_weight, peak_pow=args.peak_pow)
+            peak_weight=args.peak_weight, peak_pow=args.peak_pow,
+            loc_weight=args.loc_weight, marg_weight=args.marg_weight,
+            loc_beta=args.loc_beta)
         pred = _predict_net(net, Xn[te], args.batch_size)  # (n_test, H, W)
         yt = Yn[te]
         res = {"test_r2_global": r2(yt, pred),
