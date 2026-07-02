@@ -118,6 +118,7 @@ def build_dataset(
     m_lo: float, m_hi: float, spectrum_field: str, eps: float,
     shaping_keys: Tuple[str, ...] = ("kappa", "delta", "epsilon", "pscale", "batemanscale"),
     target_norm: str = "none", target_space: str = "log10",
+    target_floor: Optional[float] = None,
     return_paths: bool = False,
 ):
     """Return X (N,C,H,W), Y (N,H,W) target, channel names, case keys.
@@ -161,6 +162,13 @@ def build_dataset(
                 field = field / cmax
         if target_space == "log10":
             field = np.log10(field + eps)
+            # Floor the log10 target N decades below the (max-normalized) peak.
+            # With target_norm="max" the peak is 1 -> log10=0, so target_floor=6
+            # clips everything below 1e-6*peak to a constant -6. This removes the
+            # ungradeable noise-floor texture so the model (and R2/RMSE) focus on
+            # the top ~N decades of amplitude that actually define the mode.
+            if target_floor is not None and target_floor > 0:
+                field = np.maximum(field, -float(target_floor))
         # else: "raw" -> keep (optionally max-normalized) magnitude
         m_vals = m_modes[sel]
         # interp along psi (cols) onto uniform psi_grid
@@ -275,7 +283,7 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
                ckpt_every: int = 0, peak_weight: float = 0.0, peak_pow: float = 1.0,
                loc_weight: float = 0.0, marg_weight: float = 0.0, loc_beta: float = 8.0,
                lr_schedule: str = "none", lr_min: float = 0.0,
-               select_by: str = "mse"):
+               select_by: str = "mse", y_std: float = 1.0):
     """Custom loop: per-epoch train+val loss/R2 -> live JSONL, best-val checkpoint,
     val early-stop, live loss plot. Returns (best_net, n_params).
 
@@ -452,8 +460,19 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
             # global-max sits from the true one -- the metric that actually tracks
             # core-vs-edge mode structure, which MSE/R2 are blind to.
             vdpsi = float(np.mean(np.abs(_peak_psi(vp) - _peak_psi(yv_np))))
+            # RMSE in physical "dex" units (decades of |dp| below the peak): un-do
+            # the global z-score by *y_std. val_rmse = overall amplitude error;
+            # val_peak_rmse = error over the top-1% amplitude (peak/ridge) pixels,
+            # i.e. how wrong the actual mode amplitude is (R2 hides this).
+            _resid = vp - yv_np
+            val_rmse = float(np.sqrt(np.mean(_resid ** 2)) * y_std)
+            _gf = yv_np.reshape(yv_np.shape[0], -1)
+            _thr = np.percentile(_gf, 99.0, axis=1)[:, None, None, None]
+            _pk = yv_np >= _thr
+            val_peak_rmse = float(np.sqrt(np.mean(_resid[_pk] ** 2)) * y_std)
         rec = {"epoch": epoch, "train_loss": tl, "val_loss": vl, "val_r2": vr2,
-               "val_comp": vcomp, "val_dpsi": vdpsi, "lr": cur_lr}
+               "val_comp": vcomp, "val_dpsi": vdpsi, "val_rmse": val_rmse,
+               "val_peak_rmse": val_peak_rmse, "lr": cur_lr}
         # model selection: composite loss (peak-aware) or plain MSE
         sel = vcomp if select_by == "composite" else vl
         improved = sel < best_val
@@ -476,7 +495,8 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
         if epoch % 10 == 0 or epoch == 1:
             print(f"  [{name}] epoch {epoch}/{epochs} train={tl:.4f} "
                   f"val={vl:.4f} val_r2={vr2:.4f} comp={vcomp:.4f} "
-                  f"dpsi={vdpsi:.4f}{'  *best' if improved else ''}", flush=True)
+                  f"dpsi={vdpsi:.4f} rmse={val_rmse:.3f} pkrmse={val_peak_rmse:.3f}"
+                  f"{'  *best' if improved else ''}", flush=True)
         if patience > 0 and no_improve >= patience:
             print(f"  [{name}] early stop at epoch {epoch} (best val {best_val:.4f})", flush=True)
             with hist_path.open("a") as fh:
@@ -529,6 +549,11 @@ def main() -> None:
                          "case's spectrum so its peak is 1 (before any log).")
     ap.add_argument("--target-space", choices=["log10", "raw"], default="log10",
                     help="'log10' -> log10(mag+eps); 'raw' -> (normalized) magnitude.")
+    ap.add_argument("--target-floor", type=float, default=None,
+                    help="Clip the (max-norm) log10 target to N decades below the "
+                         "peak (peak=0). e.g. 6 keeps 10^0..10^-6 and floors the rest "
+                         "to -6, deleting the noise-floor texture. Use with "
+                         "--target-norm max --target-space log10.")
     ap.add_argument("--models", nargs="+", default=["fno2d", "unet"])
     ap.add_argument("--epochs", type=int, default=80)
     ap.add_argument("--patience", type=int, default=25,
@@ -603,13 +628,15 @@ def main() -> None:
     X, Y, chan_names, keys = build_dataset(
         args.batch_dir, args.filename, args.n_cases, args.grid,
         args.m_lo, args.m_hi, args.spectrum_field, args.eps,
-        target_norm=args.target_norm, target_space=args.target_space)
+        target_norm=args.target_norm, target_space=args.target_space,
+        target_floor=args.target_floor)
     N = X.shape[0]
 
     # Persist the run configuration so `python -m surge.check_training` (and the
     # user) can see exactly what preprocessing/target this run used.
     target_desc = (("max-normalized " if args.target_norm == "max" else "")
                    + ("log10|dp|" if args.target_space == "log10" else "|dp|")
+                   + (f", floor -{args.target_floor:g}dex" if args.target_floor else "")
                    + ", global z-score")
     (out / "run_config.json").write_text(json.dumps({
         "batch_dir": args.batch_dir, "filename": args.filename,
@@ -619,6 +646,7 @@ def main() -> None:
         "batch_size": args.batch_size, "patience": args.patience,
         "seed": args.seed, "test_frac": args.test_frac, "val_frac": args.val_frac,
         "target_norm": args.target_norm, "target_space": args.target_space,
+        "target_floor": args.target_floor,
         "target": target_desc,
         "peak_weight": args.peak_weight, "peak_pow": args.peak_pow,
         "fno_modes": args.fno_modes, "fno_hidden": args.fno_hidden,
@@ -657,7 +685,7 @@ def main() -> None:
             peak_weight=args.peak_weight, peak_pow=args.peak_pow,
             loc_weight=args.loc_weight, marg_weight=args.marg_weight,
             loc_beta=args.loc_beta, lr_schedule=args.lr_schedule, lr_min=args.lr_min,
-            select_by=args.select_by)
+            select_by=args.select_by, y_std=ysd)
         pred = _predict_net(net, Xn[te], args.batch_size)  # (n_test, H, W)
         yt = Yn[te]
         res = {"test_r2_global": r2(yt, pred),

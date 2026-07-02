@@ -105,7 +105,8 @@ def main() -> None:
         cfg["batch_dir"], cfg["filename"], (n_cases or None), cfg["grid"],
         float(m_lo), float(m_hi), cfg.get("spectrum_field", "p"), 1e-12,
         target_norm=cfg.get("target_norm", "none"),
-        target_space=cfg.get("target_space", "log10"), return_paths=True)
+        target_space=cfg.get("target_space", "log10"),
+        target_floor=cfg.get("target_floor"), return_paths=True)
     N = X.shape[0]
     tr, va, te = _reproduce_split(N, cfg.get("seed", 42),
                                   cfg.get("test_frac", 0.2), cfg.get("val_frac", 0.1))
