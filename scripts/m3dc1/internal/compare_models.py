@@ -63,15 +63,16 @@ def _percase_metrics(gt, pr, psi_axis):
     """gt, pr: (N,H,W) in dex units (max-norm log10). Returns dict of (N,) arrays."""
     N = gt.shape[0]
     g = gt.reshape(N, -1); p = pr.reshape(N, -1)
-    # global R2 per case
+    # global R2 per case (clamp to [-1,1]: degenerate near-constant images have
+    # ~0 variance and otherwise blow the mean up to +/-1e13)
     ss = ((g - p) ** 2).sum(1)
-    tt = ((g - g.mean(1, keepdims=True)) ** 2).sum(1) + 1e-12
-    r2g = 1 - ss / tt
+    tt = ((g - g.mean(1, keepdims=True)) ** 2).sum(1)
+    r2g = np.clip(np.where(tt > 1e-8, 1 - ss / np.maximum(tt, 1e-8), 0.0), -1.0, 1.0)
     # pattern R2 (de-meaned per case)
     gd = g - g.mean(1, keepdims=True); pd = p - p.mean(1, keepdims=True)
     ssp = ((gd - pd) ** 2).sum(1)
-    ttp = (gd ** 2).sum(1) + 1e-12
-    r2p = 1 - ssp / ttp
+    ttp = (gd ** 2).sum(1)
+    r2p = np.clip(np.where(ttp > 1e-8, 1 - ssp / np.maximum(ttp, 1e-8), 0.0), -1.0, 1.0)
     # RMSE (dex) and peak-RMSE (top-1% amplitude pixels)
     rmse = np.sqrt(((g - p) ** 2).mean(1))
     thr = np.percentile(g, 99.0, axis=1, keepdims=True)
