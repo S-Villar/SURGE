@@ -107,7 +107,10 @@ def main() -> None:
         target_norm=cfg.get("target_norm", "none"),
         target_space=cfg.get("target_space", "log10"),
         target_floor=cfg.get("target_floor"),
-        target_smooth=cfg.get("target_smooth"), return_paths=True)
+        target_smooth=cfg.get("target_smooth"),
+        exclude_keys=(set(json.loads(Path(cfg["exclude_list"]).read_text()).keys())
+                      if cfg.get("exclude_list") else None),
+        return_paths=True)
     N = X.shape[0]
     tr, va, te = _reproduce_split(N, cfg.get("seed", 42),
                                   cfg.get("test_frac", 0.2), cfg.get("val_frac", 0.1))

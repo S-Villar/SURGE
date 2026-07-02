@@ -120,6 +120,7 @@ def build_dataset(
     target_norm: str = "none", target_space: str = "log10",
     target_floor: Optional[float] = None,
     target_smooth: Optional[float] = None,
+    exclude_keys: Optional[set] = None,
     return_paths: bool = False,
 ):
     """Return X (N,C,H,W), Y (N,H,W) target, channel names, case keys.
@@ -151,6 +152,8 @@ def build_dataset(
         c = _read_case(Path(p), spectrum_field)
         if c is None:
             continue
+        if exclude_keys and f"{c['run_id']}_{c['eq_id']}" in exclude_keys:
+            continue                                       # quarantined bad-data case
         mag, m_modes, psi = c["mag"], c["m_modes"], c["psi"]
         sel = (m_modes >= m_lo) & (m_modes <= m_hi)
         if sel.sum() < 4:
@@ -597,6 +600,9 @@ def main() -> None:
                     help="Gaussian-denoise the log target with this sigma (grid px) "
                          "to remove high-frequency speckle while keeping the ridge. "
                          "Try 1. Combine with --target-floor.")
+    ap.add_argument("--exclude-list", default=None,
+                    help="Path to a quarantine JSON (from scan_quality.py) or a text "
+                         "file of case keys to EXCLUDE from the dataset (bad data).")
     ap.add_argument("--models", nargs="+", default=["fno2d", "unet"])
     ap.add_argument("--epochs", type=int, default=80)
     ap.add_argument("--patience", type=int, default=25,
@@ -674,11 +680,20 @@ def main() -> None:
                       f"@epoch {b['epoch']} -> {out/f'loss_{name}.png'}")
         return
 
+    exclude_keys = None
+    if args.exclude_list:
+        raw = Path(args.exclude_list).read_text().strip()
+        try:
+            exclude_keys = set(json.loads(raw).keys())    # quarantine {key: reason}
+        except Exception:
+            exclude_keys = set(l.strip() for l in raw.splitlines() if l.strip())
+        print(f"Excluding {len(exclude_keys)} quarantined cases from {args.exclude_list}")
     X, Y, chan_names, keys = build_dataset(
         args.batch_dir, args.filename, args.n_cases, args.grid,
         args.m_lo, args.m_hi, args.spectrum_field, args.eps,
         target_norm=args.target_norm, target_space=args.target_space,
-        target_floor=args.target_floor, target_smooth=args.target_smooth)
+        target_floor=args.target_floor, target_smooth=args.target_smooth,
+        exclude_keys=exclude_keys)
     N = X.shape[0]
 
     # Persist the run configuration so `python -m surge.check_training` (and the
@@ -703,6 +718,7 @@ def main() -> None:
         "loc_weight": args.loc_weight, "marg_weight": args.marg_weight,
         "loc_beta": args.loc_beta,
         "grad_weight": args.grad_weight, "ssim_weight": args.ssim_weight,
+        "exclude_list": args.exclude_list,
         "lr": args.lr, "lr_schedule": args.lr_schedule, "lr_min": args.lr_min,
         "select_by": args.select_by,
     }, indent=2))
