@@ -290,7 +290,8 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
                ckpt_every: int = 0, peak_weight: float = 0.0, peak_pow: float = 1.0,
                loc_weight: float = 0.0, marg_weight: float = 0.0, loc_beta: float = 8.0,
                lr_schedule: str = "none", lr_min: float = 0.0,
-               select_by: str = "mse", y_std: float = 1.0):
+               select_by: str = "mse", y_std: float = 1.0,
+               grad_weight: float = 0.0, ssim_weight: float = 0.0):
     """Custom loop: per-epoch train+val loss/R2 -> live JSONL, best-val checkpoint,
     val early-stop, live loss plot. Returns (best_net, n_params).
 
@@ -339,6 +340,29 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
     #          vs m), emphasizing the 1-D structure over the flat background.
     use_loc = loc_weight and loc_weight > 0
     use_marg = marg_weight and marg_weight > 0
+    use_grad = grad_weight and grad_weight > 0
+    use_ssim = ssim_weight and ssim_weight > 0
+
+    def _grad_loss(pred, target):
+        # match spatial gradients -> sharper ridge, less blur (edge fidelity)
+        dpx = pred[:, :, :, 1:] - pred[:, :, :, :-1]
+        dtx = target[:, :, :, 1:] - target[:, :, :, :-1]
+        dpy = pred[:, :, 1:, :] - pred[:, :, :-1, :]
+        dty = target[:, :, 1:, :] - target[:, :, :-1, :]
+        return _mse(dpx, dtx) + _mse(dpy, dty)
+
+    def _ssim_loss(pred, target):
+        # 1 - SSIM with an 11x11 average window (differentiable, structure-driven)
+        import torch.nn.functional as F
+        k = 11; pad = k // 2
+        mu_p = F.avg_pool2d(pred, k, 1, pad); mu_t = F.avg_pool2d(target, k, 1, pad)
+        sp = F.avg_pool2d(pred * pred, k, 1, pad) - mu_p ** 2
+        st = F.avg_pool2d(target * target, k, 1, pad) - mu_t ** 2
+        spt = F.avg_pool2d(pred * target, k, 1, pad) - mu_p * mu_t
+        C1 = 0.01 ** 2; C2 = 0.03 ** 2
+        s = ((2 * mu_p * mu_t + C1) * (2 * spt + C2)) / \
+            ((mu_p ** 2 + mu_t ** 2 + C1) * (sp + st + C2) + 1e-12)
+        return 1.0 - s.mean()
     _psi_map = None  # lazily built (H*W,) psi_N coordinate for the soft-argmax
 
     def _psi_softloc(z, psi_flat):
@@ -365,6 +389,10 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
             marg = (_mse(pred.mean(dim=2), target.mean(dim=2))     # psi-marginal
                     + _mse(pred.mean(dim=3), target.mean(dim=3)))  # m-marginal
             loss = loss + marg_weight * marg
+        if use_grad:
+            loss = loss + grad_weight * _grad_loss(pred, target)
+        if use_ssim:
+            loss = loss + ssim_weight * _ssim_loss(pred, target)
         return loss
 
     _terms = ["MSE" if not (peak_weight and peak_weight > 0)
@@ -373,6 +401,10 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
         _terms.append(f"loc(w={loc_weight},beta={loc_beta})")
     if use_marg:
         _terms.append(f"marg(w={marg_weight})")
+    if use_grad:
+        _terms.append(f"grad(w={grad_weight})")
+    if use_ssim:
+        _terms.append(f"ssim(w={ssim_weight})")
     print(f"  [loss] composite = {' + '.join(_terms)}", flush=True)
     cache = gpu_cache and dev.type == "cuda"
     n_train = len(Xtr)
@@ -599,6 +631,12 @@ def main() -> None:
     ap.add_argument("--loc-beta", type=float, default=8.0,
                     help="Softmax temperature for the soft-argmax peak locator "
                          "(higher = sharper toward the true argmax).")
+    ap.add_argument("--grad-weight", type=float, default=0.0,
+                    help="Weight of the spatial-gradient (edge) loss: sharpens the "
+                         "ridge and reduces blur. Try 0.5-2.")
+    ap.add_argument("--ssim-weight", type=float, default=0.0,
+                    help="Weight of the (1-SSIM) structural loss: drives visually "
+                         "faithful reconstructions. Try 0.5-2.")
     ap.add_argument("--lr", type=float, default=1e-3, help="Base learning rate.")
     ap.add_argument("--lr-schedule", choices=["none", "cosine"], default="none",
                     help="'cosine' anneals lr from --lr down to --lr-min over "
@@ -664,6 +702,7 @@ def main() -> None:
         "fno_modes": args.fno_modes, "fno_hidden": args.fno_hidden,
         "loc_weight": args.loc_weight, "marg_weight": args.marg_weight,
         "loc_beta": args.loc_beta,
+        "grad_weight": args.grad_weight, "ssim_weight": args.ssim_weight,
         "lr": args.lr, "lr_schedule": args.lr_schedule, "lr_min": args.lr_min,
         "select_by": args.select_by,
     }, indent=2))
@@ -697,7 +736,8 @@ def main() -> None:
             peak_weight=args.peak_weight, peak_pow=args.peak_pow,
             loc_weight=args.loc_weight, marg_weight=args.marg_weight,
             loc_beta=args.loc_beta, lr_schedule=args.lr_schedule, lr_min=args.lr_min,
-            select_by=args.select_by, y_std=ysd)
+            select_by=args.select_by, y_std=ysd,
+            grad_weight=args.grad_weight, ssim_weight=args.ssim_weight)
         pred = _predict_net(net, Xn[te], args.batch_size)  # (n_test, H, W)
         yt = Yn[te]
         res = {"test_r2_global": r2(yt, pred),
