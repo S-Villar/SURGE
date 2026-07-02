@@ -119,6 +119,7 @@ def build_dataset(
     shaping_keys: Tuple[str, ...] = ("kappa", "delta", "epsilon", "pscale", "batemanscale"),
     target_norm: str = "none", target_space: str = "log10",
     target_floor: Optional[float] = None,
+    target_smooth: Optional[float] = None,
     return_paths: bool = False,
 ):
     """Return X (N,C,H,W), Y (N,H,W) target, channel names, case keys.
@@ -175,6 +176,12 @@ def build_dataset(
         tmp = np.vstack([_interp_to(psi_grid, psi, row) for row in field])  # (nmc,W)
         # interp along m (rows) onto uniform m_grid
         img = np.vstack([_interp_to(m_grid, m_vals, tmp[:, j]) for j in range(grid)]).T  # (H,W)
+        # Optional Gaussian denoise of the (log) target: removes high-frequency
+        # speckle while preserving the coherent ridge (the ~5% incompressible
+        # noise that caps R2). sigma is in grid pixels.
+        if target_smooth is not None and target_smooth > 0:
+            from scipy.ndimage import gaussian_filter
+            img = gaussian_filter(img, sigma=float(target_smooth))
         q_on = _interp_to(psi_grid, c["qpsin"], c["qprof"])
         p_on = _interp_to(psi_grid, c["ppsin"], c["pprof"])
         Q = np.repeat(q_on[None, :], grid, axis=0)        # (H,W) q(psi_j)
@@ -554,6 +561,10 @@ def main() -> None:
                          "peak (peak=0). e.g. 6 keeps 10^0..10^-6 and floors the rest "
                          "to -6, deleting the noise-floor texture. Use with "
                          "--target-norm max --target-space log10.")
+    ap.add_argument("--target-smooth", type=float, default=None,
+                    help="Gaussian-denoise the log target with this sigma (grid px) "
+                         "to remove high-frequency speckle while keeping the ridge. "
+                         "Try 1. Combine with --target-floor.")
     ap.add_argument("--models", nargs="+", default=["fno2d", "unet"])
     ap.add_argument("--epochs", type=int, default=80)
     ap.add_argument("--patience", type=int, default=25,
@@ -629,7 +640,7 @@ def main() -> None:
         args.batch_dir, args.filename, args.n_cases, args.grid,
         args.m_lo, args.m_hi, args.spectrum_field, args.eps,
         target_norm=args.target_norm, target_space=args.target_space,
-        target_floor=args.target_floor)
+        target_floor=args.target_floor, target_smooth=args.target_smooth)
     N = X.shape[0]
 
     # Persist the run configuration so `python -m surge.check_training` (and the
@@ -637,6 +648,7 @@ def main() -> None:
     target_desc = (("max-normalized " if args.target_norm == "max" else "")
                    + ("log10|dp|" if args.target_space == "log10" else "|dp|")
                    + (f", floor -{args.target_floor:g}dex" if args.target_floor else "")
+                   + (f", smooth s={args.target_smooth:g}" if args.target_smooth else "")
                    + ", global z-score")
     (out / "run_config.json").write_text(json.dumps({
         "batch_dir": args.batch_dir, "filename": args.filename,
@@ -646,7 +658,7 @@ def main() -> None:
         "batch_size": args.batch_size, "patience": args.patience,
         "seed": args.seed, "test_frac": args.test_frac, "val_frac": args.val_frac,
         "target_norm": args.target_norm, "target_space": args.target_space,
-        "target_floor": args.target_floor,
+        "target_floor": args.target_floor, "target_smooth": args.target_smooth,
         "target": target_desc,
         "peak_weight": args.peak_weight, "peak_pow": args.peak_pow,
         "fno_modes": args.fno_modes, "fno_hidden": args.fno_hidden,

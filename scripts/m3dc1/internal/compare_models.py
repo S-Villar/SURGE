@@ -43,9 +43,24 @@ def _predict(net, Xn, bs, dev):
     return np.concatenate(out)
 
 
+def _ssim_one(a, b):
+    """Self-contained Gaussian-windowed SSIM (Wang et al.), no skimage dep."""
+    from scipy.ndimage import gaussian_filter
+    a = a.astype(np.float64); b = b.astype(np.float64)
+    L = float(max(a.max(), b.max()) - min(a.min(), b.min()) + 1e-8)
+    C1 = (0.01 * L) ** 2; C2 = (0.03 * L) ** 2
+    s = 1.5
+    mu_a = gaussian_filter(a, s); mu_b = gaussian_filter(b, s)
+    va = gaussian_filter(a * a, s) - mu_a ** 2
+    vb = gaussian_filter(b * b, s) - mu_b ** 2
+    vab = gaussian_filter(a * b, s) - mu_a * mu_b
+    ssim_map = (((2 * mu_a * mu_b + C1) * (2 * vab + C2)) /
+                ((mu_a ** 2 + mu_b ** 2 + C1) * (va + vb + C2)))
+    return float(ssim_map.mean())
+
+
 def _percase_metrics(gt, pr, psi_axis):
     """gt, pr: (N,H,W) in dex units (max-norm log10). Returns dict of (N,) arrays."""
-    from skimage.metrics import structural_similarity as ssim
     N = gt.shape[0]
     g = gt.reshape(N, -1); p = pr.reshape(N, -1)
     # global R2 per case
@@ -67,9 +82,8 @@ def _percase_metrics(gt, pr, psi_axis):
     gp = psi_axis[np.argmax(g, axis=1) % W]
     pp = psi_axis[np.argmax(p, axis=1) % W]
     dpsi = np.abs(gp - pp)
-    # SSIM per case (data_range from GT)
-    ss_im = np.array([ssim(gt[i], pr[i], data_range=float(gt[i].max() - gt[i].min() + 1e-8))
-                      for i in range(N)])
+    # SSIM per case (self-contained gaussian-windowed)
+    ss_im = np.array([_ssim_one(gt[i], pr[i]) for i in range(N)])
     return dict(r2_global=r2g, r2_pattern=r2p, rmse=rmse, peak_rmse=pkrmse,
                 dpsi=dpsi, ssim=ss_im)
 
