@@ -118,7 +118,8 @@ def main() -> None:
 
     net = T._build_net(args.model, X.shape[1],
                        fno_modes=int(cfg.get("fno_modes", 16)),
-                       fno_hidden=int(cfg.get("fno_hidden", 32)))
+                       fno_hidden=int(cfg.get("fno_hidden", 32)),
+                       grid=int(cfg.get("grid", 128)))
     state = torch.load(ckpt, map_location="cpu")
     net.load_state_dict(state["state_dict"])
     net = net.to(dev).eval()

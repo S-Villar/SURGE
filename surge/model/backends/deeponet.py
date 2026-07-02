@@ -66,12 +66,15 @@ class DeepONet(nn.Module if TORCH_AVAILABLE else object):
         branch_width: int = 128,
         trunk_width: int = 128,
         n_hidden: int = 3,
+        coord_dim: int = 1,
     ) -> None:
         if not TORCH_AVAILABLE:
             raise ImportError("PyTorch required")
         super().__init__()
+        # coord_dim is the dimensionality of a trunk query point (1 for a 1-D
+        # output function, 2 for e.g. a spectrum image over (m, psi_N)).
         branch_dims = [n_sensors] + [branch_width] * n_hidden + [n_basis]
-        trunk_dims = [1] + [trunk_width] * n_hidden + [n_basis]
+        trunk_dims = [coord_dim] + [trunk_width] * n_hidden + [n_basis]
         self.branch = _mlp(branch_dims, act=nn.Tanh)
         self.trunk = _mlp(trunk_dims, act=nn.Tanh)
         # Trunk includes activation on output so last activation is applied.

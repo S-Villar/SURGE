@@ -189,7 +189,7 @@ def build_dataset(
 
 
 def _build_net(name: str, in_channels: int, fno_modes: int = 16,
-               fno_hidden: int = 32):
+               fno_hidden: int = 32, grid: int = 128):
     """Build a raw torch net from the SURGE backend modules (own training loop).
 
     fno_modes / fno_hidden control the FNO spectral-truncation width and channel
@@ -203,6 +203,40 @@ def _build_net(name: str, in_channels: int, fno_modes: int = 16,
     if name == "unet":
         from surge.model.backends.unet import _UNetNet
         return _UNetNet(in_channels, 1, base_channels=48, depth=4)
+    if name == "deeponet":
+        import torch
+        import torch.nn as nn
+        from surge.model.backends.deeponet import DeepONet
+
+        class _DeepONetNet(nn.Module):
+            """Image-in/image-out DeepONet for the (m, psi_N) spectrum.
+
+            branch: per-case conditioning read off the input channels sampled
+            along psi_N (q/p profiles, shaping scalars, resonance at m_lo) ->
+            latent. trunk: the 2-D query coordinate (m, psi_N) -> latent. The
+            spectrum value at each grid point is their dot product. Plugs into
+            the same loop as FNO/U-Net: (B,C,H,W) -> (B,1,H,W).
+            """
+
+            def __init__(self, in_ch: int, g: int):
+                super().__init__()
+                self.g = g
+                self.net = DeepONet(
+                    n_sensors=in_ch * g, n_query=g * g, n_basis=128,
+                    branch_width=256, trunk_width=128, n_hidden=4, coord_dim=2)
+                m = torch.linspace(-1.0, 1.0, g)
+                p = torch.linspace(0.0, 1.0, g)
+                MM, PP = torch.meshgrid(m, p, indexing="ij")     # (H=m, W=psi)
+                self.register_buffer(
+                    "coords", torch.stack([MM.reshape(-1), PP.reshape(-1)], 1))
+
+            def forward(self, x):
+                B, C, H, W = x.shape
+                # conditioning is ~constant along m; sample channels at m_lo row
+                u = x[:, :, 0, :].reshape(B, C * W)
+                return self.net(u, self.coords).view(B, 1, H, W)
+
+        return _DeepONetNet(in_channels, grid)
     return None
 
 
@@ -585,7 +619,7 @@ def main() -> None:
         print(f"\n=== Training {name} ===")
         t0 = time.time()
         net = _build_net(name, X.shape[1], fno_modes=args.fno_modes,
-                         fno_hidden=args.fno_hidden)
+                         fno_hidden=args.fno_hidden, grid=args.grid)
         if net is None:
             print(f"  unknown model {name}, skipping"); continue
         net, n_params = _train_net(
