@@ -239,7 +239,8 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
                epochs: int, batch_size: int, lr: float, patience: int,
                gpu_cache: bool = True, resume: Optional[str] = None,
                ckpt_every: int = 0, peak_weight: float = 0.0, peak_pow: float = 1.0,
-               loc_weight: float = 0.0, marg_weight: float = 0.0, loc_beta: float = 8.0):
+               loc_weight: float = 0.0, marg_weight: float = 0.0, loc_beta: float = 8.0,
+               lr_schedule: str = "none", lr_min: float = 0.0):
     """Custom loop: per-epoch train+val loss/R2 -> live JSONL, best-val checkpoint,
     val early-stop, live loss plot. Returns (best_net, n_params).
 
@@ -363,7 +364,21 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
                     "val_loss": vl, "val_r2": vr2, "best_val": best_val,
                     "model": name}, path)
 
+    # Cosine LR annealing (manual so it resumes cleanly by absolute epoch and
+    # works with --patience 0). lr(ep) goes from `lr` down to `lr_min` following
+    # a half-cosine over [1, epochs]; "none" keeps lr constant.
+    def _lr_at(ep: int) -> float:
+        if lr_schedule == "cosine":
+            prog = min(max((ep - 1) / max(1, epochs - 1), 0.0), 1.0)
+            return lr_min + 0.5 * (lr - lr_min) * (1.0 + np.cos(np.pi * prog))
+        return lr
+    if lr_schedule == "cosine":
+        print(f"  [lr] cosine anneal {lr:g} -> {lr_min:g} over {epochs} epochs", flush=True)
+
     for epoch in range(start_epoch + 1, epochs + 1):
+        cur_lr = _lr_at(epoch)
+        for g in opt.param_groups:
+            g["lr"] = cur_lr
         net.train(); tl = 0.0
         if cache:
             perm = torch.randperm(n_train, device=dev)
@@ -384,7 +399,8 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
                 vp.append(net(Xv[i:i + batch_size]).cpu().numpy())
             vp = np.concatenate(vp)
             vl = float(np.mean((vp - yv_np) ** 2)); vr2 = r2(yv_np, vp)
-        rec = {"epoch": epoch, "train_loss": tl, "val_loss": vl, "val_r2": vr2}
+        rec = {"epoch": epoch, "train_loss": tl, "val_loss": vl, "val_r2": vr2,
+               "lr": cur_lr}
         improved = vl < best_val
         if improved:
             best_val = vl; no_improve = 0
@@ -491,6 +507,12 @@ def main() -> None:
     ap.add_argument("--loc-beta", type=float, default=8.0,
                     help="Softmax temperature for the soft-argmax peak locator "
                          "(higher = sharper toward the true argmax).")
+    ap.add_argument("--lr", type=float, default=1e-3, help="Base learning rate.")
+    ap.add_argument("--lr-schedule", choices=["none", "cosine"], default="none",
+                    help="'cosine' anneals lr from --lr down to --lr-min over "
+                         "--epochs (by absolute epoch, so it resumes cleanly).")
+    ap.add_argument("--lr-min", type=float, default=1e-5,
+                    help="Final learning rate for the cosine schedule.")
     ap.add_argument("--no-gpu-cache", action="store_true",
                     help="Disable keeping the full train/val set resident on the GPU.")
     ap.add_argument("--test-frac", type=float, default=0.2)
@@ -541,6 +563,7 @@ def main() -> None:
         "fno_modes": args.fno_modes, "fno_hidden": args.fno_hidden,
         "loc_weight": args.loc_weight, "marg_weight": args.marg_weight,
         "loc_beta": args.loc_beta,
+        "lr": args.lr, "lr_schedule": args.lr_schedule, "lr_min": args.lr_min,
     }, indent=2))
 
     rng = np.random.RandomState(args.seed)
@@ -567,11 +590,11 @@ def main() -> None:
             print(f"  unknown model {name}, skipping"); continue
         net, n_params = _train_net(
             net, name, out, Xn[tr], Yn[tr], Xn[va], Yn[va],
-            epochs=args.epochs, batch_size=args.batch_size, lr=1e-3, patience=args.patience,
+            epochs=args.epochs, batch_size=args.batch_size, lr=args.lr, patience=args.patience,
             gpu_cache=not args.no_gpu_cache, resume=args.resume, ckpt_every=args.ckpt_every,
             peak_weight=args.peak_weight, peak_pow=args.peak_pow,
             loc_weight=args.loc_weight, marg_weight=args.marg_weight,
-            loc_beta=args.loc_beta)
+            loc_beta=args.loc_beta, lr_schedule=args.lr_schedule, lr_min=args.lr_min)
         pred = _predict_net(net, Xn[te], args.batch_size)  # (n_test, H, W)
         yt = Yn[te]
         res = {"test_r2_global": r2(yt, pred),
