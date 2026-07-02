@@ -274,7 +274,8 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
                gpu_cache: bool = True, resume: Optional[str] = None,
                ckpt_every: int = 0, peak_weight: float = 0.0, peak_pow: float = 1.0,
                loc_weight: float = 0.0, marg_weight: float = 0.0, loc_beta: float = 8.0,
-               lr_schedule: str = "none", lr_min: float = 0.0):
+               lr_schedule: str = "none", lr_min: float = 0.0,
+               select_by: str = "mse"):
     """Custom loop: per-epoch train+val loss/R2 -> live JSONL, best-val checkpoint,
     val early-stop, live loss plot. Returns (best_net, n_params).
 
@@ -368,6 +369,17 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
         Yt = torch.tensor(Ytr[:, None], dtype=torch.float32)
         loader = DataLoader(TensorDataset(Xt, Yt), batch_size=batch_size, shuffle=True)
     Xv = torch.tensor(Xva, dtype=torch.float32).to(dev)
+    Yv_t = torch.tensor(Yva[:, None], dtype=torch.float32).to(dev)
+    # psi_N coordinate along the column (dim3) axis, for the peak-location metric
+    _Wv = Yva.shape[-1]
+    _psi_axis = np.linspace(0.0, 1.0, _Wv)
+
+    def _peak_psi(arr):
+        # arr: (N,1,H,W) -> psi_N of the global-max pixel of each image
+        a = arr.reshape(arr.shape[0], -1)
+        col = np.argmax(a, axis=1) % arr.shape[-1]
+        return _psi_axis[col]
+
     hist_path = out / f"history_{name}.jsonl"
     ckpt_path = out / f"ckpt_{name}.pt"
     last_path = out / f"ckpt_{name}_last.pt"
@@ -428,16 +440,25 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
         tl /= n_train
         net.eval()
         with torch.no_grad():
-            vp = []
+            vp = []; vcomp = 0.0
             for i in range(0, len(Xv), batch_size):
-                vp.append(net(Xv[i:i + batch_size]).cpu().numpy())
+                pt = net(Xv[i:i + batch_size])
+                vcomp += float(lossf(pt, Yv_t[i:i + batch_size]).item()) * pt.shape[0]
+                vp.append(pt.cpu().numpy())
             vp = np.concatenate(vp)
             vl = float(np.mean((vp - yv_np) ** 2)); vr2 = r2(yv_np, vp)
+            vcomp /= len(Xv)
+            # peak-location error in psi_N units (0..1): how far the predicted
+            # global-max sits from the true one -- the metric that actually tracks
+            # core-vs-edge mode structure, which MSE/R2 are blind to.
+            vdpsi = float(np.mean(np.abs(_peak_psi(vp) - _peak_psi(yv_np))))
         rec = {"epoch": epoch, "train_loss": tl, "val_loss": vl, "val_r2": vr2,
-               "lr": cur_lr}
-        improved = vl < best_val
+               "val_comp": vcomp, "val_dpsi": vdpsi, "lr": cur_lr}
+        # model selection: composite loss (peak-aware) or plain MSE
+        sel = vcomp if select_by == "composite" else vl
+        improved = sel < best_val
         if improved:
-            best_val = vl; no_improve = 0
+            best_val = sel; no_improve = 0
             best_state = {k: v.detach().cpu().clone() for k, v in net.state_dict().items()}
             _save(ckpt_path, epoch, vl, vr2)
             rec["checkpoint"] = True
@@ -454,7 +475,8 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
             _loss_plot(hist_path, name, out)
         if epoch % 10 == 0 or epoch == 1:
             print(f"  [{name}] epoch {epoch}/{epochs} train={tl:.4f} "
-                  f"val={vl:.4f} val_r2={vr2:.4f}{'  *best' if improved else ''}", flush=True)
+                  f"val={vl:.4f} val_r2={vr2:.4f} comp={vcomp:.4f} "
+                  f"dpsi={vdpsi:.4f}{'  *best' if improved else ''}", flush=True)
         if patience > 0 and no_improve >= patience:
             print(f"  [{name}] early stop at epoch {epoch} (best val {best_val:.4f})", flush=True)
             with hist_path.open("a") as fh:
@@ -547,6 +569,11 @@ def main() -> None:
                          "--epochs (by absolute epoch, so it resumes cleanly).")
     ap.add_argument("--lr-min", type=float, default=1e-5,
                     help="Final learning rate for the cosine schedule.")
+    ap.add_argument("--select-by", choices=["mse", "composite"], default="mse",
+                    help="Metric used to pick the best checkpoint & early-stop: "
+                         "'mse' (plain pixel MSE, R2-like) or 'composite' (the full "
+                         "peak-location + marginal loss). Use 'composite' when you "
+                         "care about peak/mode-structure fidelity over global R2.")
     ap.add_argument("--no-gpu-cache", action="store_true",
                     help="Disable keeping the full train/val set resident on the GPU.")
     ap.add_argument("--test-frac", type=float, default=0.2)
@@ -598,6 +625,7 @@ def main() -> None:
         "loc_weight": args.loc_weight, "marg_weight": args.marg_weight,
         "loc_beta": args.loc_beta,
         "lr": args.lr, "lr_schedule": args.lr_schedule, "lr_min": args.lr_min,
+        "select_by": args.select_by,
     }, indent=2))
 
     rng = np.random.RandomState(args.seed)
@@ -628,7 +656,8 @@ def main() -> None:
             gpu_cache=not args.no_gpu_cache, resume=args.resume, ckpt_every=args.ckpt_every,
             peak_weight=args.peak_weight, peak_pow=args.peak_pow,
             loc_weight=args.loc_weight, marg_weight=args.marg_weight,
-            loc_beta=args.loc_beta, lr_schedule=args.lr_schedule, lr_min=args.lr_min)
+            loc_beta=args.loc_beta, lr_schedule=args.lr_schedule, lr_min=args.lr_min,
+            select_by=args.select_by)
         pred = _predict_net(net, Xn[te], args.batch_size)  # (n_test, H, W)
         yt = Yn[te]
         res = {"test_r2_global": r2(yt, pred),
