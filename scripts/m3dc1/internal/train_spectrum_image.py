@@ -98,6 +98,19 @@ def _read_case(path: Path, spectrum_field: str) -> Optional[Dict]:
                     ppsin = np.asarray(fa["p"]["psin"], float).ravel() if "psin" in fa["p"] else None
             out["qprof"], out["qpsin"] = qprof, qpsin
             out["pprof"], out["ppsin"] = pprof, ppsin
+            # equilibrium geometry (RZ grid) for flux-expansion / LCFS channels
+            if "equilibrium" in rg:
+                eq = rg["equilibrium"]
+                try:
+                    out["equilibrium"] = {
+                        "psi": np.asarray(eq["psi"], float),
+                        "grad_psi_mag": np.asarray(eq["grad_psi_mag"], float),
+                        "psi_lcfs": float(eq["psi_lcfs"][()]),
+                    }
+                except Exception:
+                    out["equilibrium"] = None
+            else:
+                out["equilibrium"] = None
             return out
     except Exception:
         return None
@@ -113,6 +126,45 @@ def _interp_to(grid: np.ndarray, x: Optional[np.ndarray], y: Optional[np.ndarray
     return np.interp(grid, x[order], y[order])
 
 
+def _geometry_profiles(c: Dict, psi_grid: np.ndarray) -> Dict[str, np.ndarray]:
+    """1-D geometry profiles on psi_grid: shear, flux expansion, LCFS proximity.
+
+    - shear ~ (psi_N / q) dq/dpsi_N  (magnetic shear proxy)
+    - flux_exp ~ <|grad psi|>(psi_N) from equilibrium RZ grid (edge compression)
+    - lcfs_prox = 1 - psi_N  (1 at axis, 0 at LCFS)
+    """
+    q_on = _interp_to(psi_grid, c.get("qpsin"), c.get("qprof"), fill=1.0)
+    dq = np.gradient(q_on, psi_grid)
+    shear = psi_grid * dq / np.maximum(np.abs(q_on), 1e-8)
+    lcfs_prox = 1.0 - psi_grid
+
+    flux_exp = np.ones_like(psi_grid)
+    eq = c.get("equilibrium")
+    if eq is not None:
+        psi_f = eq["psi"]
+        grad = eq["grad_psi_mag"]
+        psi_lcfs = eq["psi_lcfs"]
+        psi_axis = float(np.min(psi_f))
+        denom = psi_lcfs - psi_axis
+        if abs(denom) > 1e-12:
+            psin_f = np.clip((psi_f - psi_axis) / denom, 0.0, 1.05)
+            tol = max(0.5 / len(psi_grid), 0.005)
+            for j, pg in enumerate(psi_grid):
+                m = (psin_f >= pg - tol) & (psin_f <= pg + tol)
+                flux_exp[j] = float(grad[m].mean()) if m.any() else np.nan
+            # fill empty bins by linear interp
+            ok = np.isfinite(flux_exp)
+            if ok.any():
+                flux_exp = np.interp(psi_grid, psi_grid[ok], flux_exp[ok])
+            # normalize to [0,1] per case (scale is arbitrary; shape matters)
+            fmax = float(flux_exp.max()) or 1.0
+            flux_exp = flux_exp / fmax
+
+    return {"shear": shear.astype(np.float32),
+            "flux_exp": flux_exp.astype(np.float32),
+            "lcfs_prox": lcfs_prox.astype(np.float32)}
+
+
 def build_dataset(
     batch_dir: str, filename: str, n_cases: Optional[int], grid: int,
     m_lo: float, m_hi: float, spectrum_field: str, eps: float,
@@ -121,6 +173,7 @@ def build_dataset(
     target_floor: Optional[float] = None,
     target_smooth: Optional[float] = None,
     exclude_keys: Optional[set] = None,
+    geom_channels: bool = False,
     return_paths: bool = False,
 ):
     """Return X (N,C,H,W), Y (N,H,W) target, channel names, case keys.
@@ -143,6 +196,8 @@ def build_dataset(
     M = np.repeat(m_grid[:, None], grid, axis=1)          # (H,W) m varies along rows
     PSI = np.repeat(psi_grid[None, :], grid, axis=0)      # (H,W) psi varies along cols
     chan_names = ["psi", "m", "q", "p", "res(m-nq)", "prox", *shaping_keys]
+    if geom_channels:
+        chan_names.extend(["shear", "flux_exp", "lcfs_prox"])
     Xs: List[np.ndarray] = []
     Ys: List[np.ndarray] = []
     keys: List[str] = []
@@ -194,7 +249,13 @@ def build_dataset(
         PROX = 1.0 / (1.0 + RES ** 2)                      # ridge proximity
         sh = c["shaping"]
         const = [np.full((grid, grid), float(sh.get(k, 0.0))) for k in shaping_keys]
-        X = np.stack([PSI, M, Q, P, RES, PROX, *const], axis=0).astype(np.float32)  # (C,H,W)
+        layers = [PSI, M, Q, P, RES, PROX, *const]
+        if geom_channels:
+            geo = _geometry_profiles(c, psi_grid)
+            for gname in ("shear", "flux_exp", "lcfs_prox"):
+                g1 = geo[gname]
+                layers.append(np.repeat(g1[None, :], grid, axis=0))  # (H,W) psi-only
+        X = np.stack(layers, axis=0).astype(np.float32)  # (C,H,W)
         Xs.append(X); Ys.append(img.astype(np.float32)); keys.append(f"{c['run_id']}_{c['eq_id']}")
         kept.append(str(p))
         if (i + 1) % 500 == 0:
@@ -204,6 +265,30 @@ def build_dataset(
     if return_paths:
         return X, Y, chan_names, keys, kept
     return X, Y, chan_names, keys
+
+
+def _psi_balance_weights(Y: np.ndarray, n_bins: int = 10,
+                         strength: float = 1.0) -> np.ndarray:
+    """Per-sample weights that cross-balance the peak-psi_N distribution.
+
+    The dataset is dominated by edge/pedestal modes (peak at high psi_N); core-
+    localized modes (low psi_N) are rare, so a plain-MSE model under-fits them.
+    We bin each training image by the psi_N of its global-max pixel, then weight
+    every sample by (1/bin_count)**strength (normalized to mean 1). Feeding these
+    to a WeightedRandomSampler oversamples the rare core bins so each ridge
+    location is seen ~equally -- balancing classes WITHOUT changing sampling of
+    the underlying files. strength=1 => full inverse-frequency; 0 => uniform.
+    """
+    N, H, W = Y.shape
+    col = np.argmax(Y.reshape(N, -1), axis=1) % W        # peak psi_N column
+    psi_peak = col / max(W - 1, 1)                        # 0..1
+    edges = np.linspace(0.0, 1.0, n_bins + 1)
+    b = np.clip(np.digitize(psi_peak, edges[1:-1]), 0, n_bins - 1)
+    counts = np.bincount(b, minlength=n_bins).astype(float)
+    inv = np.where(counts > 0, 1.0 / counts, 0.0) ** float(strength)
+    w = inv[b]
+    w *= len(w) / w.sum()                                 # mean weight -> 1
+    return w.astype(np.float32), counts
 
 
 def _build_net(name: str, in_channels: int, fno_modes: int = 16,
@@ -294,7 +379,8 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
                loc_weight: float = 0.0, marg_weight: float = 0.0, loc_beta: float = 8.0,
                lr_schedule: str = "none", lr_min: float = 0.0,
                select_by: str = "mse", y_std: float = 1.0,
-               grad_weight: float = 0.0, ssim_weight: float = 0.0):
+               grad_weight: float = 0.0, ssim_weight: float = 0.0,
+               sample_w: Optional[np.ndarray] = None):
     """Custom loop: per-epoch train+val loss/R2 -> live JSONL, best-val checkpoint,
     val early-stop, live loss plot. Returns (best_net, n_params).
 
@@ -411,13 +497,31 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
     print(f"  [loss] composite = {' + '.join(_terms)}", flush=True)
     cache = gpu_cache and dev.type == "cuda"
     n_train = len(Xtr)
+    # Optional core-mode class balancing: oversample rare peak-psi bins so the
+    # model sees each ridge location ~equally (instead of the edge-dominated
+    # empirical mix). Implemented as weighted resampling with replacement.
+    use_balance = sample_w is not None
+    if use_balance:
+        print(f"  [balance] psi-balanced sampling on "
+              f"(w in [{sample_w.min():.2f},{sample_w.max():.2f}])", flush=True)
     if cache:
         Xg = torch.tensor(Xtr, dtype=torch.float32, device=dev)
         Yg = torch.tensor(Ytr[:, None], dtype=torch.float32, device=dev)
+        if use_balance:
+            wt = torch.tensor(sample_w, dtype=torch.float32, device=dev)
     else:
         Xt = torch.tensor(Xtr, dtype=torch.float32)
         Yt = torch.tensor(Ytr[:, None], dtype=torch.float32)
-        loader = DataLoader(TensorDataset(Xt, Yt), batch_size=batch_size, shuffle=True)
+        if use_balance:
+            from torch.utils.data import WeightedRandomSampler
+            sampler = WeightedRandomSampler(
+                torch.as_tensor(sample_w, dtype=torch.double),
+                num_samples=n_train, replacement=True)
+            loader = DataLoader(TensorDataset(Xt, Yt), batch_size=batch_size,
+                                sampler=sampler)
+        else:
+            loader = DataLoader(TensorDataset(Xt, Yt), batch_size=batch_size,
+                                shuffle=True)
     Xv = torch.tensor(Xva, dtype=torch.float32).to(dev)
     Yv_t = torch.tensor(Yva[:, None], dtype=torch.float32).to(dev)
     # psi_N coordinate along the column (dim3) axis, for the peak-location metric
@@ -477,7 +581,10 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
             g["lr"] = cur_lr
         net.train(); tl = 0.0
         if cache:
-            perm = torch.randperm(n_train, device=dev)
+            if use_balance:
+                perm = torch.multinomial(wt, n_train, replacement=True)
+            else:
+                perm = torch.randperm(n_train, device=dev)
             for i in range(0, n_train, batch_size):
                 idx = perm[i:i + batch_size]
                 opt.zero_grad(); loss = lossf(net(Xg[idx]), Yg[idx]); loss.backward(); opt.step()
@@ -603,6 +710,19 @@ def main() -> None:
     ap.add_argument("--exclude-list", default=None,
                     help="Path to a quarantine JSON (from scan_quality.py) or a text "
                          "file of case keys to EXCLUDE from the dataset (bad data).")
+    ap.add_argument("--geom-channels", action="store_true",
+                    help="Add geometry conditioning channels: magnetic shear s(psi_N), "
+                         "flux-surface-averaged |grad psi|(psi_N), and LCFS proximity "
+                         "(1-psi_N). Helps edge-localized modes.")
+    ap.add_argument("--balance-psi", action="store_true",
+                    help="Cross-balance core modes: oversample rare peak-psi_N bins "
+                         "via weighted resampling so core-localized modes are seen as "
+                         "often as edge modes (removes the edge-dominated bias).")
+    ap.add_argument("--balance-bins", type=int, default=10,
+                    help="Number of peak-psi_N bins used for --balance-psi.")
+    ap.add_argument("--balance-strength", type=float, default=1.0,
+                    help="Power on inverse bin frequency for --balance-psi: 1 = full "
+                         "inverse-frequency balancing, 0 = uniform (off), 0.5 = milder.")
     ap.add_argument("--models", nargs="+", default=["fno2d", "unet"])
     ap.add_argument("--epochs", type=int, default=80)
     ap.add_argument("--patience", type=int, default=25,
@@ -693,7 +813,7 @@ def main() -> None:
         args.m_lo, args.m_hi, args.spectrum_field, args.eps,
         target_norm=args.target_norm, target_space=args.target_space,
         target_floor=args.target_floor, target_smooth=args.target_smooth,
-        exclude_keys=exclude_keys)
+        exclude_keys=exclude_keys, geom_channels=args.geom_channels)
     N = X.shape[0]
 
     # Persist the run configuration so `python -m surge.check_training` (and the
@@ -719,6 +839,9 @@ def main() -> None:
         "loc_beta": args.loc_beta,
         "grad_weight": args.grad_weight, "ssim_weight": args.ssim_weight,
         "exclude_list": args.exclude_list,
+        "geom_channels": args.geom_channels,
+        "balance_psi": args.balance_psi, "balance_bins": args.balance_bins,
+        "balance_strength": args.balance_strength,
         "lr": args.lr, "lr_schedule": args.lr_schedule, "lr_min": args.lr_min,
         "select_by": args.select_by,
     }, indent=2))
@@ -730,12 +853,32 @@ def main() -> None:
     te = perm[:n_test]; va = perm[n_test:n_test + n_val]; tr = perm[n_test + n_val:]
     print(f"Split: train={len(tr)} val={len(va)} test={len(te)}")
 
+    # Persist the exact split (case keys + row indices) so offline eval and
+    # cross-model comparison use the identical held-out set (reproducibility).
+    keys_arr = np.asarray(keys)
+    (out / "splits.json").write_text(json.dumps({
+        "seed": args.seed, "n_cases": int(N),
+        "test_frac": args.test_frac, "val_frac": args.val_frac,
+        "exclude_list": args.exclude_list,
+        "train_idx": tr.tolist(), "val_idx": va.tolist(), "test_idx": te.tolist(),
+        "train_keys": keys_arr[tr].tolist(), "val_keys": keys_arr[va].tolist(),
+        "test_keys": keys_arr[te].tolist(),
+    }))
+
     # Standardize input channels (train stats), and target (train stats, global).
     xm = X[tr].mean((0, 2, 3), keepdims=True)
     xs = X[tr].std((0, 2, 3), keepdims=True) + 1e-8
     Xn = (X - xm) / xs
     ym = float(Y[tr].mean()); ysd = float(Y[tr].std() + 1e-8)
     Yn = (Y - ym) / ysd
+
+    # Optional core-mode balancing weights (computed on the raw training targets;
+    # argmax is invariant to the monotone z-score so Y vs Yn is equivalent).
+    sample_w = None
+    if args.balance_psi:
+        sample_w, bcounts = _psi_balance_weights(
+            Y[tr], n_bins=args.balance_bins, strength=args.balance_strength)
+        print(f"psi-balance: peak-psi bin counts (train) = {bcounts.astype(int).tolist()}")
 
     results: Dict[str, Dict] = {}
     for name in args.models:
@@ -753,7 +896,8 @@ def main() -> None:
             loc_weight=args.loc_weight, marg_weight=args.marg_weight,
             loc_beta=args.loc_beta, lr_schedule=args.lr_schedule, lr_min=args.lr_min,
             select_by=args.select_by, y_std=ysd,
-            grad_weight=args.grad_weight, ssim_weight=args.ssim_weight)
+            grad_weight=args.grad_weight, ssim_weight=args.ssim_weight,
+            sample_w=sample_w)
         pred = _predict_net(net, Xn[te], args.batch_size)  # (n_test, H, W)
         yt = Yn[te]
         res = {"test_r2_global": r2(yt, pred),

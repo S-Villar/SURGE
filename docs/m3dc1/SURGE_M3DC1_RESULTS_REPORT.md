@@ -1,6 +1,6 @@
 # SURGE × M3DC1 Surrogates — Workflow & Results Report
 
-_Status snapshot: **2026‑07‑01**. Repo: **SURGE-exp**, branch `feat/m3dc1-on-model-bench`._
+_Status snapshot: **2026‑07‑02**. Repo: **SURGE-exp**, branch `feat/m3dc1-on-model-bench`._
 
 This report documents (1) how the data was generated and where it lives, (2) how the
 SURGE training workflow is run, (3) the model zoo and where each model lives, and
@@ -8,11 +8,16 @@ SURGE training workflow is run, (3) the model zoo and where each model lives, an
 **core/edge mode locator**, and the **eigenmode (δp̂ spectrum) predictor** — including
 loss curves, run comparisons, and per‑case eigenmode visuals.
 
-> **Headline update (this revision):** the δp̂ spectrum plateau was broken by
-> **per‑case max normalization** implemented inside SURGE. On the full dataset the
-> FNO2D validation R² jumped **0.605 → 0.836**, and per‑case *pattern* R² went from a
-> median of ≈ −0.9 (non‑normalized) to **median 0.74**, with **99 % of cases R² > 0.5**.
-> All new comparison figures and per‑case panels below come from this best model.
+> **Headline update (2026‑07‑02):** the δp̂ spectrum model was pushed from global val
+> R² ≈ 0.84 to **test global R² 0.920 / pattern R² 0.924** by three orthogonal levers —
+> **target flooring** (clip the max‑norm log10 target at −6 dex), **target smoothing**
+> (Gaussian σ=1 denoise), and **quarantining** the 2 corrupt cases found by a
+> full‑dataset quality scan. A new **core‑mode balancing** toggle (`--balance-psi`)
+> improves rare core modes (R² 0.897→0.908) and peak amplitude at a ~0.003 aggregate
+> cost. See [§4.4](#44-pushing-past-084--target-conditioning-quarantine-core-balancing-20260702).
+>
+> _Prior headline (2026‑07‑01):_ the plateau was first broken by **per‑case max
+> normalization** (val R² 0.605 → 0.836; per‑case pattern R² median −0.9 → 0.74).
 
 > **Figures.** All images are committed next to this file under
 > [`docs/m3dc1/assets/`](assets) and referenced with relative paths, so they render on
@@ -275,6 +280,103 @@ Non‑normalized full run (the plateau being broken):
 
 ![loss no-norm full](assets/loss_nonorm_full.png)
 
+### 4.4 Pushing past 0.84 — target conditioning, quarantine, core balancing (2026‑07‑02)
+
+Three orthogonal levers on the full dataset (FNO2D, 48 Fourier modes, composite
+loss = pixel MSE + soft‑argmax peak‑location + marginal profiles), all evaluated on
+GPU on the same held‑out test split:
+
+| Run | Change vs previous | test global R² | test pattern R² |
+|---|---|---:|---:|
+| max‑norm log10 (2026‑07‑01 best) | — | 0.836 (val) | — |
+| `spectrum_fno48_floor6_smooth1` | + target floor (−6 dex) + Gaussian smooth σ=1 | 0.905 | 0.920 |
+| **`spectrum_fno48_floor6_smooth1_qc`** | + quarantine 2 corrupt cases | **0.9199** | **0.9238** |
+| `spectrum_fno48_floor6_smooth1_qc_bal` | + core‑mode balancing (`--balance-psi`) | 0.9168 | 0.9206 |
+| `spectrum_unet_floor6_smooth1` | U‑Net, same recipe | 0.891 | 0.896 |
+
+**The levers (all in [`train_spectrum_image.py`](../../scripts/m3dc1/internal/train_spectrum_image.py)):**
+- **Target flooring** (`--target-floor 6`): clip the max‑norm log10 target at −6 dex,
+  deleting the ungradeable noise‑floor texture so R²/RMSE focus on the top 6 decades of
+  amplitude that actually define the mode.
+- **Target smoothing** (`--target-smooth 1`): Gaussian σ=1 denoise removes high‑frequency
+  speckle while preserving the coherent ridge (the ~5 % incompressible noise that caps R²).
+- **Quarantine** ([`scan_quality.py`](../../scripts/m3dc1/internal/scan_quality.py) →
+  `--exclude-list`): a full scan of all **9,976** cases flagged only **2** empty‑spectrum /
+  NaN‑γ cases (`run15_sparc_1416`, `run15_sparc_1417`); excluding them removes the
+  pathological tail that single‑handedly moved the mean.
+- **Core‑mode balancing** (`--balance-psi`): oversamples rare low‑ψ_N (core) peak bins via
+  weighted resampling so core modes are seen ~as often as edge modes, without changing
+  file sampling. Split persisted to `splits.json` so all evals use the identical held‑out set.
+
+**Did balancing help?** On a shared test split, per peak‑ψ_N bin (core → edge):
+
+![balance per-bin](assets/compare_balance_bins.png)
+
+Core‑bin (ψ_N≈0.05) R² **0.897 → 0.908** and peak‑amplitude RMSE **0.247 → 0.244 dex**,
+at a −0.003 aggregate R² cost (it gives back a little on the dominant edge bin). Balancing
+improves exactly the two things aggregate R² hides — rare core modes and peak amplitude.
+
+**Peak‑fidelity metrics now logged live** each epoch: `val_dpsi` (peak *location* error in
+ψ_N) and `val_peak_rmse` (RMSE over the top‑1 % amplitude pixels, in dex). Best model:
+**dpsi ≈ 0.05** (location ✓) but **peak RMSE ≈ 0.25 dex** (peak amplitude still ≈ 1.8× off —
+the remaining lever; next: `--peak-weight`, less smoothing).
+
+> **⚠️ Evaluate FNO models on GPU.** The FNO's FFT spectral convolutions produce ~0.05
+> **lower** R² on CPU than the GPU the model trained on. All eval scripts
+> (`eval_best_run.py`, `compare_balance.py`, `field_recon_compare.py`,
+> `export_predictions_cache.py`) default to `--device cuda`.
+
+#### What does pattern R² = 0.92 actually look like?
+
+Distribution of per‑case pattern R² over the **1,994‑case test split**, plus a gallery of
+cases sampled worst→best (p2 … p98). Generated by
+[`metric_gallery.py`](../../scripts/m3dc1/internal/metric_gallery.py):
+
+![metric reality check](assets/metric_reality_check_qc.png)
+
+- **The distribution is tight and high:** median **0.908**, mean 0.892; only **0.9 %** of
+  cases fall below R² 0.5 and **0.1 %** (2 cases) below 0. So "0.92" is not carried by a
+  few easy cases — the *typical* case is well recovered.
+- **The metric matches the picture — for the ridge.** Across the whole range, the coherent
+  `m`‑ridge (the physically meaningful structure) is located and shaped correctly; the
+  residual (`pred − GT`) is dominated by **noise‑floor texture**, not ridge error. Even the
+  p2 worst case gets the ridge right and differs mainly in a systematic floor offset.
+- **What it does *not* capture:** fine `m`‑structure and exact peak amplitude — precisely
+  the things target‑smoothing (σ=1) trades away and that the field reconstruction below
+  exposes. **Pattern R² measures spectral‑shape recovery; it over‑states field
+  usefulness.** The field is the harder, more honest test.
+
+Use this against the interactive explorer to gut‑check any model:
+[`explore_mlm3dc1_predictions.ipynb`](../../m3dc1ml/notebooks/explore_mlm3dc1_predictions.ipynb)
+now colors the parametric coverage map by `R2` / `pattern_R2` / `SSIM` / `NRMSE` and pops
+a 2×3 (spectrum + field, GT/pred/diff) panel on tap, and carries a model‑comparison table
+across all cached models.
+
+Combined spectrum + field gallery (same cases, 6 panels per row):
+
+![metric reality check combined](assets/metric_reality_check_qc_combined.png)
+
+Field-only gallery (same cases):
+
+![metric reality check field](assets/metric_reality_check_qc_field.png)
+
+#### Eigenmode FIELD reconstruction — max‑normalized, ground truth vs predicted
+
+The magnitude is what the surrogate learns; the **phase and absolute scale are unlearnable
+per‑eigenmode gauges**, so the predicted `|δp̂|` is combined with the case's **true phase**,
+inverse‑FFT'd along `m`, mapped onto the `fpy` PEST flux grid, and **each field is
+max‑normalized to unit amplitude** for a pure shape comparison against the ground‑truth
+data. Rows = worst / median / best test case; columns = true / predicted / difference
+([`field_recon_compare.py`](../../scripts/m3dc1/internal/field_recon_compare.py)):
+
+![field recon qc](assets/field_recon_qc.png)
+
+- **best** — a large‑scale **core** mode is reproduced almost exactly.
+- **median** — an **edge/pedestal** mode: right location and rough structure, reduced fine detail.
+- **worst** — a sharp **edge‑localized** mode collapses to ~0: under‑predicting/smoothing
+  the thin edge ridge destroys the constructive interference that builds the localized field.
+  This is the field‑space signature of the peak‑amplitude weakness above.
+
 ---
 
 ## 5. Tooling: how to run, monitor, resume, and validate
@@ -323,14 +425,28 @@ comparison, stable/unstable check, and γ‑vs‑time convergence per case):
 |---|---|---|
 | Growth rate γ | **R² 0.87** (HPO torch_mlp) | ✅ strong |
 | Core/edge mode locator | **R² 0.91 / 95 % acc / AUC 0.99** | ✅ strong |
-| δp̂ spectrum image — global R² | **0.836** (FNO2D, max‑norm log10) | ✅ big jump (was 0.605) |
-| δp̂ spectrum image — per‑case shape R² | **median 0.74, 99 % > 0.5** | ✅ now positive everywhere |
+| δp̂ spectrum image — global R² | **0.920** (FNO2D floor6+smooth1+quarantine) | ✅ 0.605 → 0.836 → **0.920** |
+| δp̂ spectrum image — pattern R² | **0.924** (test) | ✅ |
+| δp̂ spectrum image — core‑mode R² | **0.908** (w/ `--balance-psi`) | ✅ balancing helps rare modes |
+| δp̂ peak amplitude (peak RMSE) | ≈ 0.25 dex (~1.8× off) | 🟡 remaining lever |
 | δp̂ per‑mode magnitude (MLP) | R² 0.36 | 🟡 superseded by image model |
 | Re(δp̂) | ≈ 0 | ❌ ill‑posed (use magnitude) |
 
-**What moved the needle:** the per‑case max‑normalization preprocessing added to SURGE —
-learning the eigenmode *shape* instead of fighting its arbitrary amplitude.
+**What moved the needle:** (1) per‑case max‑normalization (learn shape, not amplitude);
+(2) target flooring + smoothing (drop the ungradeable noise floor); (3) quarantining the
+2 corrupt cases; (4) core‑mode balancing for the rare low‑ψ_N modes.
 
-**Next steps:** (1) correlate per‑case prediction error with `gs_error`; (2) push the
-sharp‑ridge (worst) cases with a sharper loss / higher Fourier modes; (3) reconstruct
-δp(R,Z) from the normalized predicted spectra and score RZ‑field SSIM.
+**Known limitation — geometry is not an input.** Training happens entirely in `(m, ψ_N)`
+spectral space. The model sees the `ψ_N` coordinate (so ψ_N=1 = LCFS), `q`/`p` profiles,
+the `m−n·q` resonance, and shaping scalars (κ, δ, R0, a) — but **not** the real‑space
+`ψ(R,Z)` flux map, edge flux‑surface compression, or the LCFS `(R,Z)` location. Edge‑
+localized modes' sharpness/`m`‑broadening are set by exactly that edge geometry, which is
+the population the model handles worst.
+
+**Next steps:** (1) **add geometry channels** (magnetic shear `s=r q'/q`, flux expansion /
+`|∇ψ|` at the edge, LCFS proximity) — most promising for the sharp edge modes and required
+if we ever drop the "borrow true phase" reconstruction crutch; (2) attack peak amplitude
+with `--peak-weight` and reduced smoothing (target peak RMSE < 0.2 dex so edge modes
+survive the field reconstruction); (3) FNO+U‑Net ensemble; (4) physics‑residual target
+(predict deviation from the `m ≈ n·q(ψ)` ridge prior); (5) correlate residual error with
+`gs_error`/γ(t) convergence.
