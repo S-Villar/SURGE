@@ -624,3 +624,29 @@ smooth1, quarantine, **no geom**):
 **patience counter reset to zero**, so the run continued for another full `--patience`
 window instead of stopping near the prior best epoch. **Fix (planned):** persist
 `no_improve`, `best_epoch`, and field-selection bests in checkpoints; restore on resume.
+
+**Update 2026-07-04 (feat/m3dc1-field-loss):** Implemented in
+[`train_spectrum_image.py`](../../scripts/m3dc1/internal/train_spectrum_image.py) —
+checkpoints now store `no_improve`, `best_epoch`, `best_field_frac_gt1`, `best_field_p90`;
+`--resume` restores them. Added `--time-budget-min` (default **0** = off) for clean 4 h exits.
+
+---
+
+## 9. Field-loss experiment (qc_peak4 + oracle phase) — in progress
+
+**Recipe:** m ∈ [−80, 20], `--peak-weight 4`, floor6, smooth1, quarantine, **no geom**.
+**New terms (additive, default off):** `--field-loss-weight 0.5` (IFFT-proxy relL2 on training
+grid with oracle true phase), `--select-by field` (frac relL2>1, then p90 on 64 stratified
+val cases every 5 epochs).
+
+**Launch (4 h interactive, restartable):**
+```bash
+bash scripts/m3dc1/internal/run_field_loss_4h.sh
+# OUT=runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss
+```
+
+**Step 0 finding:** `PHASE AT TRAIN TIME: YES` — complex `spectrum/p/spec` in every
+`csdata_deltap_b_ver.h5` case; current loader uses `|spec|` only unless field-loss flags are set.
+
+Post-training: `export_predictions_cache.py` + `field_bench.py` vs qc_peak4 / qc / qc_mhi100.
+Results section to be appended when the run converges.

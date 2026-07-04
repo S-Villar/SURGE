@@ -14,6 +14,12 @@ the global test R2 and the per-image de-meaned ("pattern") R2, which isolates ho
 well the spatial ridge structure is captured from the (unpredictable, arbitrary)
 per-case overall amplitude offset.
 
+Optional field-loss terms (--field-loss-weight, default 0) add a differentiable
+IFFT-proxy relL2 on the training grid with **oracle true phase** from the HDF5
+complex spectrum. This optimizes field quality given known phase — the same
+post-hoc idealization as field_recon_compare.py. With all new flags at defaults,
+behavior is unchanged from the magnitude-only recipe.
+
 Architectures: SURGE backends pytorch.fno2d and pytorch.unet (conditioning as
 input channels). Case-grouped split is trivial here (one image per case).
 
@@ -380,7 +386,19 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
                lr_schedule: str = "none", lr_min: float = 0.0,
                select_by: str = "mse", y_std: float = 1.0,
                grad_weight: float = 0.0, ssim_weight: float = 0.0,
-               sample_w: Optional[np.ndarray] = None):
+               sample_w: Optional[np.ndarray] = None,
+               time_budget_min: float = 0.0,
+               field_loss_weight: float = 0.0, field_loss_warmup: int = 20,
+               coherence_loss_weight: float = 0.0, coherence_cutoff: float = 0.25,
+               phase_tr: Optional[np.ndarray] = None,
+               target_floor: Optional[float] = None, y_mean: float = 0.0,
+               field_select_n: int = 64, field_select_every: int = 5,
+               val_field_subset: Optional[np.ndarray] = None,
+               val_paths: Optional[List[str]] = None,
+               Yva_dex: Optional[np.ndarray] = None,
+               m_grid: Optional[np.ndarray] = None,
+               psi_grid: Optional[np.ndarray] = None,
+               spectrum_field: str = "p"):
     """Custom loop: per-epoch train+val loss/R2 -> live JSONL, best-val checkpoint,
     val early-stop, live loss plot. Returns (best_net, n_params).
 
@@ -494,6 +512,12 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
         _terms.append(f"grad(w={grad_weight})")
     if use_ssim:
         _terms.append(f"ssim(w={ssim_weight})")
+    use_field = field_loss_weight and field_loss_weight > 0 and phase_tr is not None
+    use_coh = coherence_loss_weight and coherence_loss_weight > 0
+    if use_field:
+        _terms.append(f"field(w={field_loss_weight},warm={field_loss_warmup})")
+    if use_coh:
+        _terms.append(f"coh(w={coherence_loss_weight},cut={coherence_cutoff})")
     print(f"  [loss] composite = {' + '.join(_terms)}", flush=True)
     cache = gpu_cache and dev.type == "cuda"
     n_train = len(Xtr)
@@ -522,6 +546,15 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
         else:
             loader = DataLoader(TensorDataset(Xt, Yt), batch_size=batch_size,
                                 shuffle=True)
+    phase_tr_t = None
+    if use_field:
+        phase_tr_t = torch.tensor(phase_tr, dtype=torch.float32, device=dev if cache else "cpu")
+    from spectrum_field_loss import (  # noqa: E402
+        field_loss_training_grid_torch,
+        coherence_loss_torch,
+        eval_val_field_selection,
+        field_metric_improved,
+    )
     Xv = torch.tensor(Xva, dtype=torch.float32).to(dev)
     Yv_t = torch.tensor(Yva[:, None], dtype=torch.float32).to(dev)
     # psi_N coordinate along the column (dim3) axis, for the peak-location metric
@@ -538,7 +571,10 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
     ckpt_path = out / f"ckpt_{name}.pt"
     last_path = out / f"ckpt_{name}_last.pt"
     best_val = float("inf"); best_state = None; no_improve = 0
+    best_epoch = 0
+    best_field_frac = float("inf"); best_field_p90 = float("inf")
     start_epoch = 0
+    train_wall_start = time.time()
     if resume:
         rp = Path(resume)
         ck = torch.load(rp, map_location=dev)
@@ -550,9 +586,14 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
                 print(f"  [resume] could not restore optimizer state: {exc}")
         start_epoch = int(ck.get("epoch", 0))
         best_val = float(ck.get("best_val", ck.get("val_loss", float("inf"))))
+        no_improve = int(ck.get("no_improve", 0))
+        best_epoch = int(ck.get("best_epoch", start_epoch))
+        best_field_frac = float(ck.get("best_field_frac_gt1", float("inf")))
+        best_field_p90 = float(ck.get("best_field_p90", float("inf")))
         best_state = {k: v.detach().cpu().clone() for k, v in net.state_dict().items()}
         print(f"  [resume] {rp} -> start at epoch {start_epoch+1}, "
-              f"best_val={best_val:.5f}", flush=True)
+              f"best_val={best_val:.5f} no_improve={no_improve} best_epoch={best_epoch}",
+              flush=True)
     if not resume:
         hist_path.write_text("")  # truncate only for a fresh run
     yv_np = Yva[:, None]
@@ -562,6 +603,10 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
                                    for k, v in net.state_dict().items()},
                     "optimizer": opt.state_dict(), "epoch": epoch,
                     "val_loss": vl, "val_r2": vr2, "best_val": best_val,
+                    "no_improve": no_improve, "best_epoch": best_epoch,
+                    "best_field_frac_gt1": best_field_frac,
+                    "best_field_p90": best_field_p90,
+                    "select_by": select_by,
                     "model": name}, path)
 
     # Cosine LR annealing (manual so it resumes cleanly by absolute epoch and
@@ -574,6 +619,35 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
         return lr
     if lr_schedule == "cosine":
         print(f"  [lr] cosine anneal {lr:g} -> {lr_min:g} over {epochs} epochs", flush=True)
+    if use_field and not cache:
+        print("  [field-loss] requires GPU cache; field term disabled for this run", flush=True)
+        use_field = False
+
+    def _warm_scale(ep: int) -> float:
+        if field_loss_warmup <= 0:
+            return 1.0
+        return min(1.0, ep / float(field_loss_warmup))
+
+    def _aux_loss(pred, target, idx, ep: int):
+        if not (use_field or use_coh):
+            return pred.new_tensor(0.0)
+        warm = _warm_scale(ep)
+        aux = pred.new_tensor(0.0)
+        if use_field:
+            ph = phase_tr_t[idx]
+            aux = aux + warm * field_loss_weight * field_loss_training_grid_torch(
+                pred, target, ph, y_mean=y_mean, y_std=y_std, target_floor=target_floor)
+        if use_coh:
+            aux = aux + warm * coherence_loss_weight * coherence_loss_torch(
+                pred, target, y_mean=y_mean, y_std=y_std,
+                target_floor=target_floor, cutoff=coherence_cutoff)
+        return aux
+
+    run_field_eval = (
+        select_by == "field"
+        or (field_loss_weight > 0)
+        or (coherence_loss_weight > 0)
+    ) and val_field_subset is not None and val_paths is not None
 
     for epoch in range(start_epoch + 1, epochs + 1):
         cur_lr = _lr_at(epoch)
@@ -587,12 +661,24 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
                 perm = torch.randperm(n_train, device=dev)
             for i in range(0, n_train, batch_size):
                 idx = perm[i:i + batch_size]
-                opt.zero_grad(); loss = lossf(net(Xg[idx]), Yg[idx]); loss.backward(); opt.step()
+                opt.zero_grad()
+                pt = net(Xg[idx])
+                loss = lossf(pt, Yg[idx]) + _aux_loss(pt, Yg[idx], idx, epoch)
+                loss.backward(); opt.step()
                 tl += loss.item() * len(idx)
         else:
             for xb, yb in loader:
                 xb, yb = xb.to(dev), yb.to(dev)
-                opt.zero_grad(); loss = lossf(net(xb), yb); loss.backward(); opt.step()
+                opt.zero_grad()
+                pt = net(xb)
+                if use_field or use_coh:
+                    if not cache:
+                        loss = lossf(pt, yb)
+                    else:
+                        loss = lossf(pt, yb)
+                else:
+                    loss = lossf(pt, yb)
+                loss.backward(); opt.step()
                 tl += loss.item() * len(xb)
         tl /= n_train
         net.eval()
@@ -622,15 +708,37 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
         rec = {"epoch": epoch, "train_loss": tl, "val_loss": vl, "val_r2": vr2,
                "val_comp": vcomp, "val_dpsi": vdpsi, "val_rmse": val_rmse,
                "val_peak_rmse": val_peak_rmse, "lr": cur_lr}
-        # model selection: composite loss (peak-aware) or plain MSE
-        sel = vcomp if select_by == "composite" else vl
-        improved = sel < best_val
+        field_stats = None
+        if run_field_eval and (epoch % field_select_every == 0 or epoch == 1):
+            field_stats = eval_val_field_selection(
+                net, Xva, Yva_dex if Yva_dex is not None else Yva,
+                val_field_subset, val_paths, m_grid, psi_grid, spectrum_field,
+                device=str(dev), batch_size=batch_size, crf_cutoff=coherence_cutoff)
+            rec.update(field_stats)
+        # model selection: composite loss (peak-aware), plain MSE, or field metrics
+        if select_by == "field" and field_stats is not None:
+            improved = field_metric_improved(
+                field_stats["val_field_frac_gt1"], field_stats["val_field_p90"],
+                best_field_frac, best_field_p90)
+            sel = field_stats["val_field_frac_gt1"]
+        elif select_by == "field":
+            improved = False
+            sel = best_field_frac
+        else:
+            sel = vcomp if select_by == "composite" else vl
+            improved = sel < best_val
         if improved:
-            best_val = sel; no_improve = 0
+            if select_by == "field" and field_stats is not None:
+                best_field_frac = field_stats["val_field_frac_gt1"]
+                best_field_p90 = field_stats["val_field_p90"]
+            else:
+                best_val = sel
+            no_improve = 0
+            best_epoch = epoch
             best_state = {k: v.detach().cpu().clone() for k, v in net.state_dict().items()}
             _save(ckpt_path, epoch, vl, vr2)
             rec["checkpoint"] = True
-        else:
+        elif select_by != "field" or field_stats is not None:
             no_improve += 1
         # Always keep a rolling "last" checkpoint (with optimizer state) so the
         # run can be resumed from exactly where it stopped, even mid-plateau.
@@ -642,15 +750,30 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
         if epoch % 5 == 0 or improved or epoch == 1:
             _loss_plot(hist_path, name, out)
         if epoch % 10 == 0 or epoch == 1:
-            print(f"  [{name}] epoch {epoch}/{epochs} train={tl:.4f} "
-                  f"val={vl:.4f} val_r2={vr2:.4f} comp={vcomp:.4f} "
-                  f"dpsi={vdpsi:.4f} rmse={val_rmse:.3f} pkrmse={val_peak_rmse:.3f}"
-                  f"{'  *best' if improved else ''}", flush=True)
+            msg = (f"  [{name}] epoch {epoch}/{epochs} train={tl:.4f} "
+                   f"val={vl:.4f} val_r2={vr2:.4f} comp={vcomp:.4f} "
+                   f"dpsi={vdpsi:.4f} rmse={val_rmse:.3f} pkrmse={val_peak_rmse:.3f}")
+            if field_stats is not None:
+                msg += (f" fld_frac>1={field_stats['val_field_frac_gt1']:.3f}"
+                        f" fld_p90={field_stats['val_field_p90']:.3f}"
+                        f" fld_crf={field_stats['val_field_crf']:.3f}")
+            msg += "  *best" if improved else ""
+            print(msg, flush=True)
         if patience > 0 and no_improve >= patience:
-            print(f"  [{name}] early stop at epoch {epoch} (best val {best_val:.4f})", flush=True)
+            print(f"  [{name}] early stop at epoch {epoch} "
+                  f"(best epoch {best_epoch}, no_improve={no_improve})", flush=True)
             with hist_path.open("a") as fh:
                 fh.write(json.dumps({"epoch": epoch, "early_stop": True}) + "\n")
             break
+        if time_budget_min > 0:
+            elapsed_min = (time.time() - train_wall_start) / 60.0
+            if elapsed_min >= time_budget_min:
+                print(f"  [{name}] time budget {time_budget_min:.0f} min reached "
+                      f"({elapsed_min:.1f} min elapsed); resumable {last_path}", flush=True)
+                if best_state is not None:
+                    net.load_state_dict(best_state)
+                _loss_plot(hist_path, name, out)
+                return net, n_params
     if best_state is not None:
         net.load_state_dict(best_state)
     _loss_plot(hist_path, name, out)
@@ -769,11 +892,27 @@ def main() -> None:
                          "--epochs (by absolute epoch, so it resumes cleanly).")
     ap.add_argument("--lr-min", type=float, default=1e-5,
                     help="Final learning rate for the cosine schedule.")
-    ap.add_argument("--select-by", choices=["mse", "composite"], default="mse",
+    ap.add_argument("--select-by", choices=["mse", "composite", "field"], default="mse",
                     help="Metric used to pick the best checkpoint & early-stop: "
-                         "'mse' (plain pixel MSE, R2-like) or 'composite' (the full "
-                         "peak-location + marginal loss). Use 'composite' when you "
-                         "care about peak/mode-structure fidelity over global R2.")
+                         "'mse' (plain pixel MSE, R2-like), 'composite' (the full "
+                         "peak-location + marginal loss), or 'field' (frac relL2>1 "
+                         "then p90 on a family-stratified val subset).")
+    ap.add_argument("--time-budget-min", type=float, default=0.0,
+                    help="Wall-time budget in minutes (0=disabled). Before the budget "
+                         "is hit, write a resumable last checkpoint and exit cleanly.")
+    ap.add_argument("--field-loss-weight", type=float, default=0.0,
+                    help="Weight of differentiable IFFT-proxy field relL2 loss with "
+                         "oracle true phase on the training grid (0=off).")
+    ap.add_argument("--field-loss-warmup", type=int, default=20,
+                    help="Linear warmup epochs for --field-loss-weight.")
+    ap.add_argument("--coherence-loss-weight", type=float, default=0.0,
+                    help="Weight of phase-free coherence-penalty (CRF surrogate; 0=off).")
+    ap.add_argument("--coherence-cutoff", type=float, default=0.25,
+                    help="Low radial-k quantile for coherence / CRF losses.")
+    ap.add_argument("--field-select-n", type=int, default=64,
+                    help="Family-stratified val cases for --select-by field.")
+    ap.add_argument("--field-select-every", type=int, default=5,
+                    help="Run field-selection eval every N epochs.")
     ap.add_argument("--no-gpu-cache", action="store_true",
                     help="Disable keeping the full train/val set resident on the GPU.")
     ap.add_argument("--test-frac", type=float, default=0.2)
@@ -808,13 +947,30 @@ def main() -> None:
         except Exception:
             exclude_keys = set(l.strip() for l in raw.splitlines() if l.strip())
         print(f"Excluding {len(exclude_keys)} quarantined cases from {args.exclude_list}")
-    X, Y, chan_names, keys = build_dataset(
-        args.batch_dir, args.filename, args.n_cases, args.grid,
-        args.m_lo, args.m_hi, args.spectrum_field, args.eps,
-        target_norm=args.target_norm, target_space=args.target_space,
-        target_floor=args.target_floor, target_smooth=args.target_smooth,
-        exclude_keys=exclude_keys, geom_channels=args.geom_channels)
+    need_field = (
+        args.field_loss_weight > 0
+        or args.coherence_loss_weight > 0
+        or args.select_by == "field"
+    )
+    if need_field:
+        X, Y, chan_names, keys, paths = build_dataset(
+            args.batch_dir, args.filename, args.n_cases, args.grid,
+            args.m_lo, args.m_hi, args.spectrum_field, args.eps,
+            target_norm=args.target_norm, target_space=args.target_space,
+            target_floor=args.target_floor, target_smooth=args.target_smooth,
+            exclude_keys=exclude_keys, geom_channels=args.geom_channels,
+            return_paths=True)
+    else:
+        X, Y, chan_names, keys = build_dataset(
+            args.batch_dir, args.filename, args.n_cases, args.grid,
+            args.m_lo, args.m_hi, args.spectrum_field, args.eps,
+            target_norm=args.target_norm, target_space=args.target_space,
+            target_floor=args.target_floor, target_smooth=args.target_smooth,
+            exclude_keys=exclude_keys, geom_channels=args.geom_channels)
+        paths = None
     N = X.shape[0]
+    m_grid = np.linspace(float(args.m_lo), float(args.m_hi), args.grid)
+    psi_grid = np.linspace(0.0, 1.0, args.grid)
 
     # Persist the run configuration so `python -m surge.check_training` (and the
     # user) can see exactly what preprocessing/target this run used.
@@ -844,6 +1000,13 @@ def main() -> None:
         "balance_strength": args.balance_strength,
         "lr": args.lr, "lr_schedule": args.lr_schedule, "lr_min": args.lr_min,
         "select_by": args.select_by,
+        "time_budget_min": args.time_budget_min,
+        "field_loss_weight": args.field_loss_weight,
+        "field_loss_warmup": args.field_loss_warmup,
+        "coherence_loss_weight": args.coherence_loss_weight,
+        "coherence_cutoff": args.coherence_cutoff,
+        "field_select_n": args.field_select_n,
+        "field_select_every": args.field_select_every,
     }, indent=2))
 
     rng = np.random.RandomState(args.seed)
@@ -880,6 +1043,22 @@ def main() -> None:
             Y[tr], n_bins=args.balance_bins, strength=args.balance_strength)
         print(f"psi-balance: peak-psi bin counts (train) = {bcounts.astype(int).tolist()}")
 
+    phase_tr = None
+    val_field_subset = None
+    val_paths_list = None
+    if need_field:
+        from spectrum_field_loss import build_phase_grids_for_keys, stratified_subset  # noqa: E402
+        print("Loading oracle phase grids for field loss / selection...", flush=True)
+        phases_all = build_phase_grids_for_keys(
+            args.batch_dir, args.filename, keys, args.grid,
+            float(args.m_lo), float(args.m_hi), args.spectrum_field)
+        phase_tr = phases_all[tr]
+        keys_arr = np.asarray(keys)
+        val_keys_list = keys_arr[va].tolist()
+        val_paths_list = [paths[i] for i in va]
+        val_field_subset = stratified_subset(
+            val_keys_list, min(args.field_select_n, len(va)), args.seed)
+
     results: Dict[str, Dict] = {}
     for name in args.models:
         print(f"\n=== Training {name} ===")
@@ -897,7 +1076,21 @@ def main() -> None:
             loc_beta=args.loc_beta, lr_schedule=args.lr_schedule, lr_min=args.lr_min,
             select_by=args.select_by, y_std=ysd,
             grad_weight=args.grad_weight, ssim_weight=args.ssim_weight,
-            sample_w=sample_w)
+            sample_w=sample_w,
+            time_budget_min=args.time_budget_min,
+            field_loss_weight=args.field_loss_weight,
+            field_loss_warmup=args.field_loss_warmup,
+            coherence_loss_weight=args.coherence_loss_weight,
+            coherence_cutoff=args.coherence_cutoff,
+            phase_tr=phase_tr,
+            target_floor=args.target_floor, y_mean=ym,
+            field_select_n=args.field_select_n,
+            field_select_every=args.field_select_every,
+            val_field_subset=val_field_subset,
+            val_paths=val_paths_list,
+            Yva_dex=Y[va],
+            m_grid=m_grid, psi_grid=psi_grid,
+            spectrum_field=args.spectrum_field)
         pred = _predict_net(net, Xn[te], args.batch_size)  # (n_test, H, W)
         yt = Yn[te]
         res = {"test_r2_global": r2(yt, pred),
