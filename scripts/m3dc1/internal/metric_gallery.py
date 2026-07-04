@@ -113,6 +113,10 @@ def main() -> None:
     ap.add_argument("--metric", default="r2_pattern",
                     choices=["r2_pattern", "r2_global"])
     ap.add_argument("--n-gallery", type=int, default=6)
+    ap.add_argument("--ref-cache", default=None,
+                    help="Pick gallery rows at same percentiles as this reference cache (match by key)")
+    ap.add_argument("--tag", default=None,
+                    help="Optional suffix for title (e.g. 'ref qc cases')")
     ap.add_argument("--field", action="store_true",
                     help="field only (legacy); default is spectrum+field combined")
     ap.add_argument("--out", required=True)
@@ -137,12 +141,29 @@ def main() -> None:
     n = len(idx)
     label = args.metric.replace("r2_", "").replace("_", " ") + " R²"
 
+    pcts = np.linspace(2, 98, args.n_gallery)
     thr = [0.0, 0.5, 0.7, 0.8, 0.9]
     frac = {t: float((mv < t).mean()) for t in thr}
-
-    pcts = np.linspace(2, 98, args.n_gallery)
-    gal_rows = [int(np.clip(round(p / 100 * (n - 1)), 0, n - 1)) for p in pcts]
-    gal_idx = [int(order[r]) for r in gal_rows]
+    if args.ref_cache:
+        rz = np.load(args.ref_cache, allow_pickle=True)
+        rsplit = rz["split"].astype(str)
+        rmask = np.ones(len(rsplit), bool) if args.split == "all" else (rsplit == args.split)
+        ridx = np.where(rmask)[0]
+        rmetric = rz[args.metric].astype(np.float32)
+        rm = rmetric[rmask]
+        rorder = ridx[np.argsort(rm)]
+        rn = len(ridx)
+        gal_rows = [int(np.clip(round(p / 100 * (rn - 1)), 0, rn - 1)) for p in pcts]
+        ref_keys = rz["keys"].astype(str)[rorder[gal_rows]]
+        key_to_i = {keys[i]: i for i in idx}
+        gal_idx = [key_to_i[k] for k in ref_keys if k in key_to_i]
+        ref_metric = {k: float(rmetric[i]) for i, k in enumerate(rz["keys"].astype(str)) if rmask[i]}
+        gallery_mode = f"same cases as {Path(args.ref_cache).parent.name} (p2…p98)"
+    else:
+        gal_rows = [int(np.clip(round(p / 100 * (n - 1)), 0, n - 1)) for p in pcts]
+        gal_idx = [int(order[r]) for r in gal_rows]
+        ref_metric = {}
+        gallery_mode = f"worst→best by this model's {label}"
 
     combined = not args.field
     ncols = 6 if combined else 3
@@ -166,7 +187,9 @@ def main() -> None:
 
     for r, ci in enumerate(gal_idx, start=1):
         tag = f"p{int(round(pcts[r-1]))}"
-        row_label = (f"{tag}  {keys[ci]}\n{label}={metric[ci]:.3f}")
+        row_label = f"{tag}  {keys[ci]}\n{label}={metric[ci]:.3f}"
+        if ref_metric and keys[ci] in ref_metric:
+            row_label += f"  (ref={ref_metric[keys[ci]]:.3f})"
 
         if combined:
             sax = [fig.add_subplot(gs[r, c]) for c in range(3)]
@@ -203,8 +226,8 @@ def main() -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     title = ("spectrum + RZ field" if combined else
              ("RZ field" if args.field else "spectrum"))
-    fig.suptitle(f"Does the metric match the picture? ({title})  "
-                 f"worst→best across {args.split} split",
+    fig.suptitle(f"Does the metric match the picture? ({title})  {gallery_mode}"
+                 + (f"  ·  {args.tag}" if args.tag else ""),
                  fontsize=12, y=1.002)
     fig.savefig(out, dpi=120, bbox_inches="tight", pad_inches=0.15)
     print(f"Wrote {out}")

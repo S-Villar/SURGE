@@ -1,0 +1,94 @@
+{
+  "split": "test",
+  "n_cases": 1994,
+  "models": [
+    {
+      "n": 1994,
+      "mean_relL2": 0.8211710084607876,
+      "median_relL2": 0.7407535009008647,
+      "p90_relL2": 1.2173185732381329,
+      "frac_relL2_gt_1": 0.2001003009027081,
+      "mean_relL2_alpha": 0.7053592115805857,
+      "median_relL2_alpha": 0.6990517293600234,
+      "p90_relL2_alpha": 0.875424887248166,
+      "frac_relL2_alpha_gt_1": 0.0,
+      "mean_crf": 0.7374548126707237,
+      "relL2_bins": {
+        "<0.3": 2,
+        "<0.5": 49,
+        "<0.7": 745,
+        "<1.0": 799,
+        ">1.0": 399
+      },
+      "model": "spectrum_fno48_floor6_smooth1_qc"
+    },
+    {
+      "n": 1994,
+      "mean_relL2": 0.8082626734035749,
+      "median_relL2": 0.7301934536047866,
+      "p90_relL2": 1.1647728839072482,
+      "frac_relL2_gt_1": 0.17953861584754263,
+      "mean_relL2_alpha": 0.6957018544394671,
+      "median_relL2_alpha": 0.6778142120064651,
+      "p90_relL2_alpha": 0.8706177303468389,
+      "frac_relL2_alpha_gt_1": 0.0,
+      "mean_crf": 0.825288802971495,
+      "relL2_bins": {
+        "<0.3": 0,
+        "<0.5": 40,
+        "<0.7": 818,
+        "<1.0": 778,
+        ">1.0": 358
+      },
+      "model": "spectrum_fno48_floor6_smooth1_qc_peak4"
+    },
+    {
+      "n": 1994,
+      "mean_relL2": 0.9213030500813933,
+      "median_relL2": 0.8253486204817133,
+      "p90_relL2": 1.3504908170785903,
+      "frac_relL2_gt_1": 0.2668004012036108,
+      "mean_relL2_alpha": 0.7740714588436963,
+      "median_relL2_alpha": 0.760799772110871,
+      "p90_relL2_alpha": 0.9364750364028476,
+      "frac_relL2_alpha_gt_1": 0.0,
+      "mean_crf": 0.7882045562903754,
+      "relL2_bins": {
+        "<0.3": 0,
+        "<0.5": 19,
+        "<0.7": 298,
+        "<1.0": 1145,
+        ">1.0": 532
+      },
+      "model": "spectrum_fno48_floor6_smooth1_qc_mhi100"
+    }
+  ],
+  "ranking": [
+    "spectrum_fno48_floor6_smooth1_qc_peak4",
+    "spectrum_fno48_floor6_smooth1_qc",
+    "spectrum_fno48_floor6_smooth1_qc_mhi100"
+  ],
+  "win_counts": {
+    "spectrum_fno48_floor6_smooth1_qc": 722,
+    "spectrum_fno48_floor6_smooth1_qc_peak4": 1042,
+    "spectrum_fno48_floor6_smooth1_qc_mhi100": 230
+  },
+  "pairwise": {
+    "spectrum_fno48_floor6_smooth1_qc_vs_spectrum_fno48_floor6_smooth1_qc_peak4": {
+      "spectrum_fno48_floor6_smooth1_qc_wins": 838,
+      "spectrum_fno48_floor6_smooth1_qc_peak4_wins": 1156,
+      "ties": 0
+    },
+    "spectrum_fno48_floor6_smooth1_qc_vs_spectrum_fno48_floor6_smooth1_qc_mhi100": {
+      "spectrum_fno48_floor6_smooth1_qc_wins": 1569,
+      "spectrum_fno48_floor6_smooth1_qc_mhi100_wins": 425,
+      "ties": 0
+    },
+    "spectrum_fno48_floor6_smooth1_qc_peak4_vs_spectrum_fno48_floor6_smooth1_qc_mhi100": {
+      "spectrum_fno48_floor6_smooth1_qc_peak4_wins": 1633,
+      "spectrum_fno48_floor6_smooth1_qc_mhi100_wins": 361,
+      "ties": 0
+    }
+  },
+  "crf_cutoff": 0.25
+}

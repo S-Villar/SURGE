@@ -110,6 +110,7 @@ def main() -> None:
         target_smooth=cfg.get("target_smooth"),
         exclude_keys=(set(json.loads(Path(cfg["exclude_list"]).read_text()).keys())
                       if cfg.get("exclude_list") else None),
+        geom_channels=cfg.get("geom_channels", False),
         return_paths=True)
     N = X.shape[0]
     tr, va, te = _reproduce_split(N, cfg.get("seed", 42),

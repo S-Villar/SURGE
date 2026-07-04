@@ -85,7 +85,8 @@ def main() -> None:
             m_lo, m_hi, cfg["spectrum_field"], cfg.get("eps", 1e-12),
             target_norm=cfg["target_norm"], target_space=cfg["target_space"],
             target_floor=cfg.get("target_floor"), target_smooth=cfg.get("target_smooth"),
-            exclude_keys=exclude_keys)
+            exclude_keys=exclude_keys,
+            geom_channels=cfg.get("geom_channels", False))
         keys = np.array(keys)
     N = X.shape[0]; keys = np.asarray(keys)
 
