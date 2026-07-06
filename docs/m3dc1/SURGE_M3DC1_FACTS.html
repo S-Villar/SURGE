@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html><head><meta charset='utf-8'>
+<title>SURGE M3DC1 Facts</title>
+<style>
+body { font-family: system-ui, sans-serif; max-width: 1100px; margin: 2em auto; line-height: 1.45; font-size: 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 12px; margin: 1em 0; }
+th, td { border: 1px solid #ccc; padding: 4px 6px; }
+th { background: #f0f0f0; }
+pre { overflow-x: auto; font-size: 11px; }
+code { background: #f4f4f4; }
+</style></head><body><h1>SURGE M3DC1 — Measured Facts Only</h1>
+<p>Machine-readable companion for Opus. No recommendations. Source: <code>field_bench/</code>, <code>predictions_cache.npz</code>, <code>run_config.json</code>, <code>spectrum_image_metrics.json</code>.</p>
+<p>Generated from repo: <code>/global/u2/a/asvillar/src/SURGE</code></p>
+<h2>1. Dataset and split</h2>
+<ul>
+<li><code>batch_dir</code>: /pscratch/sd/a/asvillar/mp288/jobs/batch_16</li>
+<li><code>filename</code>: csdata_deltap_b_ver.h5</li>
+<li><code>n_cases_total</code>: 9974</li>
+<li><code>n_train</code>: 6983</li>
+<li><code>n_val</code>: 997</li>
+<li><code>n_test</code>: 1994</li>
+<li><code>quarantined_cases</code>: 2</li>
+<li><code>grid</code>: 128</li>
+<li><code>m_window_default</code>: [-80.0, 20.0]</li>
+<li><code>test_frac</code>: 0.2</li>
+<li><code>val_frac</code>: 0.1</li>
+<li><code>seed</code>: 42</li>
+</ul>
+<h2>2. Run identifiers</h2>
+<table>
+<thead>
+<tr>
+<th>short_id</th>
+<th>run_dir</th>
+<th style="text-align: right;">target_smooth</th>
+<th>geom_channels</th>
+<th>select_by</th>
+<th style="text-align: right;">field_loss_weight</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>qc_peak4</td>
+<td><code>runs/spectrum_fno48_floor6_smooth1_qc_peak4</code></td>
+<td style="text-align: right;">1.0</td>
+<td>False</td>
+<td>composite</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>qc</td>
+<td><code>runs/spectrum_fno48_floor6_smooth1_qc</code></td>
+<td style="text-align: right;">1.0</td>
+<td>?</td>
+<td>composite</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>fieldloss_sigma1</td>
+<td><code>runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss</code></td>
+<td style="text-align: right;">1.0</td>
+<td>False</td>
+<td>field</td>
+<td style="text-align: right;">0.5</td>
+</tr>
+<tr>
+<td>run_B_geom</td>
+<td><code>runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_geom</code></td>
+<td style="text-align: right;">1.0</td>
+<td>True</td>
+<td>field</td>
+<td style="text-align: right;">0.5</td>
+</tr>
+<tr>
+<td>run_D_smooth05</td>
+<td><code>runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05</code></td>
+<td style="text-align: right;">0.5</td>
+<td>False</td>
+<td>field</td>
+<td style="text-align: right;">0.5</td>
+</tr>
+<tr>
+<td>run_Dprime_smooth0</td>
+<td><code>runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0</code></td>
+<td style="text-align: right;">0.0</td>
+<td>False</td>
+<td>field</td>
+<td style="text-align: right;">0.5</td>
+</tr>
+<tr>
+<td>qc_mhi100</td>
+<td><code>runs/spectrum_fno48_floor6_smooth1_qc_mhi100</code></td>
+<td style="text-align: right;">1.0</td>
+<td>True</td>
+<td>composite</td>
+<td style="text-align: right;">0</td>
+</tr>
+</tbody>
+</table>
+<h2>3. Field benchmark (test split, n=1994, oracle phase, max-normalized relL2)</h2>
+<table>
+<thead>
+<tr>
+<th>short_id</th>
+<th>model_name</th>
+<th style="text-align: right;">frac_relL2_gt_1</th>
+<th style="text-align: right;">p90_relL2</th>
+<th style="text-align: right;">median_relL2</th>
+<th style="text-align: right;">mean_relL2</th>
+<th style="text-align: right;">mean_relL2_alpha</th>
+<th style="text-align: right;">mean_crf</th>
+<th>relL2_bins</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>fieldloss_sigma1</td>
+<td><code>spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss</code></td>
+<td style="text-align: right;">0.100301</td>
+<td style="text-align: right;">1.000982</td>
+<td style="text-align: right;">0.632380</td>
+<td style="text-align: right;">0.702172</td>
+<td style="text-align: right;">0.630578</td>
+<td style="text-align: right;">0.906868</td>
+<td>&lt;0.3:5, &lt;0.5:207, &lt;0.7:1070, &lt;1.0:512, &gt;1.0:200</td>
+</tr>
+<tr>
+<td>run_B_geom</td>
+<td><code>spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_geom</code></td>
+<td style="text-align: right;">0.122367</td>
+<td style="text-align: right;">1.060514</td>
+<td style="text-align: right;">0.642282</td>
+<td style="text-align: right;">0.719473</td>
+<td style="text-align: right;">0.634677</td>
+<td style="text-align: right;">0.928602</td>
+<td>&lt;0.3:11, &lt;0.5:164, &lt;0.7:1077, &lt;1.0:498, &gt;1.0:244</td>
+</tr>
+<tr>
+<td>run_D_smooth05</td>
+<td><code>spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05</code></td>
+<td style="text-align: right;">0.051153</td>
+<td style="text-align: right;">0.819828</td>
+<td style="text-align: right;">0.455423</td>
+<td style="text-align: right;">0.527356</td>
+<td style="text-align: right;">0.479942</td>
+<td style="text-align: right;">0.711472</td>
+<td>&lt;0.3:120, &lt;0.5:1031, &lt;0.7:492, &lt;1.0:249, &gt;1.0:102</td>
+</tr>
+<tr>
+<td>run_Dprime_smooth0</td>
+<td><code>spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0</code></td>
+<td style="text-align: right;">0.048144</td>
+<td style="text-align: right;">0.802933</td>
+<td style="text-align: right;">0.420863</td>
+<td style="text-align: right;">0.490567</td>
+<td style="text-align: right;">0.448424</td>
+<td style="text-align: right;">0.605373</td>
+<td>&lt;0.3:433, &lt;0.5:808, &lt;0.7:437, &lt;1.0:220, &gt;1.0:96</td>
+</tr>
+<tr>
+<td>qc_mhi100</td>
+<td><code>spectrum_fno48_floor6_smooth1_qc_mhi100</code></td>
+<td style="text-align: right;">0.266800</td>
+<td style="text-align: right;">1.350491</td>
+<td style="text-align: right;">0.825349</td>
+<td style="text-align: right;">0.921303</td>
+<td style="text-align: right;">0.774071</td>
+<td style="text-align: right;">0.788205</td>
+<td>&lt;0.3:0, &lt;0.5:19, &lt;0.7:298, &lt;1.0:1145, &gt;1.0:532</td>
+</tr>
+</tbody>
+</table>
+<p>Broken-case counts (relL2&gt;1 from relL2_bins <code>&gt;1.0</code>): see table above.</p>
+<h2>4. Spectrum pattern R² (test split, from predictions_cache.npz)</h2>
+<table>
+<thead>
+<tr>
+<th>short_id</th>
+<th style="text-align: right;">n_test</th>
+<th style="text-align: right;">patR2_median</th>
+<th style="text-align: right;">patR2_mean</th>
+<th style="text-align: right;">patR2_min</th>
+<th style="text-align: right;">patR2_max</th>
+<th style="text-align: right;">pct_lt_0.9</th>
+<th style="text-align: right;">pct_lt_0.7</th>
+<th style="text-align: right;">pct_lt_0.5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>qc_peak4</td>
+<td style="text-align: right;">1994</td>
+<td style="text-align: right;">0.910263</td>
+<td style="text-align: right;">0.894521</td>
+<td style="text-align: right;">-0.123021</td>
+<td style="text-align: right;">0.996702</td>
+<td style="text-align: right;">36.41%</td>
+<td style="text-align: right;">2.51%</td>
+<td style="text-align: right;">1.05%</td>
+</tr>
+<tr>
+<td>qc</td>
+<td style="text-align: right;">1994</td>
+<td style="text-align: right;">0.907999</td>
+<td style="text-align: right;">0.891847</td>
+<td style="text-align: right;">-0.328849</td>
+<td style="text-align: right;">0.997177</td>
+<td style="text-align: right;">40.17%</td>
+<td style="text-align: right;">2.41%</td>
+<td style="text-align: right;">0.90%</td>
+</tr>
+<tr>
+<td>fieldloss_sigma1</td>
+<td style="text-align: right;">1994</td>
+<td style="text-align: right;">0.908058</td>
+<td style="text-align: right;">0.888431</td>
+<td style="text-align: right;">-0.644259</td>
+<td style="text-align: right;">0.994431</td>
+<td style="text-align: right;">39.27%</td>
+<td style="text-align: right;">3.16%</td>
+<td style="text-align: right;">1.20%</td>
+</tr>
+<tr>
+<td>run_B_geom</td>
+<td style="text-align: right;">1994</td>
+<td style="text-align: right;">0.912202</td>
+<td style="text-align: right;">0.897988</td>
+<td style="text-align: right;">0.183657</td>
+<td style="text-align: right;">0.996420</td>
+<td style="text-align: right;">38.11%</td>
+<td style="text-align: right;">2.36%</td>
+<td style="text-align: right;">0.80%</td>
+</tr>
+<tr>
+<td>run_D_smooth05</td>
+<td style="text-align: right;">1994</td>
+<td style="text-align: right;">0.826073</td>
+<td style="text-align: right;">0.816105</td>
+<td style="text-align: right;">-0.115711</td>
+<td style="text-align: right;">0.996095</td>
+<td style="text-align: right;">90.32%</td>
+<td style="text-align: right;">5.97%</td>
+<td style="text-align: right;">0.95%</td>
+</tr>
+<tr>
+<td>run_Dprime_smooth0</td>
+<td style="text-align: right;">1994</td>
+<td style="text-align: right;">0.750145</td>
+<td style="text-align: right;">0.743726</td>
+<td style="text-align: right;">-0.743333</td>
+<td style="text-align: right;">0.991806</td>
+<td style="text-align: right;">96.79%</td>
+<td style="text-align: right;">23.17%</td>
+<td style="text-align: right;">1.86%</td>
+</tr>
+<tr>
+<td>qc_mhi100</td>
+<td style="text-align: right;">1994</td>
+<td style="text-align: right;">0.931525</td>
+<td style="text-align: right;">0.906164</td>
+<td style="text-align: right;">-0.960747</td>
+<td style="text-align: right;">0.997959</td>
+<td style="text-align: right;">18.36%</td>
+<td style="text-align: right;">3.41%</td>
+<td style="text-align: right;">1.65%</td>
+</tr>
+</tbody>
+</table>
+<h3>Pattern R² quantiles (test)</h3>
+<ul>
+<li><strong>qc_peak4</strong>: p02=0.6623, p10=0.8589, p50=0.9103, p90=0.9393, p98=0.9873</li>
+<li><strong>qc</strong>: p02=0.6736, p10=0.8427, p50=0.9080, p90=0.9378, p98=0.9863</li>
+<li><strong>fieldloss_sigma1</strong>: p02=0.6186, p10=0.8494, p50=0.9081, p90=0.9360, p98=0.9789</li>
+<li><strong>run_B_geom</strong>: p02=0.6684, p10=0.8467, p50=0.9122, p90=0.9523, p98=0.9847</li>
+<li><strong>run_D_smooth05</strong>: p02=0.5861, p10=0.7277, p50=0.8261, p90=0.8994, p98=0.9803</li>
+<li><strong>run_Dprime_smooth0</strong>: p02=0.5026, p10=0.6636, p50=0.7501, p90=0.8263, p98=0.9737</li>
+<li><strong>qc_mhi100</strong>: p02=0.5574, p10=0.8664, p50=0.9315, p90=0.9547, p98=0.9835</li>
+</ul>
+<h2>5. Pairwise field relL2 wins (lower wins, same 1994 test cases)</h2>
+<ul>
+<li><code>spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_vs_spectrum_fno48_floor6_smooth1_qc_peak4</code>: {'spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_wins': 1691, 'spectrum_fno48_floor6_smooth1_qc_peak4_wins': 303, 'ties': 0}</li>
+<li><code>spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_vs_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0</code>: {'spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_wins': 157, 'spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0_wins': 1837, 'ties': 0}</li>
+<li><code>spectrum_fno48_floor6_smooth1_qc_peak4_vs_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0</code>: {'spectrum_fno48_floor6_smooth1_qc_peak4_wins': 112, 'spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0_wins': 1882, 'ties': 0}</li>
+</ul>
+<h3>Run D′ vs Run D (merged per_case from smooth0 and smooth05 benches)</h3>
+<ul>
+<li><code>smooth0_lower_relL2_wins</code>: 1466</li>
+<li><code>smooth05_lower_relL2_wins</code>: 528</li>
+<li><code>ties</code>: 0</li>
+<li><code>mean_relL2_delta_smooth0_minus_smooth05</code>: -0.036788822467402206</li>
+<li><code>median_relL2_delta</code>: -0.03622600000000001</li>
+</ul>
+<h2>6. Per-equilibrium-family field metrics (selected families)</h2>
+<h3>sparc_1427</h3>
+<table>
+<thead>
+<tr>
+<th>short_id</th>
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">mean_relL2</th>
+<th style="text-align: right;">median_relL2</th>
+<th style="text-align: right;">p90_relL2</th>
+<th style="text-align: right;">frac_relL2_gt_1</th>
+<th style="text-align: right;">mean_crf</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>fieldloss_sigma1</td>
+<td style="text-align: right;">22.0</td>
+<td style="text-align: right;">0.810187</td>
+<td style="text-align: right;">0.725625</td>
+<td style="text-align: right;">1.061639</td>
+<td style="text-align: right;">0.136364</td>
+<td style="text-align: right;">0.934928</td>
+</tr>
+<tr>
+<td>run_D_smooth05</td>
+<td style="text-align: right;">22.0</td>
+<td style="text-align: right;">0.672855</td>
+<td style="text-align: right;">0.597460</td>
+<td style="text-align: right;">0.871239</td>
+<td style="text-align: right;">0.045455</td>
+<td style="text-align: right;">0.748630</td>
+</tr>
+<tr>
+<td>run_Dprime_smooth0</td>
+<td style="text-align: right;">22.0</td>
+<td style="text-align: right;">0.623280</td>
+<td style="text-align: right;">0.578300</td>
+<td style="text-align: right;">0.849104</td>
+<td style="text-align: right;">0.090909</td>
+<td style="text-align: right;">0.652554</td>
+</tr>
+<tr>
+<td>run_B_geom</td>
+<td style="text-align: right;">22.0</td>
+<td style="text-align: right;">0.856475</td>
+<td style="text-align: right;">0.759376</td>
+<td style="text-align: right;">1.119713</td>
+<td style="text-align: right;">0.227273</td>
+<td style="text-align: right;">0.948438</td>
+</tr>
+</tbody>
+</table>
+<h3>sparc_1430</h3>
+<table>
+<thead>
+<tr>
+<th>short_id</th>
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">mean_relL2</th>
+<th style="text-align: right;">median_relL2</th>
+<th style="text-align: right;">p90_relL2</th>
+<th style="text-align: right;">frac_relL2_gt_1</th>
+<th style="text-align: right;">mean_crf</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>fieldloss_sigma1</td>
+<td style="text-align: right;">19.0</td>
+<td style="text-align: right;">0.893680</td>
+<td style="text-align: right;">0.873059</td>
+<td style="text-align: right;">1.085564</td>
+<td style="text-align: right;">0.263158</td>
+<td style="text-align: right;">0.948258</td>
+</tr>
+<tr>
+<td>run_D_smooth05</td>
+<td style="text-align: right;">19.0</td>
+<td style="text-align: right;">0.744925</td>
+<td style="text-align: right;">0.671116</td>
+<td style="text-align: right;">1.055443</td>
+<td style="text-align: right;">0.263158</td>
+<td style="text-align: right;">0.855031</td>
+</tr>
+<tr>
+<td>run_Dprime_smooth0</td>
+<td style="text-align: right;">19.0</td>
+<td style="text-align: right;">0.844177</td>
+<td style="text-align: right;">0.811902</td>
+<td style="text-align: right;">1.263856</td>
+<td style="text-align: right;">0.315789</td>
+<td style="text-align: right;">0.804410</td>
+</tr>
+<tr>
+<td>run_B_geom</td>
+<td style="text-align: right;">19.0</td>
+<td style="text-align: right;">0.841854</td>
+<td style="text-align: right;">0.788746</td>
+<td style="text-align: right;">1.124615</td>
+<td style="text-align: right;">0.315789</td>
+<td style="text-align: right;">0.964515</td>
+</tr>
+</tbody>
+</table>
+<h3>sparc_1530</h3>
+<table>
+<thead>
+<tr>
+<th>short_id</th>
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">mean_relL2</th>
+<th style="text-align: right;">median_relL2</th>
+<th style="text-align: right;">p90_relL2</th>
+<th style="text-align: right;">frac_relL2_gt_1</th>
+<th style="text-align: right;">mean_crf</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>fieldloss_sigma1</td>
+<td style="text-align: right;">20.0</td>
+<td style="text-align: right;">0.812959</td>
+<td style="text-align: right;">0.771155</td>
+<td style="text-align: right;">1.081498</td>
+<td style="text-align: right;">0.250000</td>
+<td style="text-align: right;">0.979150</td>
+</tr>
+<tr>
+<td>run_D_smooth05</td>
+<td style="text-align: right;">20.0</td>
+<td style="text-align: right;">0.616445</td>
+<td style="text-align: right;">0.613941</td>
+<td style="text-align: right;">0.908788</td>
+<td style="text-align: right;">0.050000</td>
+<td style="text-align: right;">0.908008</td>
+</tr>
+<tr>
+<td>run_Dprime_smooth0</td>
+<td style="text-align: right;">20.0</td>
+<td style="text-align: right;">0.689090</td>
+<td style="text-align: right;">0.674321</td>
+<td style="text-align: right;">0.886080</td>
+<td style="text-align: right;">0.050000</td>
+<td style="text-align: right;">0.889715</td>
+</tr>
+<tr>
+<td>run_B_geom</td>
+<td style="text-align: right;">20.0</td>
+<td style="text-align: right;">0.677671</td>
+<td style="text-align: right;">0.634579</td>
+<td style="text-align: right;">0.964680</td>
+<td style="text-align: right;">0.050000</td>
+<td style="text-align: right;">0.972618</td>
+</tr>
+</tbody>
+</table>
+<h3>sparc_1500</h3>
+<table>
+<thead>
+<tr>
+<th>short_id</th>
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">mean_relL2</th>
+<th style="text-align: right;">median_relL2</th>
+<th style="text-align: right;">p90_relL2</th>
+<th style="text-align: right;">frac_relL2_gt_1</th>
+<th style="text-align: right;">mean_crf</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>fieldloss_sigma1</td>
+<td style="text-align: right;">23.0</td>
+<td style="text-align: right;">0.490049</td>
+<td style="text-align: right;">0.393007</td>
+<td style="text-align: right;">0.663415</td>
+<td style="text-align: right;">0.086957</td>
+<td style="text-align: right;">0.897126</td>
+</tr>
+<tr>
+<td>run_D_smooth05</td>
+<td style="text-align: right;">23.0</td>
+<td style="text-align: right;">0.414814</td>
+<td style="text-align: right;">0.351356</td>
+<td style="text-align: right;">0.546349</td>
+<td style="text-align: right;">0.000000</td>
+<td style="text-align: right;">0.899123</td>
+</tr>
+<tr>
+<td>run_Dprime_smooth0</td>
+<td style="text-align: right;">23.0</td>
+<td style="text-align: right;">0.415643</td>
+<td style="text-align: right;">0.359507</td>
+<td style="text-align: right;">0.514036</td>
+<td style="text-align: right;">0.086957</td>
+<td style="text-align: right;">0.873595</td>
+</tr>
+<tr>
+<td>run_B_geom</td>
+<td style="text-align: right;">23.0</td>
+<td style="text-align: right;">0.448052</td>
+<td style="text-align: right;">0.391399</td>
+<td style="text-align: right;">0.531912</td>
+<td style="text-align: right;">0.043478</td>
+<td style="text-align: right;">0.953736</td>
+</tr>
+</tbody>
+</table>
+<h3>sparc_1524</h3>
+<table>
+<thead>
+<tr>
+<th>short_id</th>
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">mean_relL2</th>
+<th style="text-align: right;">median_relL2</th>
+<th style="text-align: right;">p90_relL2</th>
+<th style="text-align: right;">frac_relL2_gt_1</th>
+<th style="text-align: right;">mean_crf</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>fieldloss_sigma1</td>
+<td style="text-align: right;">23.0</td>
+<td style="text-align: right;">1.013972</td>
+<td style="text-align: right;">0.860478</td>
+<td style="text-align: right;">1.708153</td>
+<td style="text-align: right;">0.347826</td>
+<td style="text-align: right;">0.903275</td>
+</tr>
+<tr>
+<td>run_D_smooth05</td>
+<td style="text-align: right;">23.0</td>
+<td style="text-align: right;">0.842016</td>
+<td style="text-align: right;">0.780316</td>
+<td style="text-align: right;">1.261015</td>
+<td style="text-align: right;">0.260870</td>
+<td style="text-align: right;">0.728931</td>
+</tr>
+<tr>
+<td>run_Dprime_smooth0</td>
+<td style="text-align: right;">23.0</td>
+<td style="text-align: right;">0.867366</td>
+<td style="text-align: right;">0.753464</td>
+<td style="text-align: right;">1.178989</td>
+<td style="text-align: right;">0.347826</td>
+<td style="text-align: right;">0.617327</td>
+</tr>
+<tr>
+<td>run_B_geom</td>
+<td style="text-align: right;">23.0</td>
+<td style="text-align: right;">1.019952</td>
+<td style="text-align: right;">0.915084</td>
+<td style="text-align: right;">1.516316</td>
+<td style="text-align: right;">0.260870</td>
+<td style="text-align: right;">0.942861</td>
+</tr>
+</tbody>
+</table>
+<h3>sparc_1300</h3>
+<table>
+<thead>
+<tr>
+<th>short_id</th>
+<th style="text-align: right;">n</th>
+<th style="text-align: right;">mean_relL2</th>
+<th style="text-align: right;">median_relL2</th>
+<th style="text-align: right;">p90_relL2</th>
+<th style="text-align: right;">frac_relL2_gt_1</th>
+<th style="text-align: right;">mean_crf</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>fieldloss_sigma1</td>
+<td style="text-align: right;">21.0</td>
+<td style="text-align: right;">0.456987</td>
+<td style="text-align: right;">0.426008</td>
+<td style="text-align: right;">0.631017</td>
+<td style="text-align: right;">0.047619</td>
+<td style="text-align: right;">0.889990</td>
+</tr>
+<tr>
+<td>run_D_smooth05</td>
+<td style="text-align: right;">21.0</td>
+<td style="text-align: right;">0.479253</td>
+<td style="text-align: right;">0.418296</td>
+<td style="text-align: right;">0.700215</td>
+<td style="text-align: right;">0.047619</td>
+<td style="text-align: right;">0.891466</td>
+</tr>
+<tr>
+<td>run_Dprime_smooth0</td>
+<td style="text-align: right;">21.0</td>
+<td style="text-align: right;">0.454099</td>
+<td style="text-align: right;">0.420092</td>
+<td style="text-align: right;">0.623982</td>
+<td style="text-align: right;">0.047619</td>
+<td style="text-align: right;">0.853418</td>
+</tr>
+<tr>
+<td>run_B_geom</td>
+<td style="text-align: right;">21.0</td>
+<td style="text-align: right;">0.447279</td>
+<td style="text-align: right;">0.422968</td>
+<td style="text-align: right;">0.665821</td>
+<td style="text-align: right;">0.047619</td>
+<td style="text-align: right;">0.935269</td>
+</tr>
+</tbody>
+</table>
+<h2>7. sparc_1530 — top 5 fieldloss regressions vs peak4 (by relL2 increase)</h2>
+<table>
+<thead>
+<tr>
+<th>case_key</th>
+<th style="text-align: right;">relL2_peak4</th>
+<th style="text-align: right;">relL2_fieldloss_sigma1</th>
+<th style="text-align: right;">patR2_peak4</th>
+<th style="text-align: right;">patR2_fieldloss</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>run79_sparc_1530</td>
+<td style="text-align: right;">0.496567</td>
+<td style="text-align: right;">1.032458</td>
+<td style="text-align: right;">0.895632</td>
+<td style="text-align: right;">0.061429</td>
+</tr>
+<tr>
+<td>run43_sparc_1530</td>
+<td style="text-align: right;">0.816470</td>
+<td style="text-align: right;">1.298781</td>
+<td style="text-align: right;">0.432810</td>
+<td style="text-align: right;">-0.180970</td>
+</tr>
+<tr>
+<td>run99_sparc_1530</td>
+<td style="text-align: right;">0.655249</td>
+<td style="text-align: right;">1.078824</td>
+<td style="text-align: right;">0.404467</td>
+<td style="text-align: right;">-0.241258</td>
+</tr>
+<tr>
+<td>run31_sparc_1530</td>
+<td style="text-align: right;">0.631002</td>
+<td style="text-align: right;">1.037485</td>
+<td style="text-align: right;">0.960259</td>
+<td style="text-align: right;">0.117388</td>
+</tr>
+<tr>
+<td>run83_sparc_1530</td>
+<td style="text-align: right;">0.793379</td>
+<td style="text-align: right;">1.105557</td>
+<td style="text-align: right;">0.884501</td>
+<td style="text-align: right;">-0.227872</td>
+</tr>
+</tbody>
+</table>
+<h2>8. Training completion (from history_fno2d.jsonl last epoch)</h2>
+<table>
+<thead>
+<tr>
+<th>short_id</th>
+<th style="text-align: right;">epochs_completed</th>
+<th style="text-align: right;">final_val_r2</th>
+<th style="text-align: right;">training_epochs in run_config</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>qc_peak4</td>
+<td style="text-align: right;">179</td>
+<td style="text-align: right;">None</td>
+<td style="text-align: right;">400</td>
+</tr>
+<tr>
+<td>qc</td>
+<td style="text-align: right;">289</td>
+<td style="text-align: right;">None</td>
+<td style="text-align: right;">400</td>
+</tr>
+<tr>
+<td>fieldloss_sigma1</td>
+<td style="text-align: right;">400</td>
+<td style="text-align: right;">0.9029014408588409</td>
+<td style="text-align: right;">400</td>
+</tr>
+<tr>
+<td>run_B_geom</td>
+<td style="text-align: right;">214</td>
+<td style="text-align: right;">0.903349831700325</td>
+<td style="text-align: right;">400</td>
+</tr>
+<tr>
+<td>run_D_smooth05</td>
+<td style="text-align: right;">400</td>
+<td style="text-align: right;">0.8744910061359406</td>
+<td style="text-align: right;">400</td>
+</tr>
+<tr>
+<td>run_Dprime_smooth0</td>
+<td style="text-align: right;">400</td>
+<td style="text-align: right;">0.8346429020166397</td>
+<td style="text-align: right;">400</td>
+</tr>
+<tr>
+<td>qc_mhi100</td>
+<td style="text-align: right;">237</td>
+<td style="text-align: right;">0.8963351100683212</td>
+<td style="text-align: right;">400</td>
+</tr>
+</tbody>
+</table>
+<h2>9. Field-bench ranking order (per bench file)</h2>
+<ul>
+<li><strong>bench <code>field_bench/with_fieldloss</code></strong>: <code>spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss</code> &gt; <code>spectrum_fno48_floor6_smooth1_qc_peak4</code> &gt; <code>spectrum_fno48_floor6_smooth1_qc</code> &gt; <code>spectrum_fno48_floor6_smooth1_qc_mhi100</code></li>
+<li><strong>bench <code>field_bench/with_fieldloss_geom</code></strong>: <code>spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss</code> &gt; <code>spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_geom</code> &gt; <code>spectrum_fno48_floor6_smooth1_qc_peak4</code></li>
+<li><strong>bench <code>field_bench/with_fieldloss_smooth05</code></strong>: <code>spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05</code> &gt; <code>spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss</code> &gt; <code>spectrum_fno48_floor6_smooth1_qc_peak4</code></li>
+<li><strong>bench <code>field_bench/with_fieldloss_smooth0</code></strong>: <code>spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0</code> &gt; <code>spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss</code> &gt; <code>spectrum_fno48_floor6_smooth1_qc_peak4</code></li>
+<li><strong>bench <code>field_bench</code></strong>: <code>spectrum_fno48_floor6_smooth1_qc_peak4</code> &gt; <code>spectrum_fno48_floor6_smooth1_qc</code> &gt; <code>spectrum_fno48_floor6_smooth1_qc_mhi100</code></li>
+</ul>
+<h2>10. File paths (artifacts)</h2>
+<h3>figures</h3>
+<ul>
+<li><code>docs/m3dc1/assets/field_bench_frac_gt1_sparc_families_smooth0.png</code></li>
+<li><code>docs/m3dc1/assets/field_bench_frac_gt1_sparc_families_smooth05.png</code></li>
+<li><code>docs/m3dc1/assets/field_bench_frac_gt1_sparc_fieldloss_smooth0.png</code></li>
+<li><code>docs/m3dc1/assets/field_bench_frac_gt1_sparc_fieldloss_smooth05.png</code></li>
+<li><code>docs/m3dc1/assets/field_bench_leaderboard_fieldloss_smooth0.json</code></li>
+<li><code>docs/m3dc1/assets/field_bench_leaderboard_fieldloss_smooth05.json</code></li>
+<li><code>docs/m3dc1/assets/field_bench_pairwise_wins_fieldloss_smooth0.png</code></li>
+<li><code>docs/m3dc1/assets/field_bench_pairwise_wins_fieldloss_smooth05.png</code></li>
+<li><code>docs/m3dc1/assets/field_bench_relL2_hist_fieldloss_smooth0.png</code></li>
+<li><code>docs/m3dc1/assets/field_bench_relL2_hist_fieldloss_smooth05.png</code></li>
+<li><code>docs/m3dc1/assets/field_bench_relL2_hist_fieldloss_smooth05_vs_baseline.png</code></li>
+<li><code>docs/m3dc1/assets/field_bench_relL2_hist_fieldloss_smooth0_vs_baseline.png</code></li>
+<li><code>docs/m3dc1/assets/field_bench_relL2_hist_peak4_vs_fieldloss_smooth0.png</code></li>
+<li><code>docs/m3dc1/assets/field_bench_relL2_hist_peak4_vs_fieldloss_smooth05.png</code></li>
+<li><code>docs/m3dc1/assets/field_bench_relL2_hist_smooth0.png</code></li>
+<li><code>docs/m3dc1/assets/field_bench_relL2_hist_smooth05.png</code></li>
+<li><code>docs/m3dc1/assets/field_bench_relL2_hist_smooth05_vs_smooth0.png</code></li>
+<li><code>docs/m3dc1/assets/field_recon_fieldloss_smooth0.png</code></li>
+<li><code>docs/m3dc1/assets/field_recon_fieldloss_smooth05.png</code></li>
+<li><code>docs/m3dc1/assets/fieldloss_smooth05_field_recon</code></li>
+<li><code>docs/m3dc1/assets/fieldloss_smooth0_field_recon</code></li>
+<li><code>docs/m3dc1/assets/loss_fieldloss_smooth05_fno2d.png</code></li>
+<li><code>docs/m3dc1/assets/loss_fieldloss_smooth0_fno2d.png</code></li>
+<li><code>docs/m3dc1/assets/metric_reality_check_qc_peak4_fieldloss_smooth05_refqc_combined.png</code></li>
+<li><code>docs/m3dc1/assets/metric_reality_check_qc_peak4_fieldloss_smooth05_refqc_field.png</code></li>
+<li><code>docs/m3dc1/assets/metric_reality_check_qc_peak4_fieldloss_smooth0_refqc_combined.png</code></li>
+<li><code>docs/m3dc1/assets/metric_reality_check_qc_peak4_fieldloss_smooth0_refqc_field.png</code></li>
+<li><code>docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05_best_smooth05_test.png</code></li>
+<li><code>docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05_median_smooth05_test.png</code></li>
+<li><code>docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05_worst_smooth05_test.png</code></li>
+<li><code>docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0_best_fieldloss_smooth0_test.png</code></li>
+<li><code>docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0_best_smooth0_test.png</code></li>
+<li><code>docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0_median_fieldloss_smooth0_test.png</code></li>
+<li><code>docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0_median_smooth0_test.png</code></li>
+<li><code>docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0_worst_fieldloss_smooth0_test.png</code></li>
+<li><code>docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0_worst_smooth0_test.png</code></li>
+<li><code>docs/m3dc1/assets/sparc1530_diagnosis_smooth</code></li>
+<li><code>docs/m3dc1/assets/sparc1530_smooth_ablation</code></li>
+<li><code>narrative_md</code>: <code>docs/m3dc1/SURGE_M3DC1_RESEARCH_NARRATIVE.md</code></li>
+<li><code>narrative_html</code>: <code>docs/m3dc1/SURGE_M3DC1_RESEARCH_NARRATIVE.html</code></li>
+<li><code>results_report</code>: <code>docs/m3dc1/SURGE_M3DC1_RESULTS_REPORT.md</code></li>
+</ul>
+<h3>field_bench_dirs</h3>
+<ul>
+<li><code>field_bench/with_fieldloss</code></li>
+<li><code>field_bench/with_fieldloss_geom</code></li>
+<li><code>field_bench/with_fieldloss_smooth05</code></li>
+<li><code>field_bench/with_fieldloss_smooth0</code></li>
+<li><code>field_bench/leaderboard.json</code></li>
+</ul>
+<h2>11. Raw JSON dump (full measured objects)</h2>
+<pre><code class="language-json">{
+  &quot;runs&quot;: {
+    &quot;qc_peak4&quot;: {
+      &quot;run_dir&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc_peak4&quot;,
+      &quot;run_config&quot;: {
+        &quot;target_smooth&quot;: 1.0,
+        &quot;target_floor&quot;: 6.0,
+        &quot;peak_weight&quot;: 4.0,
+        &quot;geom_channels&quot;: false,
+        &quot;m_window&quot;: [
+          -80.0,
+          20.0
+        ],
+        &quot;select_by&quot;: &quot;composite&quot;,
+        &quot;fno_modes&quot;: 48,
+        &quot;fno_hidden&quot;: 32,
+        &quot;epochs&quot;: 400,
+        &quot;patience&quot;: 120
+      },
+      &quot;spectrum_image_metrics&quot;: {
+        &quot;test_r2_global&quot;: 0.9142558723688126,
+        &quot;test_pattern_r2&quot;: 0.9216772764921188,
+        &quot;train_seconds&quot;: 2758.7932510375977,
+        &quot;n_params&quot;: 75506433,
+        &quot;checkpoint&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc_peak4/ckpt_fno2d.pt&quot;,
+        &quot;history&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc_peak4/history_fno2d.jsonl&quot;
+      },
+      &quot;target_description&quot;: &quot;max-normalized log10|dp|, floor -6dex, smooth s=1, global z-score&quot;,
+      &quot;predictions_cache&quot;: {
+        &quot;n_test&quot;: 1994,
+        &quot;r2_global_median&quot;: 0.8929877579212189,
+        &quot;r2_global_mean&quot;: 0.7371152845942747,
+        &quot;r2_pattern_median&quot;: 0.9102625250816345,
+        &quot;r2_pattern_mean&quot;: 0.8945205391290315,
+        &quot;r2_pattern_min&quot;: -0.12302136421203613,
+        &quot;r2_pattern_max&quot;: 0.9967019557952881,
+        &quot;pct_pattern_lt_0&quot;: 0.15045135406218654,
+        &quot;pct_pattern_lt_0.5&quot;: 1.053159478435306,
+        &quot;pct_pattern_lt_0.7&quot;: 2.507522567703109,
+        &quot;pct_pattern_lt_0.8&quot;: 5.2156469408224675,
+        &quot;pct_pattern_lt_0.9&quot;: 36.40922768304915,
+        &quot;pct_pattern_ge_0.9&quot;: 63.59077231695085,
+        &quot;pattern_quantiles&quot;: {
+          &quot;0.02&quot;: 0.6622752857208252,
+          &quot;0.1&quot;: 0.8589203894138336,
+          &quot;0.25&quot;: 0.888090506196022,
+          &quot;0.5&quot;: 0.9102625250816345,
+          &quot;0.75&quot;: 0.9265788793563843,
+          &quot;0.9&quot;: 0.939251857995987,
+          &quot;0.98&quot;: 0.9872579431533813
+        }
+      },
+      &quot;predictions_cache_bytes&quot;: 132497407,
+      &quot;ckpt_fno2d_exists&quot;: true,
+      &quot;ckpt_fno2d_mtime&quot;: &quot;1783098314.0&quot;,
+      &quot;training_epochs_completed&quot;: 179,
+      &quot;final_train_val_r2&quot;: null
+    },
+    &quot;qc&quot;: {
+      &quot;run_dir&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc&quot;,
+      &quot;run_config&quot;: {
+        &quot;target_smooth&quot;: 1.0,
+        &quot;target_floor&quot;: 6.0,
+        &quot;peak_weight&quot;: 0.0,
+        &quot;m_window&quot;: [
+          -80.0,
+          20.0
+        ],
+        &quot;select_by&quot;: &quot;composite&quot;,
+        &quot;fno_modes&quot;: 48,
+        &quot;fno_hidden&quot;: 32,
+        &quot;epochs&quot;: 400,
+        &quot;patience&quot;: 120
+      },
+      &quot;spectrum_image_metrics&quot;: {
+        &quot;test_r2_global&quot;: 0.919909730553627,
+        &quot;test_pattern_r2&quot;: 0.9237876906991005,
+        &quot;train_seconds&quot;: 4178.0336236953735,
+        &quot;n_params&quot;: 75506433,
+        &quot;checkpoint&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc/ckpt_fno2d.pt&quot;,
+        &quot;history&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc/history_fno2d.jsonl&quot;
+      },
+      &quot;target_description&quot;: &quot;max-normalized log10|dp|, floor -6dex, smooth s=1, global z-score&quot;,
+      &quot;predictions_cache&quot;: {
+        &quot;n_test&quot;: 1994,
+        &quot;r2_global_median&quot;: 0.8911202847957611,
+        &quot;r2_global_mean&quot;: 0.742260753271453,
+        &quot;r2_pattern_median&quot;: 0.9079992771148682,
+        &quot;r2_pattern_mean&quot;: 0.8918471397643343,
+        &quot;r2_pattern_min&quot;: -0.3288489580154419,
+        &quot;r2_pattern_max&quot;: 0.9971767067909241,
+        &quot;pct_pattern_lt_0&quot;: 0.10030090270812438,
+        &quot;pct_pattern_lt_0.5&quot;: 0.9027081243731194,
+        &quot;pct_pattern_lt_0.7&quot;: 2.4072216649949847,
+        &quot;pct_pattern_lt_0.8&quot;: 5.516549648946841,
+        &quot;pct_pattern_lt_0.9&quot;: 40.17051153460381,
+        &quot;pct_pattern_ge_0.9&quot;: 59.82948846539619,
+        &quot;pattern_quantiles&quot;: {
+          &quot;0.02&quot;: 0.6735616803169251,
+          &quot;0.1&quot;: 0.8426670789718628,
+          &quot;0.25&quot;: 0.8841686248779297,
+          &quot;0.5&quot;: 0.9079992771148682,
+          &quot;0.75&quot;: 0.9255126863718033,
+          &quot;0.9&quot;: 0.9377642393112182,
+          &quot;0.98&quot;: 0.9863397979736328
+        }
+      },
+      &quot;predictions_cache_bytes&quot;: 132546930,
+      &quot;ckpt_fno2d_exists&quot;: true,
+      &quot;ckpt_fno2d_mtime&quot;: &quot;1783029132.0&quot;,
+      &quot;training_epochs_completed&quot;: 289,
+      &quot;final_train_val_r2&quot;: null
+    },
+    &quot;fieldloss_sigma1&quot;: {
+      &quot;run_dir&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;,
+      &quot;run_config&quot;: {
+        &quot;target_smooth&quot;: 1.0,
+        &quot;target_floor&quot;: 6.0,
+        &quot;peak_weight&quot;: 4.0,
+        &quot;geom_channels&quot;: false,
+        &quot;m_window&quot;: [
+          -80.0,
+          20.0
+        ],
+        &quot;select_by&quot;: &quot;field&quot;,
+        &quot;field_loss_weight&quot;: 0.5,
+        &quot;field_loss_warmup&quot;: 20,
+        &quot;field_select_n&quot;: 64,
+        &quot;field_select_every&quot;: 5,
+        &quot;fno_modes&quot;: 48,
+        &quot;fno_hidden&quot;: 32,
+        &quot;epochs&quot;: 400,
+        &quot;patience&quot;: 120,
+        &quot;time_budget_min&quot;: 210.0
+      },
+      &quot;spectrum_image_metrics&quot;: {
+        &quot;test_r2_global&quot;: 0.8907209262251854,
+        &quot;test_pattern_r2&quot;: 0.896111935377121,
+        &quot;train_seconds&quot;: 6513.894383430481,
+        &quot;n_params&quot;: 75506433,
+        &quot;checkpoint&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss/ckpt_fno2d.pt&quot;,
+        &quot;history&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss/history_fno2d.jsonl&quot;
+      },
+      &quot;target_description&quot;: &quot;max-normalized log10|dp|, floor -6dex, smooth s=1, global z-score&quot;,
+      &quot;predictions_cache&quot;: {
+        &quot;n_test&quot;: 1994,
+        &quot;r2_global_median&quot;: 0.8880326747894287,
+        &quot;r2_global_mean&quot;: 0.7233724222558671,
+        &quot;r2_pattern_median&quot;: 0.9080575406551361,
+        &quot;r2_pattern_mean&quot;: 0.8884313643994997,
+        &quot;r2_pattern_min&quot;: -0.6442592144012451,
+        &quot;r2_pattern_max&quot;: 0.9944307208061218,
+        &quot;pct_pattern_lt_0&quot;: 0.25075225677031093,
+        &quot;pct_pattern_lt_0.5&quot;: 1.2036108324974923,
+        &quot;pct_pattern_lt_0.7&quot;: 3.159478435305918,
+        &quot;pct_pattern_lt_0.8&quot;: 6.218655967903711,
+        &quot;pct_pattern_lt_0.9&quot;: 39.26780341023069,
+        &quot;pct_pattern_ge_0.9&quot;: 60.7321965897693,
+        &quot;pattern_quantiles&quot;: {
+          &quot;0.02&quot;: 0.6186316227912902,
+          &quot;0.1&quot;: 0.8494424819946289,
+          &quot;0.25&quot;: 0.8871363401412964,
+          &quot;0.5&quot;: 0.9080575406551361,
+          &quot;0.75&quot;: 0.9240408390760422,
+          &quot;0.9&quot;: 0.9360403656959534,
+          &quot;0.98&quot;: 0.9788947260379791
+        }
+      },
+      &quot;predictions_cache_bytes&quot;: 132319401,
+      &quot;ckpt_fno2d_exists&quot;: true,
+      &quot;ckpt_fno2d_mtime&quot;: &quot;1783174271.0&quot;,
+      &quot;training_epochs_completed&quot;: 400,
+      &quot;final_train_val_r2&quot;: 0.9029014408588409,
+      &quot;field_bench_test&quot;: {
+        &quot;n&quot;: 1994,
+        &quot;mean_relL2&quot;: 0.7021718992882177,
+        &quot;median_relL2&quot;: 0.6323795690155662,
+        &quot;p90_relL2&quot;: 1.0009822978852987,
+        &quot;frac_relL2_gt_1&quot;: 0.10030090270812438,
+        &quot;mean_relL2_alpha&quot;: 0.6305780952093659,
+        &quot;median_relL2_alpha&quot;: 0.6110259077737857,
+        &quot;p90_relL2_alpha&quot;: 0.8123564272177984,
+        &quot;frac_relL2_alpha_gt_1&quot;: 0.0,
+        &quot;mean_crf&quot;: 0.9068675073299465,
+        &quot;relL2_bins&quot;: {
+          &quot;&lt;0.3&quot;: 5,
+          &quot;&lt;0.5&quot;: 207,
+          &quot;&lt;0.7&quot;: 1070,
+          &quot;&lt;1.0&quot;: 512,
+          &quot;&gt;1.0&quot;: 200
+        },
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;
+      },
+      &quot;field_bench_ranking&quot;: [
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4&quot;,
+        &quot;spectrum_fno48_floor6_smooth1_qc&quot;,
+        &quot;spectrum_fno48_floor6_smooth1_qc_mhi100&quot;
+      ],
+      &quot;field_bench_win_counts&quot;: {
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4&quot;: 187,
+        &quot;spectrum_fno48_floor6_smooth1_qc&quot;: 189,
+        &quot;spectrum_fno48_floor6_smooth1_qc_mhi100&quot;: 116,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;: 1502
+      }
+    },
+    &quot;run_B_geom&quot;: {
+      &quot;run_dir&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_geom&quot;,
+      &quot;run_config&quot;: {
+        &quot;target_smooth&quot;: 1.0,
+        &quot;target_floor&quot;: 6.0,
+        &quot;peak_weight&quot;: 4.0,
+        &quot;geom_channels&quot;: true,
+        &quot;m_window&quot;: [
+          -80.0,
+          20.0
+        ],
+        &quot;select_by&quot;: &quot;field&quot;,
+        &quot;field_loss_weight&quot;: 0.5,
+        &quot;field_loss_warmup&quot;: 20,
+        &quot;field_select_n&quot;: 64,
+        &quot;field_select_every&quot;: 5,
+        &quot;fno_modes&quot;: 48,
+        &quot;fno_hidden&quot;: 32,
+        &quot;epochs&quot;: 400,
+        &quot;patience&quot;: 120,
+        &quot;time_budget_min&quot;: 210.0
+      },
+      &quot;predictions_cache&quot;: {
+        &quot;n_test&quot;: 1994,
+        &quot;r2_global_median&quot;: 0.8895953893661499,
+        &quot;r2_global_mean&quot;: 0.7419552157970226,
+        &quot;r2_pattern_median&quot;: 0.9122016429901123,
+        &quot;r2_pattern_mean&quot;: 0.8979877347991603,
+        &quot;r2_pattern_min&quot;: 0.18365663290023804,
+        &quot;r2_pattern_max&quot;: 0.9964202642440796,
+        &quot;pct_pattern_lt_0&quot;: 0.0,
+        &quot;pct_pattern_lt_0.5&quot;: 0.802407221664995,
+        &quot;pct_pattern_lt_0.7&quot;: 2.3570712136409226,
+        &quot;pct_pattern_lt_0.8&quot;: 5.2657973921765295,
+        &quot;pct_pattern_lt_0.9&quot;: 38.11434302908726,
+        &quot;pct_pattern_ge_0.9&quot;: 61.88565697091274,
+        &quot;pattern_quantiles&quot;: {
+          &quot;0.02&quot;: 0.668411283493042,
+          &quot;0.1&quot;: 0.8466557025909424,
+          &quot;0.25&quot;: 0.882658064365387,
+          &quot;0.5&quot;: 0.9122016429901123,
+          &quot;0.75&quot;: 0.934535413980484,
+          &quot;0.9&quot;: 0.9523445963859558,
+          &quot;0.98&quot;: 0.9847469222545624
+        }
+      },
+      &quot;predictions_cache_bytes&quot;: 132565628,
+      &quot;ckpt_fno2d_exists&quot;: true,
+      &quot;ckpt_fno2d_mtime&quot;: &quot;1783198089.0&quot;,
+      &quot;training_epochs_completed&quot;: 214,
+      &quot;final_train_val_r2&quot;: 0.903349831700325,
+      &quot;field_bench_test&quot;: {
+        &quot;n&quot;: 1994,
+        &quot;mean_relL2&quot;: 0.7194733296238851,
+        &quot;median_relL2&quot;: 0.6422822483559532,
+        &quot;p90_relL2&quot;: 1.0605141111817091,
+        &quot;frac_relL2_gt_1&quot;: 0.12236710130391174,
+        &quot;mean_relL2_alpha&quot;: 0.6346770417594475,
+        &quot;median_relL2_alpha&quot;: 0.6125661068440569,
+        &quot;p90_relL2_alpha&quot;: 0.8230579417552144,
+        &quot;frac_relL2_alpha_gt_1&quot;: 0.0,
+        &quot;mean_crf&quot;: 0.9286015220419874,
+        &quot;relL2_bins&quot;: {
+          &quot;&lt;0.3&quot;: 11,
+          &quot;&lt;0.5&quot;: 164,
+          &quot;&lt;0.7&quot;: 1077,
+          &quot;&lt;1.0&quot;: 498,
+          &quot;&gt;1.0&quot;: 244
+        },
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_geom&quot;
+      },
+      &quot;field_bench_ranking&quot;: [
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_geom&quot;,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4&quot;
+      ],
+      &quot;field_bench_win_counts&quot;: {
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;: 1175,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4&quot;: 176,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_geom&quot;: 643
+      }
+    },
+    &quot;run_D_smooth05&quot;: {
+      &quot;run_dir&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05&quot;,
+      &quot;run_config&quot;: {
+        &quot;target_smooth&quot;: 0.5,
+        &quot;target_floor&quot;: 6.0,
+        &quot;peak_weight&quot;: 4.0,
+        &quot;geom_channels&quot;: false,
+        &quot;m_window&quot;: [
+          -80.0,
+          20.0
+        ],
+        &quot;select_by&quot;: &quot;field&quot;,
+        &quot;field_loss_weight&quot;: 0.5,
+        &quot;field_loss_warmup&quot;: 20,
+        &quot;field_select_n&quot;: 64,
+        &quot;field_select_every&quot;: 5,
+        &quot;fno_modes&quot;: 48,
+        &quot;fno_hidden&quot;: 32,
+        &quot;epochs&quot;: 400,
+        &quot;patience&quot;: 120,
+        &quot;time_budget_min&quot;: 210.0
+      },
+      &quot;spectrum_image_metrics&quot;: {
+        &quot;test_r2_global&quot;: 0.8928801864385605,
+        &quot;test_pattern_r2&quot;: 0.8724502772092819,
+        &quot;train_seconds&quot;: 6433.361153125763,
+        &quot;n_params&quot;: 75506433,
+        &quot;checkpoint&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05/ckpt_fno2d.pt&quot;,
+        &quot;history&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05/history_fno2d.jsonl&quot;
+      },
+      &quot;target_description&quot;: &quot;max-normalized log10|dp|, floor -6dex, smooth s=0.5, global z-score&quot;,
+      &quot;predictions_cache&quot;: {
+        &quot;n_test&quot;: 1994,
+        &quot;r2_global_median&quot;: 0.8055414855480194,
+        &quot;r2_global_mean&quot;: 0.6829127730911928,
+        &quot;r2_pattern_median&quot;: 0.8260726630687714,
+        &quot;r2_pattern_mean&quot;: 0.8161052990940174,
+        &quot;r2_pattern_min&quot;: -0.11571109294891357,
+        &quot;r2_pattern_max&quot;: 0.9960954189300537,
+        &quot;pct_pattern_lt_0&quot;: 0.05015045135406219,
+        &quot;pct_pattern_lt_0.5&quot;: 0.9528585757271816,
+        &quot;pct_pattern_lt_0.7&quot;: 5.9679037111334,
+        &quot;pct_pattern_lt_0.8&quot;: 33.55065195586761,
+        &quot;pct_pattern_lt_0.9&quot;: 90.320962888666,
+        &quot;pct_pattern_ge_0.9&quot;: 9.679037111334003,
+        &quot;pattern_quantiles&quot;: {
+          &quot;0.02&quot;: 0.5860671281814576,
+          &quot;0.1&quot;: 0.7276606857776642,
+          &quot;0.25&quot;: 0.7819378226995468,
+          &quot;0.5&quot;: 0.8260726630687714,
+          &quot;0.75&quot;: 0.8648778796195984,
+          &quot;0.9&quot;: 0.8994053363800049,
+          &quot;0.98&quot;: 0.9803176689147949
+        }
+      },
+      &quot;predictions_cache_bytes&quot;: 139212457,
+      &quot;ckpt_fno2d_exists&quot;: true,
+      &quot;ckpt_fno2d_mtime&quot;: &quot;1783205804.0&quot;,
+      &quot;training_epochs_completed&quot;: 400,
+      &quot;final_train_val_r2&quot;: 0.8744910061359406,
+      &quot;field_bench_test&quot;: {
+        &quot;n&quot;: 1994,
+        &quot;mean_relL2&quot;: 0.5273555961207053,
+        &quot;median_relL2&quot;: 0.4554233902515053,
+        &quot;p90_relL2&quot;: 0.8198276543052722,
+        &quot;frac_relL2_gt_1&quot;: 0.05115346038114343,
+        &quot;mean_relL2_alpha&quot;: 0.4799417325057257,
+        &quot;median_relL2_alpha&quot;: 0.43717325388904016,
+        &quot;p90_relL2_alpha&quot;: 0.7200428062882099,
+        &quot;frac_relL2_alpha_gt_1&quot;: 0.0,
+        &quot;mean_crf&quot;: 0.7114718263741646,
+        &quot;relL2_bins&quot;: {
+          &quot;&lt;0.3&quot;: 120,
+          &quot;&lt;0.5&quot;: 1031,
+          &quot;&lt;0.7&quot;: 492,
+          &quot;&lt;1.0&quot;: 249,
+          &quot;&gt;1.0&quot;: 102
+        },
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05&quot;
+      },
+      &quot;field_bench_ranking&quot;: [
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05&quot;,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4&quot;
+      ],
+      &quot;field_bench_win_counts&quot;: {
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;: 127,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4&quot;: 65,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05&quot;: 1802
+      }
+    },
+    &quot;run_Dprime_smooth0&quot;: {
+      &quot;run_dir&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0&quot;,
+      &quot;run_config&quot;: {
+        &quot;target_smooth&quot;: 0.0,
+        &quot;target_floor&quot;: 6.0,
+        &quot;peak_weight&quot;: 4.0,
+        &quot;geom_channels&quot;: false,
+        &quot;m_window&quot;: [
+          -80.0,
+          20.0
+        ],
+        &quot;select_by&quot;: &quot;field&quot;,
+        &quot;field_loss_weight&quot;: 0.5,
+        &quot;field_loss_warmup&quot;: 20,
+        &quot;field_select_n&quot;: 64,
+        &quot;field_select_every&quot;: 5,
+        &quot;fno_modes&quot;: 48,
+        &quot;fno_hidden&quot;: 32,
+        &quot;epochs&quot;: 400,
+        &quot;patience&quot;: 120,
+        &quot;time_budget_min&quot;: 210.0
+      },
+      &quot;spectrum_image_metrics&quot;: {
+        &quot;test_r2_global&quot;: 0.8542397320270538,
+        &quot;test_pattern_r2&quot;: 0.8107420355081558,
+        &quot;train_seconds&quot;: 6302.087346315384,
+        &quot;n_params&quot;: 75506433,
+        &quot;checkpoint&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0/ckpt_fno2d.pt&quot;,
+        &quot;history&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0/history_fno2d.jsonl&quot;
+      },
+      &quot;target_description&quot;: &quot;max-normalized log10|dp|, floor -6dex, global z-score&quot;,
+      &quot;predictions_cache&quot;: {
+        &quot;n_test&quot;: 1994,
+        &quot;r2_global_median&quot;: 0.7242495119571686,
+        &quot;r2_global_mean&quot;: 0.6189977496473815,
+        &quot;r2_pattern_median&quot;: 0.7501447200775146,
+        &quot;r2_pattern_mean&quot;: 0.7437261722929619,
+        &quot;r2_pattern_min&quot;: -0.7433333396911621,
+        &quot;r2_pattern_max&quot;: 0.9918063282966614,
+        &quot;pct_pattern_lt_0&quot;: 0.15045135406218654,
+        &quot;pct_pattern_lt_0.5&quot;: 1.855566700100301,
+        &quot;pct_pattern_lt_0.7&quot;: 23.169508525576727,
+        &quot;pct_pattern_lt_0.8&quot;: 79.63891675025076,
+        &quot;pct_pattern_lt_0.9&quot;: 96.79037111334003,
+        &quot;pct_pattern_ge_0.9&quot;: 3.20962888665998,
+        &quot;pattern_quantiles&quot;: {
+          &quot;0.02&quot;: 0.5025584471225738,
+          &quot;0.1&quot;: 0.6635975182056427,
+          &quot;0.25&quot;: 0.705166295170784,
+          &quot;0.5&quot;: 0.7501447200775146,
+          &quot;0.75&quot;: 0.7914221882820129,
+          &quot;0.9&quot;: 0.8263462305068969,
+          &quot;0.98&quot;: 0.973706314563751
+        }
+      },
+      &quot;predictions_cache_bytes&quot;: 139631376,
+      &quot;ckpt_fno2d_exists&quot;: true,
+      &quot;ckpt_fno2d_mtime&quot;: &quot;1783203529.0&quot;,
+      &quot;training_epochs_completed&quot;: 400,
+      &quot;final_train_val_r2&quot;: 0.8346429020166397,
+      &quot;field_bench_test&quot;: {
+        &quot;n&quot;: 1994,
+        &quot;mean_relL2&quot;: 0.4905667920591792,
+        &quot;median_relL2&quot;: 0.42086257796301363,
+        &quot;p90_relL2&quot;: 0.8029328011792074,
+        &quot;frac_relL2_gt_1&quot;: 0.048144433299899696,
+        &quot;mean_relL2_alpha&quot;: 0.4484243356647723,
+        &quot;median_relL2_alpha&quot;: 0.4033087521911142,
+        &quot;p90_relL2_alpha&quot;: 0.7224523903885377,
+        &quot;frac_relL2_alpha_gt_1&quot;: 0.0,
+        &quot;mean_crf&quot;: 0.6053731761737884,
+        &quot;relL2_bins&quot;: {
+          &quot;&lt;0.3&quot;: 433,
+          &quot;&lt;0.5&quot;: 808,
+          &quot;&lt;0.7&quot;: 437,
+          &quot;&lt;1.0&quot;: 220,
+          &quot;&gt;1.0&quot;: 96
+        },
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0&quot;
+      },
+      &quot;field_bench_ranking&quot;: [
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0&quot;,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4&quot;
+      ],
+      &quot;field_bench_win_counts&quot;: {
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;: 125,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4&quot;: 63,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0&quot;: 1806
+      }
+    },
+    &quot;qc_mhi100&quot;: {
+      &quot;run_dir&quot;: &quot;runs/spectrum_fno48_floor6_smooth1_qc_mhi100&quot;,
+      &quot;run_config&quot;: {
+        &quot;target_smooth&quot;: 1.0,
+        &quot;target_floor&quot;: 6.0,
+        &quot;peak_weight&quot;: 0.0,
+        &quot;geom_channels&quot;: true,
+        &quot;m_window&quot;: [
+          -80.0,
+          100.0
+        ],
+        &quot;select_by&quot;: &quot;composite&quot;,
+        &quot;fno_modes&quot;: 48,
+        &quot;fno_hidden&quot;: 32,
+        &quot;epochs&quot;: 400,
+        &quot;patience&quot;: 120
+      },
+      &quot;predictions_cache&quot;: {
+        &quot;n_test&quot;: 1994,
+        &quot;r2_global_median&quot;: 0.9131181240081787,
+        &quot;r2_global_mean&quot;: 0.7062308888138835,
+        &quot;r2_pattern_median&quot;: 0.9315246641635895,
+        &quot;r2_pattern_mean&quot;: 0.9061635072336512,
+        &quot;r2_pattern_min&quot;: -0.960747480392456,
+        &quot;r2_pattern_max&quot;: 0.9979588389396667,
+        &quot;pct_pattern_lt_0&quot;: 0.3009027081243731,
+        &quot;pct_pattern_lt_0.5&quot;: 1.6549648946840523,
+        &quot;pct_pattern_lt_0.7&quot;: 3.4102306920762286,
+        &quot;pct_pattern_lt_0.8&quot;: 5.366098294884654,
+        &quot;pct_pattern_lt_0.9&quot;: 18.35506519558676,
+        &quot;pct_pattern_ge_0.9&quot;: 81.64493480441324,
+        &quot;pattern_quantiles&quot;: {
+          &quot;0.02&quot;: 0.557352727651596,
+          &quot;0.1&quot;: 0.8664063513278961,
+          &quot;0.25&quot;: 0.9106307178735733,
+          &quot;0.5&quot;: 0.9315246641635895,
+          &quot;0.75&quot;: 0.9452269673347473,
+          &quot;0.9&quot;: 0.9546804964542389,
+          &quot;0.98&quot;: 0.9835051035881041
+        }
+      },
+      &quot;predictions_cache_bytes&quot;: 129344475,
+      &quot;ckpt_fno2d_exists&quot;: true,
+      &quot;ckpt_fno2d_mtime&quot;: &quot;1783112385.0&quot;,
+      &quot;training_epochs_completed&quot;: 237,
+      &quot;final_train_val_r2&quot;: 0.8963351100683212,
+      &quot;field_bench_test&quot;: {
+        &quot;n&quot;: 1994,
+        &quot;mean_relL2&quot;: 0.9213030500813933,
+        &quot;median_relL2&quot;: 0.8253486204817133,
+        &quot;p90_relL2&quot;: 1.3504908170785903,
+        &quot;frac_relL2_gt_1&quot;: 0.2668004012036108,
+        &quot;mean_relL2_alpha&quot;: 0.7740714588436963,
+        &quot;median_relL2_alpha&quot;: 0.760799772110871,
+        &quot;p90_relL2_alpha&quot;: 0.9364750364028476,
+        &quot;frac_relL2_alpha_gt_1&quot;: 0.0,
+        &quot;mean_crf&quot;: 0.7882045562903754,
+        &quot;relL2_bins&quot;: {
+          &quot;&lt;0.3&quot;: 0,
+          &quot;&lt;0.5&quot;: 19,
+          &quot;&lt;0.7&quot;: 298,
+          &quot;&lt;1.0&quot;: 1145,
+          &quot;&gt;1.0&quot;: 532
+        },
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_mhi100&quot;
+      },
+      &quot;field_bench_ranking&quot;: [
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4&quot;,
+        &quot;spectrum_fno48_floor6_smooth1_qc&quot;,
+        &quot;spectrum_fno48_floor6_smooth1_qc_mhi100&quot;
+      ],
+      &quot;field_bench_win_counts&quot;: {
+        &quot;spectrum_fno48_floor6_smooth1_qc&quot;: 722,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4&quot;: 1042,
+        &quot;spectrum_fno48_floor6_smooth1_qc_mhi100&quot;: 230
+      }
+    }
+  },
+  &quot;dataset&quot;: {
+    &quot;batch_dir&quot;: &quot;/pscratch/sd/a/asvillar/mp288/jobs/batch_16&quot;,
+    &quot;filename&quot;: &quot;csdata_deltap_b_ver.h5&quot;,
+    &quot;n_cases_total&quot;: 9974,
+    &quot;n_train&quot;: 6983,
+    &quot;n_val&quot;: 997,
+    &quot;n_test&quot;: 1994,
+    &quot;quarantined_cases&quot;: 2,
+    &quot;grid&quot;: 128,
+    &quot;m_window_default&quot;: [
+      -80.0,
+      20.0
+    ],
+    &quot;test_frac&quot;: 0.2,
+    &quot;val_frac&quot;: 0.1,
+    &quot;seed&quot;: 42
+  },
+  &quot;pairwise&quot;: {
+    &quot;from_bench_with_fieldloss_smooth0&quot;: {
+      &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_vs_spectrum_fno48_floor6_smooth1_qc_peak4&quot;: {
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_wins&quot;: 1691,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_wins&quot;: 303,
+        &quot;ties&quot;: 0
+      },
+      &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_vs_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0&quot;: {
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_wins&quot;: 157,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0_wins&quot;: 1837,
+        &quot;ties&quot;: 0
+      },
+      &quot;spectrum_fno48_floor6_smooth1_qc_peak4_vs_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0&quot;: {
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_wins&quot;: 112,
+        &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0_wins&quot;: 1882,
+        &quot;ties&quot;: 0
+      }
+    },
+    &quot;run_Dprime_vs_run_D_direct&quot;: {
+      &quot;smooth0_lower_relL2_wins&quot;: 1466,
+      &quot;smooth05_lower_relL2_wins&quot;: 528,
+      &quot;ties&quot;: 0,
+      &quot;mean_relL2_delta_smooth0_minus_smooth05&quot;: -0.036788822467402206,
+      &quot;median_relL2_delta&quot;: -0.03622600000000001
+    }
+  },
+  &quot;sparc_1530_cases&quot;: {},
+  &quot;artifact_paths&quot;: {
+    &quot;figures&quot;: [
+      &quot;docs/m3dc1/assets/field_bench_frac_gt1_sparc_families_smooth0.png&quot;,
+      &quot;docs/m3dc1/assets/field_bench_frac_gt1_sparc_families_smooth05.png&quot;,
+      &quot;docs/m3dc1/assets/field_bench_frac_gt1_sparc_fieldloss_smooth0.png&quot;,
+      &quot;docs/m3dc1/assets/field_bench_frac_gt1_sparc_fieldloss_smooth05.png&quot;,
+      &quot;docs/m3dc1/assets/field_bench_leaderboard_fieldloss_smooth0.json&quot;,
+      &quot;docs/m3dc1/assets/field_bench_leaderboard_fieldloss_smooth05.json&quot;,
+      &quot;docs/m3dc1/assets/field_bench_pairwise_wins_fieldloss_smooth0.png&quot;,
+      &quot;docs/m3dc1/assets/field_bench_pairwise_wins_fieldloss_smooth05.png&quot;,
+      &quot;docs/m3dc1/assets/field_bench_relL2_hist_fieldloss_smooth0.png&quot;,
+      &quot;docs/m3dc1/assets/field_bench_relL2_hist_fieldloss_smooth05.png&quot;,
+      &quot;docs/m3dc1/assets/field_bench_relL2_hist_fieldloss_smooth05_vs_baseline.png&quot;,
+      &quot;docs/m3dc1/assets/field_bench_relL2_hist_fieldloss_smooth0_vs_baseline.png&quot;,
+      &quot;docs/m3dc1/assets/field_bench_relL2_hist_peak4_vs_fieldloss_smooth0.png&quot;,
+      &quot;docs/m3dc1/assets/field_bench_relL2_hist_peak4_vs_fieldloss_smooth05.png&quot;,
+      &quot;docs/m3dc1/assets/field_bench_relL2_hist_smooth0.png&quot;,
+      &quot;docs/m3dc1/assets/field_bench_relL2_hist_smooth05.png&quot;,
+      &quot;docs/m3dc1/assets/field_bench_relL2_hist_smooth05_vs_smooth0.png&quot;,
+      &quot;docs/m3dc1/assets/field_recon_fieldloss_smooth0.png&quot;,
+      &quot;docs/m3dc1/assets/field_recon_fieldloss_smooth05.png&quot;,
+      &quot;docs/m3dc1/assets/fieldloss_smooth05_field_recon&quot;,
+      &quot;docs/m3dc1/assets/fieldloss_smooth0_field_recon&quot;,
+      &quot;docs/m3dc1/assets/loss_fieldloss_smooth05_fno2d.png&quot;,
+      &quot;docs/m3dc1/assets/loss_fieldloss_smooth0_fno2d.png&quot;,
+      &quot;docs/m3dc1/assets/metric_reality_check_qc_peak4_fieldloss_smooth05_refqc_combined.png&quot;,
+      &quot;docs/m3dc1/assets/metric_reality_check_qc_peak4_fieldloss_smooth05_refqc_field.png&quot;,
+      &quot;docs/m3dc1/assets/metric_reality_check_qc_peak4_fieldloss_smooth0_refqc_combined.png&quot;,
+      &quot;docs/m3dc1/assets/metric_reality_check_qc_peak4_fieldloss_smooth0_refqc_field.png&quot;,
+      &quot;docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05_best_smooth05_test.png&quot;,
+      &quot;docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05_median_smooth05_test.png&quot;,
+      &quot;docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05_worst_smooth05_test.png&quot;,
+      &quot;docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0_best_fieldloss_smooth0_test.png&quot;,
+      &quot;docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0_best_smooth0_test.png&quot;,
+      &quot;docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0_median_fieldloss_smooth0_test.png&quot;,
+      &quot;docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0_median_smooth0_test.png&quot;,
+      &quot;docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0_worst_fieldloss_smooth0_test.png&quot;,
+      &quot;docs/m3dc1/assets/rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0_worst_smooth0_test.png&quot;,
+      &quot;docs/m3dc1/assets/sparc1530_diagnosis_smooth&quot;,
+      &quot;docs/m3dc1/assets/sparc1530_smooth_ablation&quot;
+    ],
+    &quot;narrative_md&quot;: &quot;docs/m3dc1/SURGE_M3DC1_RESEARCH_NARRATIVE.md&quot;,
+    &quot;narrative_html&quot;: &quot;docs/m3dc1/SURGE_M3DC1_RESEARCH_NARRATIVE.html&quot;,
+    &quot;results_report&quot;: &quot;docs/m3dc1/SURGE_M3DC1_RESULTS_REPORT.md&quot;,
+    &quot;field_bench_dirs&quot;: [
+      &quot;field_bench/with_fieldloss&quot;,
+      &quot;field_bench/with_fieldloss_geom&quot;,
+      &quot;field_bench/with_fieldloss_smooth05&quot;,
+      &quot;field_bench/with_fieldloss_smooth0&quot;,
+      &quot;field_bench/leaderboard.json&quot;
+    ]
+  },
+  &quot;per_family&quot;: {
+    &quot;sparc_1427&quot;: {
+      &quot;fieldloss_sigma1&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;,
+        &quot;family&quot;: &quot;sparc_1427&quot;,
+        &quot;n&quot;: 22.0,
+        &quot;mean_relL2&quot;: 0.8101868585213665,
+        &quot;median_relL2&quot;: 0.7256247897072822,
+        &quot;p90_relL2&quot;: 1.0616385517709728,
+        &quot;frac_relL2_gt_1&quot;: 0.13636363636363635,
+        &quot;mean_relL2_alpha&quot;: 0.679099200245715,
+        &quot;mean_crf&quot;: 0.9349276040125905
+      },
+      &quot;run_D_smooth05&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05&quot;,
+        &quot;family&quot;: &quot;sparc_1427&quot;,
+        &quot;n&quot;: 22.0,
+        &quot;mean_relL2&quot;: 0.672854720637415,
+        &quot;median_relL2&quot;: 0.5974599434363973,
+        &quot;p90_relL2&quot;: 0.8712394299554768,
+        &quot;frac_relL2_gt_1&quot;: 0.045454545454545456,
+        &quot;mean_relL2_alpha&quot;: 0.576583576739308,
+        &quot;mean_crf&quot;: 0.7486302596134476
+      },
+      &quot;run_Dprime_smooth0&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0&quot;,
+        &quot;family&quot;: &quot;sparc_1427&quot;,
+        &quot;n&quot;: 22.0,
+        &quot;mean_relL2&quot;: 0.6232800583215107,
+        &quot;median_relL2&quot;: 0.5783002687742445,
+        &quot;p90_relL2&quot;: 0.8491041133146441,
+        &quot;frac_relL2_gt_1&quot;: 0.09090909090909091,
+        &quot;mean_relL2_alpha&quot;: 0.5549910317444792,
+        &quot;mean_crf&quot;: 0.6525540811903435
+      },
+      &quot;run_B_geom&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_geom&quot;,
+        &quot;family&quot;: &quot;sparc_1427&quot;,
+        &quot;n&quot;: 22.0,
+        &quot;mean_relL2&quot;: 0.8564749949394969,
+        &quot;median_relL2&quot;: 0.7593762171515563,
+        &quot;p90_relL2&quot;: 1.1197130689720467,
+        &quot;frac_relL2_gt_1&quot;: 0.22727272727272727,
+        &quot;mean_relL2_alpha&quot;: 0.6925461295904808,
+        &quot;mean_crf&quot;: 0.9484380927614384
+      }
+    },
+    &quot;sparc_1430&quot;: {
+      &quot;fieldloss_sigma1&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;,
+        &quot;family&quot;: &quot;sparc_1430&quot;,
+        &quot;n&quot;: 19.0,
+        &quot;mean_relL2&quot;: 0.8936800618813211,
+        &quot;median_relL2&quot;: 0.8730587198825542,
+        &quot;p90_relL2&quot;: 1.0855638036740756,
+        &quot;frac_relL2_gt_1&quot;: 0.2631578947368421,
+        &quot;mean_relL2_alpha&quot;: 0.7760253142239145,
+        &quot;mean_crf&quot;: 0.9482581435022893
+      },
+      &quot;run_D_smooth05&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05&quot;,
+        &quot;family&quot;: &quot;sparc_1430&quot;,
+        &quot;n&quot;: 19.0,
+        &quot;mean_relL2&quot;: 0.7449249343536607,
+        &quot;median_relL2&quot;: 0.6711164479021442,
+        &quot;p90_relL2&quot;: 1.0554434045248147,
+        &quot;frac_relL2_gt_1&quot;: 0.2631578947368421,
+        &quot;mean_relL2_alpha&quot;: 0.6660167382689549,
+        &quot;mean_crf&quot;: 0.855031434439194
+      },
+      &quot;run_Dprime_smooth0&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0&quot;,
+        &quot;family&quot;: &quot;sparc_1430&quot;,
+        &quot;n&quot;: 19.0,
+        &quot;mean_relL2&quot;: 0.8441770319368297,
+        &quot;median_relL2&quot;: 0.8119023197904165,
+        &quot;p90_relL2&quot;: 1.263855688856673,
+        &quot;frac_relL2_gt_1&quot;: 0.3157894736842105,
+        &quot;mean_relL2_alpha&quot;: 0.720700675461559,
+        &quot;mean_crf&quot;: 0.8044104530591627
+      },
+      &quot;run_B_geom&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_geom&quot;,
+        &quot;family&quot;: &quot;sparc_1430&quot;,
+        &quot;n&quot;: 19.0,
+        &quot;mean_relL2&quot;: 0.84185421547826,
+        &quot;median_relL2&quot;: 0.7887464342825177,
+        &quot;p90_relL2&quot;: 1.1246146840398548,
+        &quot;frac_relL2_gt_1&quot;: 0.3157894736842105,
+        &quot;mean_relL2_alpha&quot;: 0.7373689047555867,
+        &quot;mean_crf&quot;: 0.9645152534460699
+      }
+    },
+    &quot;sparc_1530&quot;: {
+      &quot;fieldloss_sigma1&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;,
+        &quot;family&quot;: &quot;sparc_1530&quot;,
+        &quot;n&quot;: 20.0,
+        &quot;mean_relL2&quot;: 0.8129585625640068,
+        &quot;median_relL2&quot;: 0.7711546055914787,
+        &quot;p90_relL2&quot;: 1.08149761371246,
+        &quot;frac_relL2_gt_1&quot;: 0.25,
+        &quot;mean_relL2_alpha&quot;: 0.7519246919725975,
+        &quot;mean_crf&quot;: 0.9791497755810614
+      },
+      &quot;run_D_smooth05&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05&quot;,
+        &quot;family&quot;: &quot;sparc_1530&quot;,
+        &quot;n&quot;: 20.0,
+        &quot;mean_relL2&quot;: 0.6164446620651364,
+        &quot;median_relL2&quot;: 0.6139414146364266,
+        &quot;p90_relL2&quot;: 0.9087876146048055,
+        &quot;frac_relL2_gt_1&quot;: 0.05,
+        &quot;mean_relL2_alpha&quot;: 0.5730721303892091,
+        &quot;mean_crf&quot;: 0.9080078884325122
+      },
+      &quot;run_Dprime_smooth0&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0&quot;,
+        &quot;family&quot;: &quot;sparc_1530&quot;,
+        &quot;n&quot;: 20.0,
+        &quot;mean_relL2&quot;: 0.6890904308239743,
+        &quot;median_relL2&quot;: 0.6743214474351134,
+        &quot;p90_relL2&quot;: 0.8860798926661946,
+        &quot;frac_relL2_gt_1&quot;: 0.05,
+        &quot;mean_relL2_alpha&quot;: 0.6450378632872183,
+        &quot;mean_crf&quot;: 0.8897151235322666
+      },
+      &quot;run_B_geom&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_geom&quot;,
+        &quot;family&quot;: &quot;sparc_1530&quot;,
+        &quot;n&quot;: 20.0,
+        &quot;mean_relL2&quot;: 0.6776710366368681,
+        &quot;median_relL2&quot;: 0.6345793293092659,
+        &quot;p90_relL2&quot;: 0.9646802649190895,
+        &quot;frac_relL2_gt_1&quot;: 0.05,
+        &quot;mean_relL2_alpha&quot;: 0.6090177790866041,
+        &quot;mean_crf&quot;: 0.9726182452695034
+      }
+    },
+    &quot;sparc_1500&quot;: {
+      &quot;fieldloss_sigma1&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;,
+        &quot;family&quot;: &quot;sparc_1500&quot;,
+        &quot;n&quot;: 23.0,
+        &quot;mean_relL2&quot;: 0.4900494610039547,
+        &quot;median_relL2&quot;: 0.3930065963537572,
+        &quot;p90_relL2&quot;: 0.6634146342877436,
+        &quot;frac_relL2_gt_1&quot;: 0.08695652173913043,
+        &quot;mean_relL2_alpha&quot;: 0.4452568718487521,
+        &quot;mean_crf&quot;: 0.8971257244716145
+      },
+      &quot;run_D_smooth05&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05&quot;,
+        &quot;family&quot;: &quot;sparc_1500&quot;,
+        &quot;n&quot;: 23.0,
+        &quot;mean_relL2&quot;: 0.41481369170312016,
+        &quot;median_relL2&quot;: 0.3513558302467291,
+        &quot;p90_relL2&quot;: 0.5463489767807773,
+        &quot;frac_relL2_gt_1&quot;: 0.0,
+        &quot;mean_relL2_alpha&quot;: 0.38187769859744236,
+        &quot;mean_crf&quot;: 0.8991233314620004
+      },
+      &quot;run_Dprime_smooth0&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0&quot;,
+        &quot;family&quot;: &quot;sparc_1500&quot;,
+        &quot;n&quot;: 23.0,
+        &quot;mean_relL2&quot;: 0.41564272447209166,
+        &quot;median_relL2&quot;: 0.3595070305772828,
+        &quot;p90_relL2&quot;: 0.5140357188223766,
+        &quot;frac_relL2_gt_1&quot;: 0.08695652173913043,
+        &quot;mean_relL2_alpha&quot;: 0.3717812313765967,
+        &quot;mean_crf&quot;: 0.8735952235111679
+      },
+      &quot;run_B_geom&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_geom&quot;,
+        &quot;family&quot;: &quot;sparc_1500&quot;,
+        &quot;n&quot;: 23.0,
+        &quot;mean_relL2&quot;: 0.44805188077182573,
+        &quot;median_relL2&quot;: 0.39139857097834274,
+        &quot;p90_relL2&quot;: 0.5319120717037594,
+        &quot;frac_relL2_gt_1&quot;: 0.043478260869565216,
+        &quot;mean_relL2_alpha&quot;: 0.4159231441291289,
+        &quot;mean_crf&quot;: 0.9537364257350083
+      }
+    },
+    &quot;sparc_1524&quot;: {
+      &quot;fieldloss_sigma1&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;,
+        &quot;family&quot;: &quot;sparc_1524&quot;,
+        &quot;n&quot;: 23.0,
+        &quot;mean_relL2&quot;: 1.0139722580061037,
+        &quot;median_relL2&quot;: 0.8604779957207713,
+        &quot;p90_relL2&quot;: 1.7081526950827977,
+        &quot;frac_relL2_gt_1&quot;: 0.34782608695652173,
+        &quot;mean_relL2_alpha&quot;: 0.7585706932954386,
+        &quot;mean_crf&quot;: 0.9032752401017237
+      },
+      &quot;run_D_smooth05&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05&quot;,
+        &quot;family&quot;: &quot;sparc_1524&quot;,
+        &quot;n&quot;: 23.0,
+        &quot;mean_relL2&quot;: 0.8420161334903975,
+        &quot;median_relL2&quot;: 0.780315958462692,
+        &quot;p90_relL2&quot;: 1.2610148935637615,
+        &quot;frac_relL2_gt_1&quot;: 0.2608695652173913,
+        &quot;mean_relL2_alpha&quot;: 0.6829452231091401,
+        &quot;mean_crf&quot;: 0.7289314637475186
+      },
+      &quot;run_Dprime_smooth0&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0&quot;,
+        &quot;family&quot;: &quot;sparc_1524&quot;,
+        &quot;n&quot;: 23.0,
+        &quot;mean_relL2&quot;: 0.8673662725848073,
+        &quot;median_relL2&quot;: 0.7534639549738332,
+        &quot;p90_relL2&quot;: 1.1789894844585251,
+        &quot;frac_relL2_gt_1&quot;: 0.34782608695652173,
+        &quot;mean_relL2_alpha&quot;: 0.6744730573703529,
+        &quot;mean_crf&quot;: 0.617326660146407
+      },
+      &quot;run_B_geom&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_geom&quot;,
+        &quot;family&quot;: &quot;sparc_1524&quot;,
+        &quot;n&quot;: 23.0,
+        &quot;mean_relL2&quot;: 1.0199521560983067,
+        &quot;median_relL2&quot;: 0.9150843319714197,
+        &quot;p90_relL2&quot;: 1.5163156169537602,
+        &quot;frac_relL2_gt_1&quot;: 0.2608695652173913,
+        &quot;mean_relL2_alpha&quot;: 0.76465878900067,
+        &quot;mean_crf&quot;: 0.9428611823832662
+      }
+    },
+    &quot;sparc_1300&quot;: {
+      &quot;fieldloss_sigma1&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;,
+        &quot;family&quot;: &quot;sparc_1300&quot;,
+        &quot;n&quot;: 21.0,
+        &quot;mean_relL2&quot;: 0.4569873114005015,
+        &quot;median_relL2&quot;: 0.4260080067286333,
+        &quot;p90_relL2&quot;: 0.6310170825038877,
+        &quot;frac_relL2_gt_1&quot;: 0.047619047619047616,
+        &quot;mean_relL2_alpha&quot;: 0.44004408512595883,
+        &quot;mean_crf&quot;: 0.8899903056498069
+      },
+      &quot;run_D_smooth05&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth05&quot;,
+        &quot;family&quot;: &quot;sparc_1300&quot;,
+        &quot;n&quot;: 21.0,
+        &quot;mean_relL2&quot;: 0.47925336249426753,
+        &quot;median_relL2&quot;: 0.4182957385606315,
+        &quot;p90_relL2&quot;: 0.7002150505692422,
+        &quot;frac_relL2_gt_1&quot;: 0.047619047619047616,
+        &quot;mean_relL2_alpha&quot;: 0.41936386070574255,
+        &quot;mean_crf&quot;: 0.891465775697907
+      },
+      &quot;run_Dprime_smooth0&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0&quot;,
+        &quot;family&quot;: &quot;sparc_1300&quot;,
+        &quot;n&quot;: 21.0,
+        &quot;mean_relL2&quot;: 0.4540993876521585,
+        &quot;median_relL2&quot;: 0.42009224978996657,
+        &quot;p90_relL2&quot;: 0.6239819698170562,
+        &quot;frac_relL2_gt_1&quot;: 0.047619047619047616,
+        &quot;mean_relL2_alpha&quot;: 0.41277536518076385,
+        &quot;mean_crf&quot;: 0.8534178384276927
+      },
+      &quot;run_B_geom&quot;: {
+        &quot;model&quot;: &quot;spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_geom&quot;,
+        &quot;family&quot;: &quot;sparc_1300&quot;,
+        &quot;n&quot;: 21.0,
+        &quot;mean_relL2&quot;: 0.4472793731062833,
+        &quot;median_relL2&quot;: 0.4229681734003321,
+        &quot;p90_relL2&quot;: 0.6658212300403026,
+        &quot;frac_relL2_gt_1&quot;: 0.047619047619047616,
+        &quot;mean_relL2_alpha&quot;: 0.4189601454172794,
+        &quot;mean_crf&quot;: 0.9352689495977353
+      }
+    }
+  },
+  &quot;sparc_1530_top_fieldloss_regressions_vs_peak4&quot;: [
+    {
+      &quot;key&quot;: &quot;run79_sparc_1530&quot;,
+      &quot;family&quot;: &quot;sparc_1530&quot;,
+      &quot;relL2_spectrum_fno48_floor6_smooth1_qc_peak4&quot;: &quot;0.496567&quot;,
+      &quot;relL2_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;: &quot;1.032458&quot;,
+      &quot;patR2_spectrum_fno48_floor6_smooth1_qc_peak4&quot;: &quot;0.895632&quot;,
+      &quot;patR2_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;: &quot;0.061429&quot;
+    },
+    {
+      &quot;key&quot;: &quot;run43_sparc_1530&quot;,
+      &quot;family&quot;: &quot;sparc_1530&quot;,
+      &quot;relL2_spectrum_fno48_floor6_smooth1_qc_peak4&quot;: &quot;0.816470&quot;,
+      &quot;relL2_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;: &quot;1.298781&quot;,
+      &quot;patR2_spectrum_fno48_floor6_smooth1_qc_peak4&quot;: &quot;0.432810&quot;,
+      &quot;patR2_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;: &quot;-0.180970&quot;
+    },
+    {
+      &quot;key&quot;: &quot;run99_sparc_1530&quot;,
+      &quot;family&quot;: &quot;sparc_1530&quot;,
+      &quot;relL2_spectrum_fno48_floor6_smooth1_qc_peak4&quot;: &quot;0.655249&quot;,
+      &quot;relL2_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;: &quot;1.078824&quot;,
+      &quot;patR2_spectrum_fno48_floor6_smooth1_qc_peak4&quot;: &quot;0.404467&quot;,
+      &quot;patR2_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;: &quot;-0.241258&quot;
+    },
+    {
+      &quot;key&quot;: &quot;run31_sparc_1530&quot;,
+      &quot;family&quot;: &quot;sparc_1530&quot;,
+      &quot;relL2_spectrum_fno48_floor6_smooth1_qc_peak4&quot;: &quot;0.631002&quot;,
+      &quot;relL2_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;: &quot;1.037485&quot;,
+      &quot;patR2_spectrum_fno48_floor6_smooth1_qc_peak4&quot;: &quot;0.960259&quot;,
+      &quot;patR2_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;: &quot;0.117388&quot;
+    },
+    {
+      &quot;key&quot;: &quot;run83_sparc_1530&quot;,
+      &quot;family&quot;: &quot;sparc_1530&quot;,
+      &quot;relL2_spectrum_fno48_floor6_smooth1_qc_peak4&quot;: &quot;0.793379&quot;,
+      &quot;relL2_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;: &quot;1.105557&quot;,
+      &quot;patR2_spectrum_fno48_floor6_smooth1_qc_peak4&quot;: &quot;0.884501&quot;,
+      &quot;patR2_spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss&quot;: &quot;-0.227872&quot;
+    }
+  ]
+}
+</code></pre></body></html>

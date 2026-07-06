@@ -1,0 +1,56 @@
+{
+  "run": "runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss_smooth0",
+  "split": "test",
+  "n_cases": 1994,
+  "conditions": {
+    "oracle": {
+      "n": 1994,
+      "mean": 0.49056679114093277,
+      "median": 0.4208625844620937,
+      "p90": 0.8029328135306899,
+      "frac_gt_1": 0.048144433299899696
+    },
+    "zero": {
+      "n": 1994,
+      "mean": 1.155359565770887,
+      "median": 1.1646835350022826,
+      "p90": 1.5138165532310994,
+      "frac_gt_1": 0.7086258776328987
+    },
+    "random": {
+      "n": 1994,
+      "mean": 1.3762374869100606,
+      "median": 1.345380513586613,
+      "p90": 1.5646818442047434,
+      "frac_gt_1": 0.9969909729187563
+    },
+    "sigma_0.25": {
+      "n": 1994,
+      "mean": 0.5488447441174048,
+      "median": 0.481525802999909,
+      "p90": 0.824824118202095,
+      "frac_gt_1": 0.05265797392176529
+    },
+    "sigma_0.5": {
+      "n": 1994,
+      "mean": 0.6754627988934436,
+      "median": 0.62585717665067,
+      "p90": 0.8976973923657184,
+      "frac_gt_1": 0.06619859578736209
+    },
+    "sigma_1.0": {
+      "n": 1994,
+      "mean": 0.9606552223564383,
+      "median": 0.9257207721755596,
+      "p90": 1.148217879213877,
+      "frac_gt_1": 0.3004012036108325
+    }
+  },
+  "notes": {
+    "oracle": "true phase from HDF5 (same as field_bench)",
+    "zero": "phi=0 on native (m, psi) coefficients",
+    "random": "phi ~ Uniform(-pi,pi) per coefficient",
+    "sigma_*": "true phase + Gaussian noise (radians), wrapped",
+    "field_convention": "native m-grid poloidal IFFT, max-normalized relL2 (field_bench.py)"
+  }
+}

@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SURGE × M3DC1 — Workflow &amp; Results Report</title>
+<style>
+:root { color-scheme: light dark; }
+body {
+  font-family: Georgia, 'Times New Roman', serif;
+  max-width: 960px;
+  margin: 2rem auto;
+  padding: 0 1.25rem;
+  line-height: 1.55;
+  font-size: 16px;
+}
+h1, h2, h3, h4 { font-family: system-ui, sans-serif; line-height: 1.25; }
+h1 { font-size: 1.75rem; border-bottom: 1px solid #ccc; padding-bottom: 0.3em; }
+h2 { font-size: 1.35rem; margin-top: 2em; border-bottom: 1px solid #eee; }
+h3 { font-size: 1.1rem; }
+table { border-collapse: collapse; width: 100%; font-size: 0.88em; margin: 1em 0; }
+th, td { border: 1px solid #bbb; padding: 6px 10px; vertical-align: top; }
+th { background: #eee; text-align: left; }
+tr:nth-child(even) { background: rgba(0,0,0,0.03); }
+code { font-family: ui-monospace, monospace; font-size: 0.88em; background: rgba(0,0,0,0.06); padding: 0.1em 0.35em; border-radius: 3px; }
+pre { background: rgba(0,0,0,0.06); padding: 1em; overflow-x: auto; border-radius: 4px; }
+pre code { background: none; padding: 0; }
+blockquote { border-left: 4px solid #888; margin: 1em 0; padding: 0.5em 1em; background: rgba(0,0,0,0.04); }
+img { max-width: 100%; height: auto; display: block; margin: 1em auto; border: 1px solid #ddd; }
+a { color: #0366d6; }
+hr { border: none; border-top: 1px solid #ccc; margin: 2em 0; }
+@media print {
+  body { max-width: none; font-size: 11pt; }
+  img { max-height: 420px; object-fit: contain; }
+}
+</style>
+</head>
+<body>
+<h1 id="surge-m3dc1-surrogates-workflow-results-report">SURGE × M3DC1 Surrogates — Workflow &amp; Results Report<a class="headerlink" href="#surge-m3dc1-surrogates-workflow-results-report" title="Permanent link">&para;</a></h1>
+<p><em>Status snapshot: <strong>2026‑07‑03</strong>. Repo: <strong>SURGE-exp</strong>, branch <code>feat/m3dc1-on-model-bench</code>.</em></p>
+<p>This report documents (1) how the data was generated and where it lives, (2) how the
+SURGE training workflow is run, (3) the model zoo and where each model lives, and
+(4) results for the three M3D‑C1 AI tasks that show real progress — <strong>growth rate γ</strong>,
+<strong>core/edge mode locator</strong>, and the <strong>eigenmode (δp̂ spectrum) predictor</strong> — including
+loss curves, run comparisons, and per‑case eigenmode visuals.</p>
+<blockquote>
+<p><strong>Headline update (2026‑07‑02):</strong> the δp̂ spectrum model was pushed from global val
+R² ≈ 0.84 to <strong>test global R² 0.920 / pattern R² 0.924</strong> by three orthogonal levers —
+<strong>target flooring</strong> (clip the max‑norm log10 target at −6 dex), <strong>target smoothing</strong>
+(Gaussian σ=1 denoise), and <strong>quarantining</strong> the 2 corrupt cases found by a
+full‑dataset quality scan. A new <strong>core‑mode balancing</strong> toggle (<code>--balance-psi</code>)
+improves rare core modes (R² 0.897→0.908) and peak amplitude at a ~0.003 aggregate
+cost. See <a href="#44-pushing-past-084--target-conditioning-quarantine-core-balancing-20260702">§4.4</a>.</p>
+<p><em>Prior headline (2026‑07‑01):</em> the plateau was first broken by <strong>per‑case max
+normalization</strong> (val R² 0.605 → 0.836; per‑case pattern R² median −0.9 → 0.74).</p>
+<p><strong>Follow-up (2026‑07‑06):</strong> Runs B (geom), D (σ=0.5), D′ (σ=0) — synthesis in
+<a href="SURGE_M3DC1_RESEARCH_NARRATIVE.md"><code>SURGE_M3DC1_RESEARCH_NARRATIVE.md</code></a>;
+measured facts only in <a href="SURGE_M3DC1_FACTS.md"><code>SURGE_M3DC1_FACTS.md</code></a>.
+(This file is unchanged as the detailed lab notebook.)</p>
+<p><strong>Figures.</strong> All images are committed next to this file under
+<a href="assets"><code>docs/m3dc1/assets/</code></a> and referenced with relative paths, so they render on
+GitHub and in the Markdown preview.</p>
+</blockquote>
+<hr />
+<h2 id="1-data-source-generation-location">1. Data: source, generation, location<a class="headerlink" href="#1-data-source-generation-location" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Raw M3DC1 batch</td>
+<td><code>/pscratch/sd/a/asvillar/mp288/jobs/batch_16/</code> (10,201 case dirs: <code>run*/sparc_*/</code>)</td>
+</tr>
+<tr>
+<td>Per‑case verification file</td>
+<td><code>csdata_deltap_b_ver.h5</code> (one per case dir)</td>
+</tr>
+<tr>
+<td>Grid / spectrum</td>
+<td>201×201 (R,Z), poloidal harmonics <code>m ∈ [−100, 100]</code>, full FFT</td>
+</tr>
+<tr>
+<td>Postprocess entry point</td>
+<td><code>m3dc1ml-run-batch</code> → <a href="../../m3dc1ml/src/m3dc1ml/postprocess/run_batch.py"><code>m3dc1ml/.../postprocess/run_batch.py</code></a></td>
+</tr>
+<tr>
+<td>Generation script</td>
+<td><a href="../../m3dc1ml/scripts/build_csdata_deltap_b_ver.sh"><code>m3dc1ml/scripts/build_csdata_deltap_b_ver.sh</code></a> (+ <code>.slurm</code>)</td>
+</tr>
+<tr>
+<td>Scalars dataset (γ etc.)</td>
+<td><a href="../../data/datasets/SPARC/case_scalars_ver.parquet"><code>data/datasets/SPARC/case_scalars_ver.parquet</code></a> — <strong>9,976 cases</strong></td>
+</tr>
+<tr>
+<td>Dataset metadata</td>
+<td><a href="../../data/datasets/SPARC/case_scalars_ver_metadata.yaml"><code>case_scalars_ver_metadata.yaml</code></a></td>
+</tr>
+<tr>
+<td>Exploration notebook</td>
+<td><a href="../../m3dc1ml/notebooks/explore_csdata_deltap_b_test.ipynb"><code>m3dc1ml/notebooks/explore_csdata_deltap_b_test.ipynb</code></a></td>
+</tr>
+<tr>
+<td>Curation / validation notebook</td>
+<td><a href="../../m3dc1ml/notebooks/curate_validate_mlm3dc1_predictions.ipynb"><code>m3dc1ml/notebooks/curate_validate_mlm3dc1_predictions.ipynb</code></a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>What's inside each <code>csdata_deltap_b_ver.h5</code>:</strong>
+<code>spectrum/{p,br,bz,bphi}</code> (complex <code>spec[t, m, ψ]</code> + <code>m_modes</code>, <code>psi_norm</code>),
+<code>pertfields/{p,p_hat,p_phi0,p_phiq,...}</code> (the δp field on the 201×201 R,Z grid),
+<code>equilibrium/</code> (ψ(R,Z), grad‑ψ, magnetic axis), <code>flux_average/{q,p,ne,...}</code>,
+<code>miller/{R0,a,kappa,delta}</code>, <code>parset/{ntor,pscale,batemanscale}</code>, <code>growth_rate/</code>.</p>
+<p><strong>How generation works (short version):</strong> M3DC1 runs produce <code>C1.h5</code> + <code>equilibrium.h5</code>
+per case. <code>m3dc1ml</code> postprocess uses the M3DC1 <code>fpy</code> bindings + <code>flux_coordinates</code>
+(PEST) to evaluate the perturbed pressure/field on the R,Z grid, poloidally
+Fourier‑transforms to <code>δp̂(m, ψ_N)</code>, and stores both the field and the spectrum
+(with a reconstruction self‑check). Code:
+<a href="../../m3dc1ml/src/m3dc1ml/postprocess/build_sdata.py"><code>postprocess/build_sdata.py</code></a>.</p>
+<p><strong>A representative case</strong> (field δp(R,Z), spectrum |δp̂|(m,ψ), and profiles), rendered
+by the exploration notebook:</p>
+<p><img alt="dataset case example" src="assets/dataset_case_example.png" /></p>
+<p>Repositories:
+- SURGE (framework, experiments): <strong><a href="https://github.com/S-Villar/SURGE-exp">github.com/S-Villar/SURGE-exp</a></strong> (branch <code>feat/m3dc1-on-model-bench</code>)
+- M3DC1 postprocess/IO/viz: <strong><a href="https://github.com/S-Villar/m3dc1ml">github.com/S-Villar/m3dc1ml</a></strong></p>
+<hr />
+<h2 id="2-the-surge-training-workflow">2. The SURGE training workflow<a class="headerlink" href="#2-the-surge-training-workflow" title="Permanent link">&para;</a></h2>
+<p>All tabular tasks share <strong>one leakage‑free, case‑grouped split</strong> so every model sees
+exactly the same train/val/test partition. Grouping is by <code>run_id</code> + <code>eq_id</code>
+(<code>GroupShuffleSplit</code>), so all rows from one physical case stay in one split.</p>
+<ul>
+<li>Engine / splitting / scaling: <a href="../../surge/engine.py"><code>surge/engine.py</code></a></li>
+<li>Workflow spec (YAML): <a href="../../surge/workflow/spec.py"><code>surge/workflow/spec.py</code></a></li>
+<li>Runner + artifacts: <a href="../../surge/workflow/run.py"><code>surge/workflow/run.py</code></a></li>
+<li>HPO recipes (optuna): <a href="../../surge/benchmarks/hpo.py"><code>surge/benchmarks/hpo.py</code></a></li>
+</ul>
+<p>Each run writes: <code>metrics.json</code>, <code>workflow_summary.json</code>, <code>splits.json</code>
+(+ <code>leakage_check</code>), <code>model_card_*.json</code>, <code>training_history_*.json</code>, and
+<code>plots/training_dashboard_*.png</code>.</p>
+<h3 id="21-preprocessing-persample-percase-normalization-new">2.1 Preprocessing: per‑sample (per‑case) normalization — <strong>new</strong><a class="headerlink" href="#21-preprocessing-persample-percase-normalization-new" title="Permanent link">&para;</a></h3>
+<p>The δp̂ eigenmode has an <strong>arbitrary overall amplitude</strong> (the eigenvector normalization
+is meaningless — cases range from <code>|δp|max ~ 1e4</code> to <code>~1e-7</code>); only the <em>shape</em> is
+physical. SURGE now supports <strong>per‑sample output normalization</strong> so a model learns the
+shape and the absolute scale is factored out:</p>
+<ul>
+<li>Primitives: <code>per_sample_max_scale</code> / <code>invert_per_sample_max_scale</code> in
+  <a href="../../surge/preprocessing.py"><code>surge/preprocessing.py</code></a> (modes <code>max</code>, <code>absmax</code>, <code>l2</code>).</li>
+<li>Wired through the engine (<code>EngineRunConfig.output_per_sample_norm</code>,
+  <code>ScalerBundle.output_per_sample_scale</code>): each output vector is divided by its own
+  magnitude <strong>before</strong> any log/standardization, and the stored per‑row scale is used to
+  invert predictions back to original units for metrics.</li>
+<li>Configurable from the workflow spec via <code>output_per_sample_norm</code>.</li>
+</ul>
+<p>This is distinct from <code>StandardScaler</code> (global per‑column stats): it is parameter‑free
+per row and is exactly what the eigenmode problem needs.</p>
+<p><strong>Run a workflow (example — γ, all models):</strong></p>
+<pre><code class="language-bash">conda activate /global/cfs/projectdirs/m3716/software/asvillar/envs/surge
+python scripts/m3dc1/internal/run_workflow.py configs/internal/m3dc1_gamma_ver_allmodels.yaml
+</code></pre>
+<p>Configs live in <a href="../../configs/internal"><code>configs/internal/</code></a>. Full how‑to:
+<a href="TRAINING_RUNBOOK.md"><code>docs/m3dc1/TRAINING_RUNBOOK.md</code></a>,
+spectrum how‑to: <a href="SPECTRUM_TRAINING_RUNBOOK.md"><code>docs/m3dc1/SPECTRUM_TRAINING_RUNBOOK.md</code></a>,
+HPO details: <a href="HPO_COMPARISON.md"><code>docs/m3dc1/HPO_COMPARISON.md</code></a>.</p>
+<hr />
+<h2 id="3-model-zoo-what-they-are-where-they-live">3. Model zoo — what they are &amp; where they live<a class="headerlink" href="#3-model-zoo-what-they-are-where-they-live" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Model (key)</th>
+<th>Type / architecture</th>
+<th>Backend</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ridge</code></td>
+<td>Linear regression, L2 penalty (baseline)</td>
+<td>sklearn</td>
+</tr>
+<tr>
+<td><code>random_forest</code></td>
+<td>Bagged decision‑tree ensemble</td>
+<td>sklearn</td>
+</tr>
+<tr>
+<td><code>gradient_boosting</code></td>
+<td>Sequential boosted trees</td>
+<td>sklearn</td>
+</tr>
+<tr>
+<td><code>sk_mlp</code></td>
+<td>sklearn feed‑forward MLP</td>
+<td>sklearn</td>
+</tr>
+<tr>
+<td><code>torch_mlp</code></td>
+<td>PyTorch MLP (configurable depth/width)</td>
+<td><a href="../../surge/model/adapters">adapters</a></td>
+</tr>
+<tr>
+<td><code>residual_mlp</code></td>
+<td>MLP with residual/skip blocks</td>
+<td><a href="../../surge/model/backends/residual_mlp.py"><code>residual_mlp.py</code></a></td>
+</tr>
+<tr>
+<td><code>geom_residual_mlp</code></td>
+<td>Residual MLP + geometry‑aware feature map</td>
+<td><a href="../../surge/model/adapters/geometric_residual_mlp.py">adapters</a></td>
+</tr>
+<tr>
+<td><code>mlp_ensemble</code></td>
+<td>Deep ensemble of MLPs (mean + uncertainty)</td>
+<td><a href="../../surge/model/backends/mlp_ensemble.py"><code>mlp_ensemble.py</code></a></td>
+</tr>
+<tr>
+<td><code>ft_transformer</code></td>
+<td>Feature‑Tokenizer Transformer (tabular attention)</td>
+<td><a href="../../surge/model/backends/ft_transformer.py"><code>ft_transformer.py</code></a></td>
+</tr>
+<tr>
+<td><code>vae</code></td>
+<td>Variational auto‑encoder w/ regression head</td>
+<td><a href="../../surge/model/backends/vae.py"><code>vae.py</code></a></td>
+</tr>
+<tr>
+<td><strong><code>fno2d</code></strong></td>
+<td><strong>2D Fourier Neural Operator</strong> — spectral conv in Fourier space, resolution‑invariant operator learning</td>
+<td><a href="../../surge/model/backends/fno2d.py"><code>fno2d.py</code></a></td>
+</tr>
+<tr>
+<td><strong><code>unet</code></strong></td>
+<td><strong>U‑Net</strong> — encoder/decoder CNN with skip connections</td>
+<td><a href="../../surge/model/backends/unet.py"><code>unet.py</code></a></td>
+</tr>
+<tr>
+<td><code>deeponet</code></td>
+<td>Operator net (branch/trunk)</td>
+<td><a href="../../surge/model/backends/deeponet.py"><code>deeponet.py</code></a></td>
+</tr>
+</tbody>
+</table>
+<p>The <strong>spectrum‑image FNO2D/U‑Net</strong> driver (2D <code>|δp̂|(m,ψ)</code> prediction with
+physics‑informed conditioning channels incl. the <code>m − n·q(ψ)</code> resonance channel):
+<a href="../../scripts/m3dc1/internal/train_spectrum_image.py"><code>scripts/m3dc1/internal/train_spectrum_image.py</code></a>.
+Net config: <code>_FNO2dNet(in=11, out=1, hidden=32, n_modes=16, n_layers=4)</code>,
+<code>_UNetNet(in=11, out=1, base=48, depth=4)</code>.</p>
+<hr />
+<h2 id="4-results">4. Results<a class="headerlink" href="#4-results" title="Permanent link">&para;</a></h2>
+<h3 id="41-growth-rate-regression-9976-cases">4.1 Growth rate γ (regression, 9,976 cases)<a class="headerlink" href="#41-growth-rate-regression-9976-cases" title="Permanent link">&para;</a></h3>
+<p>Target <code>gamma</code>; 11 equilibrium/scalar inputs; case‑grouped split.
+Run: <code>runs/m3dc1_gamma_ver_allmodels/</code> · HPO: <code>runs/m3dc1_gamma_ver_batch_hpo/</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th style="text-align: right;">test R²</th>
+<th style="text-align: right;">test RMSE</th>
+<th style="text-align: right;">test MAE</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>torch_mlp (HPO)</strong></td>
+<td style="text-align: right;"><strong>0.868</strong></td>
+<td style="text-align: right;">0.0164</td>
+<td style="text-align: right;">0.0065</td>
+</tr>
+<tr>
+<td>mlp_ensemble</td>
+<td style="text-align: right;">0.858</td>
+<td style="text-align: right;">0.0171</td>
+<td style="text-align: right;">0.0063</td>
+</tr>
+<tr>
+<td>random_forest</td>
+<td style="text-align: right;">0.852</td>
+<td style="text-align: right;">0.0174</td>
+<td style="text-align: right;">0.0057</td>
+</tr>
+<tr>
+<td>torch_mlp</td>
+<td style="text-align: right;">0.852</td>
+<td style="text-align: right;">0.0174</td>
+<td style="text-align: right;">0.0065</td>
+</tr>
+<tr>
+<td>vae</td>
+<td style="text-align: right;">0.843</td>
+<td style="text-align: right;">0.0179</td>
+<td style="text-align: right;">0.0084</td>
+</tr>
+<tr>
+<td>residual_mlp</td>
+<td style="text-align: right;">0.833</td>
+<td style="text-align: right;">0.0185</td>
+<td style="text-align: right;">0.0072</td>
+</tr>
+<tr>
+<td>sk_mlp</td>
+<td style="text-align: right;">0.822</td>
+<td style="text-align: right;">0.0190</td>
+<td style="text-align: right;">0.0075</td>
+</tr>
+<tr>
+<td>gradient_boosting</td>
+<td style="text-align: right;">0.803</td>
+<td style="text-align: right;">0.0200</td>
+<td style="text-align: right;">0.0090</td>
+</tr>
+<tr>
+<td>ft_transformer</td>
+<td style="text-align: right;">0.782 (→ 0.850 w/ HPO)</td>
+<td style="text-align: right;">0.0211</td>
+<td style="text-align: right;">0.0097</td>
+</tr>
+<tr>
+<td>geom_residual_mlp</td>
+<td style="text-align: right;">0.390 (→ 0.743 w/ HPO)</td>
+<td style="text-align: right;">0.0353</td>
+<td style="text-align: right;">0.0232</td>
+</tr>
+<tr>
+<td>ridge (linear baseline)</td>
+<td style="text-align: right;">0.531</td>
+<td style="text-align: right;">0.0309</td>
+<td style="text-align: right;">0.0186</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="gamma model comparison" src="assets/gamma_r2_bar.png" /></p>
+<p>Best‑model predicted‑vs‑true and per‑model training dashboard:</p>
+<p><img alt="gamma best scatter" src="assets/gamma_best_scatter.png" /></p>
+<p><img alt="gamma torch_mlp dashboard" src="assets/gamma_dashboard_torch_mlp.png" /></p>
+<p><strong>Takeaway:</strong> γ is well‑predicted from equilibrium scalars — best <strong>R² ≈ 0.87</strong> (HPO
+torch_mlp), with a tight cluster of NN/ensemble/RF models around 0.85. Linear ridge
+(0.53) confirms the relationship is strongly nonlinear.</p>
+<h3 id="42-core-vs-edge-mode-locator-regression-classification">4.2 Core vs edge mode locator (regression → classification)<a class="headerlink" href="#42-core-vs-edge-mode-locator-regression-classification" title="Permanent link">&para;</a></h3>
+<p>Well‑posed target: radial location of the mode,
+<code>ψ_peak = Σ(E·ψ)/ΣE</code> with <code>E(ψ)=Σ_m|δp̂|²</code>, then thresholded to core/edge.
+Run: <code>runs/peak_location/</code> (script <code>scripts/m3dc1/internal/peak_location.py</code>,
+3,998 cases; features + labels cached in <code>runs/peak_location/peak_location_dataset.parquet</code>,
+metrics in <code>runs/peak_location/peak_location_metrics.json</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Model</th>
+<th>Metric</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ψ_peak regression</td>
+<td><strong>random_forest</strong></td>
+<td><strong>R² = 0.911</strong>, MAE = 0.046</td>
+</tr>
+<tr>
+<td>ψ_peak regression</td>
+<td>mlp</td>
+<td>R² = 0.874</td>
+</tr>
+<tr>
+<td>ψ_peak regression</td>
+<td>grad_boost</td>
+<td>R² = 0.851</td>
+</tr>
+<tr>
+<td><strong>core vs edge</strong></td>
+<td>random_forest (clf)</td>
+<td><strong>acc = 0.954</strong>, F1(edge) = 0.953, ROC AUC = 0.988</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="peak location scatter" src="assets/peak_scatter_psi_centroid.png" /></p>
+<p>Classifier diagnostics (confusion matrix, and ROC / precision‑recall):</p>
+<p><img alt="core edge classifier" src="assets/peak_classifier_core_edge.png" /></p>
+<p><img alt="core edge ROC" src="assets/roc_core_edge.png" /></p>
+<p>Examples of a clear <strong>core</strong> mode vs a clear <strong>edge</strong> mode (field + spectrum):</p>
+<table>
+<thead>
+<tr>
+<th>Core mode</th>
+<th>Edge mode</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="core mode" src="assets/core_mode_example.png" /></td>
+<td><img alt="edge mode" src="assets/edge_mode_example.png" /></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Takeaway:</strong> where the mode sits radially (and core‑vs‑edge) is <strong>highly predictable
+(R² ≈ 0.91 / 95 % acc / AUC 0.99)</strong> from equilibrium scalars — a strong, deployable
+result.</p>
+<h3 id="43-eigenmode-predictor-p-spectrum-image-fno2d">4.3 Eigenmode predictor — δp̂ spectrum image (FNO2D)<a class="headerlink" href="#43-eigenmode-predictor-p-spectrum-image-fno2d" title="Permanent link">&para;</a></h3>
+<p>Predicts the entire <code>|δp̂|(m,ψ)</code> image per case, conditioned on equilibrium channels +
+the <code>m − n·q(ψ)</code> resonance channel. Driver:
+<a href="../../scripts/m3dc1/internal/train_spectrum_image.py"><code>train_spectrum_image.py</code></a>.</p>
+<h4 id="the-normalization-breakthrough">The normalization breakthrough<a class="headerlink" href="#the-normalization-breakthrough" title="Permanent link">&para;</a></h4>
+<p>The prior plateau (global val R² ≈ 0.60, <strong>per‑case R² often negative</strong>) was caused by
+the arbitrary per‑case amplitude dominating the loss. Applying <strong>per‑case max
+normalization</strong> (divide each spectrum by its own peak, then optionally <code>log10</code>) makes
+the target the <em>shape only</em>. Result on the <strong>full dataset</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Run</th>
+<th>Target space</th>
+<th style="text-align: right;">Best val R²</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>spectrum_image_full</code> (no norm)</td>
+<td>log10 raw amplitude</td>
+<td style="text-align: right;">0.605</td>
+</tr>
+<tr>
+<td><code>spectrum_image_full_maxnorm_raw</code></td>
+<td>max‑norm, linear</td>
+<td style="text-align: right;">0.786</td>
+</tr>
+<tr>
+<td><strong><code>spectrum_image_full_maxnorm_log10</code></strong></td>
+<td><strong>max‑norm, log10</strong></td>
+<td style="text-align: right;"><strong>0.836</strong></td>
+</tr>
+<tr>
+<td><code>spectrum_image_2500_maxnorm_log10</code></td>
+<td>max‑norm, log10 (2.5k subset)</td>
+<td style="text-align: right;">0.831</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="run comparison" src="assets/run_comparison_maxnorm.png" /></p>
+<p><strong>Per‑case pattern R²</strong> (best model, max‑norm log10), i.e. how well the <em>shape</em> of each
+individual spectrum is recovered — the physically meaningful metric:</p>
+<table>
+<thead>
+<tr>
+<th>Split</th>
+<th style="text-align: right;">median</th>
+<th style="text-align: right;">mean</th>
+<th style="text-align: right;">R² &gt; 0.5</th>
+<th style="text-align: right;">R² &gt; 0.7</th>
+<th style="text-align: right;">p10 – p90</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>val (997)</td>
+<td style="text-align: right;"><strong>0.740</strong></td>
+<td style="text-align: right;">0.732</td>
+<td style="text-align: right;">99 %</td>
+<td style="text-align: right;">73 %</td>
+<td style="text-align: right;">0.66 – 0.81</td>
+</tr>
+<tr>
+<td>test (1995)</td>
+<td style="text-align: right;"><strong>0.742</strong></td>
+<td style="text-align: right;">0.730</td>
+<td style="text-align: right;">99 %</td>
+<td style="text-align: right;">73 %</td>
+<td style="text-align: right;">0.66 – 0.81</td>
+</tr>
+</tbody>
+</table>
+<p>This is the key win: <strong>essentially every case is now recovered with a positive,
+useful per‑case R²</strong>, versus the non‑normalized model where the median per‑case R² was
+negative.</p>
+<h4 id="bestmodel-percase-comparisons">Best‑model per‑case comparisons<a class="headerlink" href="#bestmodel-percase-comparisons" title="Permanent link">&para;</a></h4>
+<p>Validation examples spanning the R² range (columns: <strong>ground truth / predicted /
+difference</strong>; each is <code>log10|δp̂|(m, ψ_N)</code>):</p>
+<p><img alt="spectrum cases max-norm" src="assets/spectrum_cases_maxnorm_log10.png" /></p>
+<ul>
+<li><strong>Best (R² = 0.91):</strong> broad spectral envelope reproduced almost exactly.</li>
+<li><strong>Median (R² = 0.74):</strong> the dominant <code>m</code> ridge vs ψ is captured; residual is noise‑floor.</li>
+<li><strong>Worst (R² = 0.01):</strong> a very sharp, localized ridge — the model recovers the ridge
+  location/shape but under‑resolves its sharpness; still no catastrophic failure.</li>
+</ul>
+<h4 id="bestmodel-rz-field-reconstruction">Best‑model RZ field reconstruction<a class="headerlink" href="#bestmodel-rz-field-reconstruction" title="Permanent link">&para;</a></h4>
+<p>Because the eigenmode <strong>phase</strong> is not learnable, we reconstruct the field by combining
+the model's <strong>predicted magnitude</strong> with the case's <strong>true phase</strong>, rescaled to the
+physical peak, inverse‑FFT'd along <code>m</code>, and mapped onto the <code>fpy</code> PEST flux grid. Each
+panel is 2×3 — <strong>row 0 = spectrum <code>log10|δp̂|(m,ψ)</code>, row 1 = field <code>Re(δp)(R,Z)</code></strong>;
+columns are <strong>ground truth / prediction / difference</strong>. Generated by
+<a href="../../scripts/m3dc1/internal/plot_case_field_recon.py"><code>plot_case_field_recon.py</code></a>.</p>
+<p><em>Best (pattern R² = 0.91) — core crescent envelope reproduced (amplitude slightly under‑predicted):</em>
+<img alt="rz best" src="assets/rz_case_best_maxnorm_log10.png" /></p>
+<p><em>Median (pattern R² = 0.74) — outboard <strong>edge / ballooning</strong> ridge captured in both spectrum and RZ location:</em>
+<img alt="rz median" src="assets/rz_case_median_maxnorm_log10.png" /></p>
+<p><em>Worst (pattern R² = 0.01) — the model <strong>misplaces a compact core mode toward the edge</strong>; the RZ view makes the failure obvious where the spectrum alone is ambiguous:</em>
+<img alt="rz worst" src="assets/rz_case_worst_maxnorm_log10.png" /></p>
+<pre><code class="language-bash">python scripts/m3dc1/internal/plot_case_field_recon.py \
+    --run runs/spectrum_image_full_maxnorm_log10 --split val \
+    --out-dir docs/m3dc1/assets --tag maxnorm_log10
+</code></pre>
+<h4 id="training-curves-full-dataset-gpuresident-cache">Training curves (full dataset, GPU‑resident cache)<a class="headerlink" href="#training-curves-full-dataset-gpuresident-cache" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Max‑norm <strong>log10</strong> (best)</th>
+<th>Max‑norm <strong>raw</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="loss maxnorm log10" src="assets/loss_maxnorm_log10.png" /></td>
+<td><img alt="loss maxnorm raw" src="assets/loss_maxnorm_raw.png" /></td>
+</tr>
+</tbody>
+</table>
+<p>Non‑normalized full run (the plateau being broken):</p>
+<p><img alt="loss no-norm full" src="assets/loss_nonorm_full.png" /></p>
+<h3 id="44-pushing-past-084-target-conditioning-quarantine-core-balancing-20260702">4.4 Pushing past 0.84 — target conditioning, quarantine, core balancing (2026‑07‑02)<a class="headerlink" href="#44-pushing-past-084-target-conditioning-quarantine-core-balancing-20260702" title="Permanent link">&para;</a></h3>
+<p>Three orthogonal levers on the full dataset (FNO2D, 48 Fourier modes, composite
+loss = pixel MSE + soft‑argmax peak‑location + marginal profiles), all evaluated on
+GPU on the same held‑out test split:</p>
+<table>
+<thead>
+<tr>
+<th>Run</th>
+<th>Change vs previous</th>
+<th style="text-align: right;">test global R²</th>
+<th style="text-align: right;">test pattern R²</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>max‑norm log10 (2026‑07‑01 best)</td>
+<td>—</td>
+<td style="text-align: right;">0.836 (val)</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr>
+<td><code>spectrum_fno48_floor6_smooth1</code></td>
+<td>+ target floor (−6 dex) + Gaussian smooth σ=1</td>
+<td style="text-align: right;">0.905</td>
+<td style="text-align: right;">0.920</td>
+</tr>
+<tr>
+<td><strong><code>spectrum_fno48_floor6_smooth1_qc</code></strong></td>
+<td>+ quarantine 2 corrupt cases</td>
+<td style="text-align: right;"><strong>0.9199</strong></td>
+<td style="text-align: right;"><strong>0.9238</strong></td>
+</tr>
+<tr>
+<td><code>spectrum_fno48_floor6_smooth1_qc_bal</code></td>
+<td>+ core‑mode balancing (<code>--balance-psi</code>)</td>
+<td style="text-align: right;">0.9168</td>
+<td style="text-align: right;">0.9206</td>
+</tr>
+<tr>
+<td><code>spectrum_unet_floor6_smooth1</code></td>
+<td>U‑Net, same recipe</td>
+<td style="text-align: right;">0.891</td>
+<td style="text-align: right;">0.896</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The levers (all in <a href="../../scripts/m3dc1/internal/train_spectrum_image.py"><code>train_spectrum_image.py</code></a>):</strong>
+- <strong>Target flooring</strong> (<code>--target-floor 6</code>): clip the max‑norm log10 target at −6 dex,
+  deleting the ungradeable noise‑floor texture so R²/RMSE focus on the top 6 decades of
+  amplitude that actually define the mode.
+- <strong>Target smoothing</strong> (<code>--target-smooth 1</code>): Gaussian σ=1 denoise removes high‑frequency
+  speckle while preserving the coherent ridge (the ~5 % incompressible noise that caps R²).
+- <strong>Quarantine</strong> (<a href="../../scripts/m3dc1/internal/scan_quality.py"><code>scan_quality.py</code></a> →
+  <code>--exclude-list</code>): a full scan of all <strong>9,976</strong> cases flagged only <strong>2</strong> empty‑spectrum /
+  NaN‑γ cases (<code>run15_sparc_1416</code>, <code>run15_sparc_1417</code>); excluding them removes the
+  pathological tail that single‑handedly moved the mean.
+- <strong>Core‑mode balancing</strong> (<code>--balance-psi</code>): oversamples rare low‑ψ_N (core) peak bins via
+  weighted resampling so core modes are seen ~as often as edge modes, without changing
+  file sampling. Split persisted to <code>splits.json</code> so all evals use the identical held‑out set.</p>
+<p><strong>Did balancing help?</strong> On a shared test split, per peak‑ψ_N bin (core → edge):</p>
+<p><img alt="balance per-bin" src="assets/compare_balance_bins.png" /></p>
+<p>Core‑bin (ψ_N≈0.05) R² <strong>0.897 → 0.908</strong> and peak‑amplitude RMSE <strong>0.247 → 0.244 dex</strong>,
+at a −0.003 aggregate R² cost (it gives back a little on the dominant edge bin). Balancing
+improves exactly the two things aggregate R² hides — rare core modes and peak amplitude.</p>
+<p><strong>Peak‑fidelity metrics now logged live</strong> each epoch: <code>val_dpsi</code> (peak <em>location</em> error in
+ψ_N) and <code>val_peak_rmse</code> (RMSE over the top‑1 % amplitude pixels, in dex). Best model:
+<strong>dpsi ≈ 0.05</strong> (location ✓) but <strong>peak RMSE ≈ 0.25 dex</strong> (peak amplitude still ≈ 1.8× off —
+the remaining lever; next: <code>--peak-weight</code>, less smoothing).</p>
+<blockquote>
+<p><strong>⚠️ Evaluate FNO models on GPU.</strong> The FNO's FFT spectral convolutions produce ~0.05
+<strong>lower</strong> R² on CPU than the GPU the model trained on. All eval scripts
+(<code>eval_best_run.py</code>, <code>compare_balance.py</code>, <code>field_recon_compare.py</code>,
+<code>export_predictions_cache.py</code>) default to <code>--device cuda</code>.</p>
+</blockquote>
+<h4 id="what-does-pattern-r2-092-actually-look-like">What does pattern R² = 0.92 actually look like?<a class="headerlink" href="#what-does-pattern-r2-092-actually-look-like" title="Permanent link">&para;</a></h4>
+<p>Distribution of per‑case pattern R² over the <strong>1,994‑case test split</strong>, plus a gallery of
+cases sampled worst→best (p2 … p98). Generated by
+<a href="../../scripts/m3dc1/internal/metric_gallery.py"><code>metric_gallery.py</code></a>:</p>
+<p><img alt="metric reality check" src="assets/metric_reality_check_qc.png" /></p>
+<ul>
+<li><strong>The distribution is tight and high:</strong> median <strong>0.908</strong>, mean 0.892; only <strong>0.9 %</strong> of
+  cases fall below R² 0.5 and <strong>0.1 %</strong> (2 cases) below 0. So "0.92" is not carried by a
+  few easy cases — the <em>typical</em> case is well recovered.</li>
+<li><strong>The metric matches the picture — for the ridge.</strong> Across the whole range, the coherent
+  <code>m</code>‑ridge (the physically meaningful structure) is located and shaped correctly; the
+  residual (<code>pred − GT</code>) is dominated by <strong>noise‑floor texture</strong>, not ridge error. Even the
+  p2 worst case gets the ridge right and differs mainly in a systematic floor offset.</li>
+<li><strong>What it does <em>not</em> capture:</strong> fine <code>m</code>‑structure and exact peak amplitude — precisely
+  the things target‑smoothing (σ=1) trades away and that the field reconstruction below
+  exposes. <strong>Pattern R² measures spectral‑shape recovery; it over‑states field
+  usefulness.</strong> The field is the harder, more honest test.</li>
+</ul>
+<p>Use this against the interactive explorer to gut‑check any model:
+<a href="../../m3dc1ml/notebooks/explore_mlm3dc1_predictions.ipynb"><code>explore_mlm3dc1_predictions.ipynb</code></a>
+now colors the parametric coverage map by <code>R2</code> / <code>pattern_R2</code> / <code>SSIM</code> / <code>NRMSE</code> and pops
+a 2×3 (spectrum + field, GT/pred/diff) panel on tap, and carries a model‑comparison table
+across all cached models.</p>
+<p>Combined spectrum + field gallery (same cases, 6 panels per row):</p>
+<p><img alt="metric reality check combined" src="assets/metric_reality_check_qc_combined.png" /></p>
+<p>Field-only gallery (same cases):</p>
+<p><img alt="metric reality check field" src="assets/metric_reality_check_qc_field.png" /></p>
+<h4 id="eigenmode-field-reconstruction-maxnormalized-ground-truth-vs-predicted">Eigenmode FIELD reconstruction — max‑normalized, ground truth vs predicted<a class="headerlink" href="#eigenmode-field-reconstruction-maxnormalized-ground-truth-vs-predicted" title="Permanent link">&para;</a></h4>
+<p>The magnitude is what the surrogate learns; the <strong>phase and absolute scale are unlearnable
+per‑eigenmode gauges</strong>, so the predicted <code>|δp̂|</code> is combined with the case's <strong>true phase</strong>,
+inverse‑FFT'd along <code>m</code>, mapped onto the <code>fpy</code> PEST flux grid, and <strong>each field is
+max‑normalized to unit amplitude</strong> for a pure shape comparison against the ground‑truth
+data. Rows = worst / median / best test case; columns = true / predicted / difference
+(<a href="../../scripts/m3dc1/internal/field_recon_compare.py"><code>field_recon_compare.py</code></a>):</p>
+<p><img alt="field recon qc" src="assets/field_recon_qc.png" /></p>
+<ul>
+<li><strong>best</strong> — a large‑scale <strong>core</strong> mode is reproduced almost exactly.</li>
+<li><strong>median</strong> — an <strong>edge/pedestal</strong> mode: right location and rough structure, reduced fine detail.</li>
+<li><strong>worst</strong> — a sharp <strong>edge‑localized</strong> mode collapses to ~0: under‑predicting/smoothing
+  the thin edge ridge destroys the constructive interference that builds the localized field.
+  This is the field‑space signature of the peak‑amplitude weakness above.</li>
+</ul>
+<h3 id="45-highm-tail-wide-mwindow-and-geometry-channels-20260703">4.5 High‑m tail, wide m‑window, and geometry channels (2026‑07‑03)<a class="headerlink" href="#45-highm-tail-wide-mwindow-and-geometry-channels-20260703" title="Permanent link">&para;</a></h3>
+<p>Many edge‑localized modes carry a non‑negligible fraction of their energy at <strong>native
+m &gt; 20</strong>, outside the baseline training window <strong>m ∈ [−80, 20]</strong>. A full‑dataset scan
+(<a href="../../scripts/m3dc1/internal/scan_m_hi_tail.py"><code>scan_m_hi_tail.py</code></a>) quantifies this:</p>
+<p><img alt="high-m tail scan" src="assets/m_hi_tail_scan.png" /></p>
+<table>
+<thead>
+<tr>
+<th>Native energy at <strong>m &gt; 20</strong></th>
+<th style="text-align: right;">Cases</th>
+<th style="text-align: right;">Share</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>≥ 1%</td>
+<td style="text-align: right;">3,354</td>
+<td style="text-align: right;">34%</td>
+</tr>
+<tr>
+<td>≥ 5%</td>
+<td style="text-align: right;">199</td>
+<td style="text-align: right;"><strong>2%</strong></td>
+</tr>
+<tr>
+<td>≥ 10%</td>
+<td style="text-align: right;">109</td>
+<td style="text-align: right;">1%</td>
+</tr>
+</tbody>
+</table>
+<p>The median case has only <strong>0.75%</strong> energy at m &gt; 20 — the baseline window is fine for
+typical cases. The tail matters for <strong>~200 edge cases</strong> (≥ 5% high‑m energy), which are
+<strong>75–90% edge‑localized</strong> (peak ψ_N &gt; 0.9).</p>
+<h4 id="wide-symmetric-window-100-100-global-vs-tail-tradeoff">Wide symmetric window <code>[-100, 100]</code> — global vs tail trade‑off<a class="headerlink" href="#wide-symmetric-window-100-100-global-vs-tail-tradeoff" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Run</th>
+<th>m window</th>
+<th style="text-align: right;">grid</th>
+<th style="text-align: right;">test global R²</th>
+<th style="text-align: right;">test pattern R²</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>spectrum_fno48_floor6_smooth1_qc</code></strong></td>
+<td>[−80, 20]</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;"><strong>0.920</strong></td>
+<td style="text-align: right;"><strong>0.924</strong></td>
+</tr>
+<tr>
+<td><code>spectrum_fno48_floor6_smooth1_qc_m100</code></td>
+<td>[−100, 100]</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">0.890</td>
+<td style="text-align: right;">0.906</td>
+</tr>
+<tr>
+<td><code>spectrum_fno48_floor6_smooth1_qc_m100gr192</code></td>
+<td>[−100, 100]</td>
+<td style="text-align: right;">192</td>
+<td style="text-align: right;">0.886</td>
+<td style="text-align: right;"><strong>0.894</strong></td>
+</tr>
+<tr>
+<td><code>spectrum_fno48_floor6_smooth1_qc_geom</code></td>
+<td>[−80, 20] + geom</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">0.919</td>
+<td style="text-align: right;">0.925</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Globally, wider windows hurt</strong> — same 75M‑parameter FNO capacity is spread over twice
+the m‑range with many extra noise‑floor pixels.</p>
+<p><strong>On the high‑m tail subset (test cases with ≥ 5% native energy at m &gt; 20, n = 40):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th style="text-align: right;">pattern R² (full image)</th>
+<th style="text-align: right;">pattern R² <strong>m &gt; 20 only</strong></th>
+<th style="text-align: right;">pattern R² <strong>m ∈ [−80, 20]</strong> (fair core band)</th>
+<th style="text-align: right;">Δ vs <code>_qc</code> on core band</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_qc</code> baseline</td>
+<td style="text-align: right;">0.855</td>
+<td style="text-align: right;"><em>(not predicted)</em></td>
+<td style="text-align: right;">0.855</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr>
+<td><strong><code>m100g128</code></strong></td>
+<td style="text-align: right;"><strong>0.909</strong></td>
+<td style="text-align: right;"><strong>0.910</strong></td>
+<td style="text-align: right;"><strong>0.879</strong></td>
+<td style="text-align: right;"><strong>+0.025</strong> (wins 88%)</td>
+</tr>
+<tr>
+<td><code>m100gr192</code></td>
+<td style="text-align: right;">0.892</td>
+<td style="text-align: right;">0.889</td>
+<td style="text-align: right;">0.858</td>
+<td style="text-align: right;">+0.003 (wins 58%)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Verdict on <code>m100gr192</code>:</strong> it does <strong>not</strong> beat <code>m100g128</code> on high‑m tail cases. Despite
+finer ψ/m sampling (grid 192), aggregate pattern R² is lower (0.894 vs 0.906) and the
+dedicated <strong>m &gt; 20</strong> region R² on tail≥5% cases is <strong>0.889 vs 0.910</strong> for grid 128. On
+the fair core band m ∈ [−80, 20], <code>m100gr192</code> is essentially tied with <code>_qc</code> (+0.003),
+while <strong><code>m100g128</code> gains +0.025</strong> on the same band — widening the window helps the tail
+only at grid 128, not 192.</p>
+<h4 id="error-vs-highm-tail-fraction">Error vs high‑m tail fraction<a class="headerlink" href="#error-vs-highm-tail-fraction" title="Permanent link">&para;</a></h4>
+<p>Per‑case pattern R² degrades as the native high‑m energy fraction grows (test split).
+Scatter + binned means (<a href="../../scripts/m3dc1/internal/plot_hi_m_tail_scatter.py"><code>plot_hi_m_tail_scatter.py</code></a>):</p>
+<p><img alt="hi-m tail R2 scatter" src="assets/hi_m_tail_r2_scatter_qc_unet.png" /></p>
+<p>For <code>_qc</code>, the 2–5% tail bin already drops to R² ≈ 0.83; cases with ≥ 20% energy at
+m &gt; 20 average R² ≈ 0.84. U‑Net follows the same trend. A full multi‑model scatter
+(including <code>m100g128</code>, <code>m100gr192</code>, <code>_qc_geom</code>) is generated by
+<a href="../../scripts/m3dc1/internal/generate_mwindow_assets.slurm"><code>generate_mwindow_assets.slurm</code></a>.</p>
+<h4 id="metric-realitycheck-galleries-native-order-vs-matched-_qc-cases">Metric reality‑check galleries — native order vs matched <code>_qc</code> cases<a class="headerlink" href="#metric-realitycheck-galleries-native-order-vs-matched-_qc-cases" title="Permanent link">&para;</a></h4>
+<p>Each model gets two combined spectrum+field galleries (6 panels per row):
+1. <strong>Native</strong> — cases p2…p98 worst→best <em>for that model's</em> pattern R².
+2. <strong>Reference‑matched</strong> — the <em>same case keys</em> at the same percentiles from <code>_qc</code>, so
+   cross‑model rows are directly comparable.</p>
+<table>
+<thead>
+<tr>
+<th>Gallery</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="assets/metric_reality_check_qc_combined.png"><code>metric_reality_check_qc_combined.png</code></a></td>
+<td><code>_qc</code> baseline (native order)</td>
+</tr>
+<tr>
+<td><a href="assets/metric_reality_check_unet_combined.png"><code>metric_reality_check_unet_combined.png</code></a></td>
+<td>U‑Net (native)</td>
+</tr>
+<tr>
+<td><a href="assets/metric_reality_check_unet_refqc_combined.png"><code>metric_reality_check_unet_refqc_combined.png</code></a></td>
+<td>U‑Net on <code>_qc</code> p2…p98 cases</td>
+</tr>
+<tr>
+<td><code>metric_reality_check_m100g128_combined.png</code></td>
+<td>wide window g128 (native) — <em>generating</em></td>
+</tr>
+<tr>
+<td><code>metric_reality_check_m100g128_refqc_combined.png</code></td>
+<td>g128 on <code>_qc</code> cases — <em>generating</em></td>
+</tr>
+<tr>
+<td><code>metric_reality_check_m100g192_refqc_combined.png</code></td>
+<td>g192 on <code>_qc</code> cases — <em>generating</em></td>
+</tr>
+<tr>
+<td><code>metric_reality_check_qc_geom_combined.png</code></td>
+<td>geometry channels (native) — <em>generating</em></td>
+</tr>
+</tbody>
+</table>
+<p>Generate with:</p>
+<pre><code class="language-bash">python scripts/m3dc1/internal/metric_gallery.py \
+    --cache runs/spectrum_fno48_floor6_smooth1_qc_m100/predictions_cache.npz \
+    --ref-cache runs/spectrum_fno48_floor6_smooth1_qc/predictions_cache.npz \
+    --out docs/m3dc1/assets/metric_reality_check_m100g128_refqc_combined.png
+</code></pre>
+<h4 id="-geom-channels-what-it-adds"><code>--geom-channels</code> — what it adds<a class="headerlink" href="#-geom-channels-what-it-adds" title="Permanent link">&para;</a></h4>
+<p>With <code>--geom-channels</code>, three <strong>ψ_N‑only</strong> input planes are appended (repeated across m
+rows), computed from each case's equilibrium HDF5 in
+<a href="../../scripts/m3dc1/internal/train_spectrum_image.py"><code>_geometry_profiles()</code></a>:</p>
+<table>
+<thead>
+<tr>
+<th>Channel</th>
+<th>Formula / meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>shear</code></td>
+<td><code>(ψ_N / q) · dq/dψ_N</code> — magnetic shear proxy</td>
+</tr>
+<tr>
+<td><code>flux_exp</code></td>
+<td>flux‑surface‑averaged <code>\|∇ψ\|</code> binned by ψ_N, normalized — edge flux compression</td>
+</tr>
+<tr>
+<td><code>lcfs_prox</code></td>
+<td><code>1 − ψ_N</code> (1 at axis, 0 at LCFS)</td>
+</tr>
+</tbody>
+</table>
+<p>These give the FNO explicit edge‑geometry cues that ψ_N alone does not encode (real‑space
+LCFS shape, grad‑ψ compression at the pedestal). <strong><code>_qc_geom</code></strong> reaches test pattern R²
+<strong>0.925</strong> vs <strong>0.924</strong> for <code>_qc</code> at the same m window — a small aggregate gain. It does
+<strong>not</strong> add m &gt; 20 rows; high‑m tail cases still need a wider or asymmetric m window.</p>
+<h4 id="should-we-try-fno_modes96-or-fno_hidden64">Should we try <code>fno_modes=96</code> or <code>fno_hidden=64</code>?<a class="headerlink" href="#should-we-try-fno_modes96-or-fno_hidden64" title="Permanent link">&para;</a></h4>
+<p>Probably <strong>not as the next lever</strong> on grid 128:</p>
+<table>
+<thead>
+<tr>
+<th>Config</th>
+<th style="text-align: right;">Params</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>modes=48, hidden=32 (current)</td>
+<td style="text-align: right;"><strong>75M</strong></td>
+<td>modes=48 already spans to FFT Nyquist on grid 128</td>
+</tr>
+<tr>
+<td>modes=96, hidden=32</td>
+<td style="text-align: right;">~300M</td>
+<td>4× spectral weights; dim returns, not new physics</td>
+</tr>
+<tr>
+<td>modes=48, hidden=64</td>
+<td style="text-align: right;">~150M</td>
+<td>wider conv trunk; doesn't fix m‑window coarsening</td>
+</tr>
+<tr>
+<td>grid=192, modes=48</td>
+<td style="text-align: right;">75M</td>
+<td><strong>tested</strong> — worse global <em>and</em> worse high‑m tail vs g128</td>
+</tr>
+</tbody>
+</table>
+<p>The bottleneck on edge/high‑m modes is <strong>missing input coverage</strong> (m &gt; 20 not in the
+target) and <strong>field‑space sharpness</strong>, not FNO spectral truncation at 48 modes.
+Recommended next experiment: <strong>asymmetric window <code>[−80, 100]</code></strong> at grid 128 (keep full
+resolution in the trained band, add high‑m rows only where needed) plus geometry channels.</p>
+<hr />
+<h2 id="5-tooling-how-to-run-monitor-resume-and-validate">5. Tooling: how to run, monitor, resume, and validate<a class="headerlink" href="#5-tooling-how-to-run-monitor-resume-and-validate" title="Permanent link">&para;</a></h2>
+<p><strong>Launch the spectrum surrogate (one command, handles <code>salloc</code>+<code>srun</code>):</strong></p>
+<pre><code class="language-bash"># fresh full-dataset run, max-norm log10
+scripts/m3dc1/internal/spectrum_train.sh log10 fresh 120
+# resume from the last checkpoint
+scripts/m3dc1/internal/spectrum_train.sh log10 resume 120
+</code></pre>
+<p>Runbook: <a href="SPECTRUM_TRAINING_RUNBOOK.md"><code>SPECTRUM_TRAINING_RUNBOOK.md</code></a>.</p>
+<p><strong>Checkpoint policy &amp; early stopping.</strong> Every epoch writes <code>ckpt_&lt;model&gt;_last.pt</code>
+(weights + optimizer state) for resume; <code>ckpt_&lt;model&gt;.pt</code> is overwritten whenever
+<strong>val loss beats the previous best</strong>. Training early‑stops after <code>--patience</code> epochs
+without improvement and then reloads the best checkpoint for final evaluation. Resume
+with <code>--resume &lt;ckpt&gt;</code>.</p>
+<p><strong>Monitor any run (stats report + loss curves):</strong></p>
+<pre><code class="language-bash">python -m surge.check_training --run runs/spectrum_image_full_maxnorm_log10
+</code></pre>
+<p>Writes <code>check_training_loss.png</code> and prints epochs, best/latest val loss &amp; R², trend,
+early‑stop status, and final test metrics.
+(<a href="../../surge/check_training.py"><code>surge/check_training.py</code></a>)</p>
+<p><strong>Export predictions for offline analysis:</strong></p>
+<pre><code class="language-bash">python scripts/m3dc1/internal/export_predictions_cache.py \
+    --run runs/spectrum_image_full_maxnorm_log10 --model fno2d
+</code></pre>
+<p>Produces <code>predictions_cache.npz</code> (GT, pred, per‑case R², γ, ntor, metadata) consumed by
+the curation notebook.
+(<a href="../../scripts/m3dc1/internal/export_predictions_cache.py"><code>export_predictions_cache.py</code></a>)</p>
+<p><strong>Interactively curate &amp; validate predictions</strong> (Bokeh/Panel: spectrum &amp; field
+comparison, stable/unstable check, and γ‑vs‑time convergence per case):
+<a href="../../m3dc1ml/notebooks/curate_validate_mlm3dc1_predictions.ipynb"><code>m3dc1ml/notebooks/curate_validate_mlm3dc1_predictions.ipynb</code></a>.</p>
+<hr />
+<h2 id="6-summary-what-shows-progress">6. Summary — "what shows progress"<a class="headerlink" href="#6-summary-what-shows-progress" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Best result</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Growth rate γ</td>
+<td><strong>R² 0.87</strong> (HPO torch_mlp)</td>
+<td>✅ strong</td>
+</tr>
+<tr>
+<td>Core/edge mode locator</td>
+<td><strong>R² 0.91 / 95 % acc / AUC 0.99</strong></td>
+<td>✅ strong</td>
+</tr>
+<tr>
+<td>δp̂ spectrum image — global R²</td>
+<td><strong>0.920</strong> (FNO2D floor6+smooth1+quarantine)</td>
+<td>✅ 0.605 → 0.836 → <strong>0.920</strong></td>
+</tr>
+<tr>
+<td>δp̂ spectrum image — pattern R²</td>
+<td><strong>0.924</strong> (test)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>δp̂ spectrum image — core‑mode R²</td>
+<td><strong>0.908</strong> (w/ <code>--balance-psi</code>)</td>
+<td>✅ balancing helps rare modes</td>
+</tr>
+<tr>
+<td>δp̂ peak amplitude (peak RMSE)</td>
+<td>≈ 0.25 dex (~1.8× off)</td>
+<td>🟡 remaining lever</td>
+</tr>
+<tr>
+<td>δp̂ per‑mode magnitude (MLP)</td>
+<td>R² 0.36</td>
+<td>🟡 superseded by image model</td>
+</tr>
+<tr>
+<td>Re(δp̂)</td>
+<td>≈ 0</td>
+<td>❌ ill‑posed (use magnitude)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What moved the needle:</strong> (1) per‑case max‑normalization (learn shape, not amplitude);
+(2) target flooring + smoothing (drop the ungradeable noise floor); (3) quarantining the
+2 corrupt cases; (4) core‑mode balancing for the rare low‑ψ_N modes.</p>
+<p><strong>Known limitation — geometry is not an input (baseline <code>_qc</code>).</strong> Training happens
+entirely in <code>(m, ψ_N)</code> spectral space. The model sees the <code>ψ_N</code> coordinate (so ψ_N=1 =
+LCFS), <code>q</code>/<code>p</code> profiles, the <code>m−n·q</code> resonance, and shaping scalars (κ, δ, R0, a) — but
+<strong>not</strong> the real‑space <code>ψ(R,Z)</code> flux map, edge flux‑surface compression, or the LCFS <code>(R,Z)</code>
+location. Edge‑localized modes' sharpness/<code>m</code>‑broadening are set by exactly that edge
+geometry, which is the population the model handles worst. <strong><code>--geom-channels</code></strong> (§4.5)
+addresses part of this; high‑m tail cases additionally need m‑window coverage.</p>
+<p><strong>Next steps:</strong> (1) <strong>asymmetric m window <code>[−80, 100]</code></strong> at grid 128; (2) combine with
+<code>--geom-channels</code>; (3) attack peak amplitude with <code>--peak-weight</code> and reduced smoothing
+(target peak RMSE &lt; 0.2 dex so edge modes survive field reconstruction); (4) FNO+U‑Net
+ensemble; (5) physics‑residual target (predict deviation from the <code>m ≈ n·q(ψ)</code> ridge
+prior); (6) correlate residual error with <code>gs_error</code>/γ(t) convergence.</p>
+<hr />
+<h2 id="7-field-based-model-selection-pre-field-loss-baseline-2026-07-04">7. Field-based model selection (pre-field-loss baseline) — 2026-07-04<a class="headerlink" href="#7-field-based-model-selection-pre-field-loss-baseline-2026-07-04" title="Permanent link">&para;</a></h2>
+<p>We added <a href="../../scripts/m3dc1/internal/field_bench.py"><code>field_bench.py</code></a> to rank spectrum
+surrogates by <strong>post-hoc field relL2</strong> (true phase injected, IFFT, max-normalized —
+identical convention to <a href="../../scripts/m3dc1/internal/field_recon_compare.py"><code>field_recon_compare.py</code></a>),
+not by spectrum pattern R². Full test split (<strong>n = 1994</strong>).</p>
+<h3 id="71-leaderboard-test-split-all-cases">7.1 Leaderboard (test split, all cases)<a class="headerlink" href="#71-leaderboard-test-split-all-cases" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th style="text-align: right;">frac(relL2&gt;1) ↓</th>
+<th style="text-align: right;">p90 relL2 ↓</th>
+<th style="text-align: right;">median</th>
+<th style="text-align: right;">mean</th>
+<th style="text-align: right;">mean α-opt</th>
+<th style="text-align: right;">CRF ↑</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>qc_peak4</code></strong></td>
+<td style="text-align: right;"><strong>0.180</strong></td>
+<td style="text-align: right;"><strong>1.165</strong></td>
+<td style="text-align: right;"><strong>0.730</strong></td>
+<td style="text-align: right;"><strong>0.808</strong></td>
+<td style="text-align: right;"><strong>0.696</strong></td>
+<td style="text-align: right;"><strong>0.825</strong></td>
+</tr>
+<tr>
+<td><code>_qc</code></td>
+<td style="text-align: right;">0.200</td>
+<td style="text-align: right;">1.217</td>
+<td style="text-align: right;">0.741</td>
+<td style="text-align: right;">0.821</td>
+<td style="text-align: right;">0.705</td>
+<td style="text-align: right;">0.737</td>
+</tr>
+<tr>
+<td><code>qc_mhi100</code></td>
+<td style="text-align: right;">0.267</td>
+<td style="text-align: right;">1.350</td>
+<td style="text-align: right;">0.825</td>
+<td style="text-align: right;">0.921</td>
+<td style="text-align: right;">0.774</td>
+<td style="text-align: right;">0.788</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Production pick reversed:</strong> <code>qc_mhi100</code> was the patR²-selected model (mean patR² <strong>0.906</strong>,
+median <strong>0.932</strong>) but ranks <strong>worst</strong> on field quality (highest frac broken, highest p90).
+<strong><code>qc_peak4</code></strong> was the pre–field-loss field candidate; superseded by <strong><code>qc_peak4_fieldloss</code></strong>
+(§9) after full‑test <code>field_bench</code>.</p>
+<p>Pairwise wins (lowest relL2 per case): peak4 <strong>1042</strong>, <code>_qc</code> 722, mhi100 230.</p>
+<p>Artifacts: <a href="../../field_bench/leaderboard.json"><code>field_bench/leaderboard.json</code></a>,
+<a href="../../field_bench/per_case.csv"><code>per_case.csv</code></a>,
+<a href="../../field_bench/per_family.csv"><code>per_family.csv</code></a>,
+<code>relL2_hist_*.png</code>.</p>
+<h3 id="72-interpretation-data-backed">7.2 Interpretation (data-backed)<a class="headerlink" href="#72-interpretation-data-backed" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Amplitude error is a small fraction of relL2.</strong> α-optimal relL2 (scalar rescale before
+  relL2) drops mean relL2 by only <strong>~0.11–0.15</strong> for all three models (e.g. peak4 mean
+  0.808 → 0.696). Floor-5 experiments are <strong>deprioritized</strong> — tightening the log floor
+  did not fix field fidelity.</li>
+<li><strong>Dominant error is structural/coherent.</strong> High CRF (peak4 <strong>0.825</strong> vs <code>_qc</code> <strong>0.737</strong>)
+  means most residual energy sits in low radial-wavenumber bands — errors that survive
+  field reconstruction, not incoherent speckle.</li>
+<li><strong>Pattern R² overstates deployment quality</strong> (§4.4, floor5 counterexample). Model
+  selection must use field metrics, not patR².</li>
+</ul>
+<h3 id="73-next-experiment-field-loss-training">7.3 Next experiment (field-loss training)<a class="headerlink" href="#73-next-experiment-field-loss-training" title="Permanent link">&para;</a></h3>
+<p>Single lever on <strong><code>qc_peak4</code></strong> recipe (m ∈ [−80, 20], <code>--peak-weight 4</code>, floor6,
+smooth1, quarantine, <strong>no geom</strong>):</p>
+<ol>
+<li>Add differentiable <strong>IFFT-proxy field loss</strong> with true phase (oracle phase idealization).</li>
+<li>Select checkpoints by <strong><code>frac(relL2&gt;1)</code> then p90</strong> on a family-stratified val subset
+   (<code>--select-by field</code>), not patR².</li>
+<li><strong>4 h interactive</strong> A100 sessions only; resumable with persisted early-stop state
+   (fix resume resetting patience — see §8).</li>
+</ol>
+<hr />
+<h2 id="8-resume-early-stop-bug-qc_mhi100">8. Resume / early-stop bug (qc_mhi100)<a class="headerlink" href="#8-resume-early-stop-bug-qc_mhi100" title="Permanent link">&para;</a></h2>
+<p><code>qc_mhi100</code> training was killed at epoch <strong>237</strong> (4 h wall). On <code>--resume</code>, the early-stop
+<strong>patience counter reset to zero</strong>, so the run continued for another full <code>--patience</code>
+window instead of stopping near the prior best epoch. <strong>Fix (planned):</strong> persist
+<code>no_improve</code>, <code>best_epoch</code>, and field-selection bests in checkpoints; restore on resume.</p>
+<p><strong>Update 2026-07-04 (feat/m3dc1-field-loss):</strong> Implemented in
+<a href="../../scripts/m3dc1/internal/train_spectrum_image.py"><code>train_spectrum_image.py</code></a> —
+checkpoints now store <code>no_improve</code>, <code>best_epoch</code>, <code>best_field_frac_gt1</code>, <code>best_field_p90</code>;
+<code>--resume</code> restores them. Added <code>--time-budget-min</code> (default <strong>0</strong> = off) for clean 4 h exits.</p>
+<hr />
+<h2 id="9-field-loss-experiment-qc_peak4-oracle-phase-20260704">9. Field-loss experiment (qc_peak4 + oracle phase) — 2026‑07‑04<a class="headerlink" href="#9-field-loss-experiment-qc_peak4-oracle-phase-20260704" title="Permanent link">&para;</a></h2>
+<p><strong>Recipe:</strong> m ∈ [−80, 20], <code>--peak-weight 4</code>, floor6, smooth1, quarantine, <strong>no geom</strong>
+(identical base to <code>qc_peak4</code>). <strong>New levers (this run only):</strong>
+<code>--field-loss-weight 0.5</code> (differentiable IFFT-proxy relL2 with oracle true phase,
+warmup 20 epochs) and <code>--select-by field</code> (save <code>ckpt_fno2d.pt</code> when
+<code>frac(relL2&gt;1)</code> on a 64‑case family‑stratified val subset improves, p90 tiebreak).</p>
+<p><strong>Launch (4 h interactive, restartable):</strong></p>
+<pre><code class="language-bash">bash scripts/m3dc1/internal/run_field_loss_4h.sh
+# OUT=runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss
+</code></pre>
+<p><strong>Step 0 finding:</strong> <code>PHASE AT TRAIN TIME: YES</code> — complex <code>spectrum/p/spec</code> in every
+<code>csdata_deltap_b_ver.h5</code> case; the loader uses <code>|spec|</code> only unless field-loss flags are set.</p>
+<h3 id="91-training-mechanics-two-roles">9.1 Training mechanics (two roles)<a class="headerlink" href="#91-training-mechanics-two-roles" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>When</th>
+<th>What</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Field loss (gradient)</strong></td>
+<td>Every batch step</td>
+<td>Un‑norm pred → inject true φ → torch IFFT on 128×128 grid → max‑norm relL2; added to composite loss (w=0.5, ramped over 20 epochs)</td>
+<td>Backprop penalizes spectral errors <strong>in proportion to field damage</strong></td>
+</tr>
+<tr>
+<td><strong>Field metrics (selection)</strong></td>
+<td>Every 5 epochs</td>
+<td>Native‑grid relL2 on 64 stratified val cases; <code>--select-by field</code></td>
+<td>Picks which epoch is saved as <code>ckpt_fno2d.pt</code> — <strong>no gradients</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Both use oracle true phase. Role 1 changed what the weights learned; Role 2 changed which
+snapshot was kept. Logged <code>fld_frac&gt;1</code> / <code>fld_p90</code> during training are Role 2 only.</p>
+<p>Training ran to epoch <strong>400</strong>; spectrum <code>val_r2</code> kept improving through the plateau, but
+field metrics on the 64‑case subset peaked early. <strong>Saved checkpoint: epoch 45</strong>
+(<code>fld_frac&gt;1=0.0</code>, <code>fld_p90=0.664</code> on the subset; last subset improvement before early‑stop
+patience). Epoch 60 had lower subset p90 (0.656) but <code>fld_frac&gt;1=0.016</code> — the selector
+correctly kept epoch 45 under the frac‑first rule.</p>
+<p>Training curves (<code>loss_fno2d.png</code> from the run directory): spectrum <code>val_r2</code> keeps climbing
+after epoch ~45 while <code>fld_frac&gt;1</code> / <code>fld_p90</code> on the 64‑case subset plateau — the decoupling
+§7 warned about, now visible in the same plot once field metrics are logged.</p>
+<p><img alt="fieldloss training curves" src="assets/loss_fieldloss_fno2d.png" /></p>
+<h3 id="92-fulltest-field-benchmark-accuracy-measure-of-record">9.2 Full‑test field benchmark (accuracy measure of record)<a class="headerlink" href="#92-fulltest-field-benchmark-accuracy-measure-of-record" title="Permanent link">&para;</a></h3>
+<p>Post‑training eval on GPU (same convention as §7):</p>
+<pre><code class="language-bash">OUT=runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss
+python scripts/m3dc1/internal/export_predictions_cache.py --run &quot;$OUT&quot; --device cuda
+python scripts/m3dc1/internal/metric_gallery.py \
+    --cache &quot;$OUT/predictions_cache.npz&quot; \
+    --ref-cache runs/spectrum_fno48_floor6_smooth1_qc/predictions_cache.npz \
+    --split test --metric r2_pattern \
+    --out docs/m3dc1/assets/metric_reality_check_qc_peak4_fieldloss_refqc_combined.png
+python scripts/m3dc1/internal/metric_gallery.py \
+    --cache &quot;$OUT/predictions_cache.npz&quot; \
+    --ref-cache runs/spectrum_fno48_floor6_smooth1_qc/predictions_cache.npz \
+    --split test --metric r2_pattern --field \
+    --out docs/m3dc1/assets/metric_reality_check_qc_peak4_fieldloss_refqc_field.png
+python scripts/m3dc1/internal/plot_case_field_recon.py \
+    --run &quot;$OUT&quot; --split test --out-dir docs/m3dc1/assets --tag fieldloss_test
+python scripts/m3dc1/internal/field_bench.py \
+  --runs runs/spectrum_fno48_floor6_smooth1_qc_peak4 \
+         runs/spectrum_fno48_floor6_smooth1_qc \
+         runs/spectrum_fno48_floor6_smooth1_qc_mhi100 \
+         &quot;$OUT&quot; \
+  --split test --device cuda --out field_bench/with_fieldloss
+</code></pre>
+<p><strong>Accuracy = field relL2 on the full held‑out test split (n = 1994)</strong>, oracle phase injected,
+max‑normalized — <strong>not</strong> spectrum patR². The epoch‑45 checkpoint was <strong>confirmed on this
+full population</strong> (not the 64‑case subset alone).</p>
+<h4 id="leaderboard-test-split-all-cases">Leaderboard (test split, all cases)<a class="headerlink" href="#leaderboard-test-split-all-cases" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th style="text-align: right;">frac(relL2&gt;1) ↓</th>
+<th style="text-align: right;">p90 relL2 ↓</th>
+<th style="text-align: right;">median</th>
+<th style="text-align: right;">mean</th>
+<th style="text-align: right;">mean α-opt</th>
+<th style="text-align: right;">CRF ↑</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>qc_peak4_fieldloss</code></strong></td>
+<td style="text-align: right;"><strong>0.100</strong></td>
+<td style="text-align: right;"><strong>1.001</strong></td>
+<td style="text-align: right;"><strong>0.632</strong></td>
+<td style="text-align: right;"><strong>0.702</strong></td>
+<td style="text-align: right;"><strong>0.631</strong></td>
+<td style="text-align: right;"><strong>0.907</strong></td>
+</tr>
+<tr>
+<td><code>qc_peak4</code> (prev prod.)</td>
+<td style="text-align: right;">0.180</td>
+<td style="text-align: right;">1.165</td>
+<td style="text-align: right;">0.730</td>
+<td style="text-align: right;">0.808</td>
+<td style="text-align: right;">0.696</td>
+<td style="text-align: right;">0.825</td>
+</tr>
+<tr>
+<td><code>_qc</code></td>
+<td style="text-align: right;">0.200</td>
+<td style="text-align: right;">1.217</td>
+<td style="text-align: right;">0.741</td>
+<td style="text-align: right;">0.821</td>
+<td style="text-align: right;">0.705</td>
+<td style="text-align: right;">0.737</td>
+</tr>
+<tr>
+<td><code>qc_mhi100</code></td>
+<td style="text-align: right;">0.267</td>
+<td style="text-align: right;">1.350</td>
+<td style="text-align: right;">0.825</td>
+<td style="text-align: right;">0.921</td>
+<td style="text-align: right;">0.774</td>
+<td style="text-align: right;">0.788</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Pairwise vs <code>qc_peak4</code> (full test):</strong> fieldloss wins <strong>1691</strong>, peak4 wins <strong>303</strong> (85%).
+Overall lowest relL2 among all four models on <strong>1502 / 1994</strong> cases. Broken cases
+(relL2&gt;1) dropped <strong>358 → 200</strong>.</p>
+<p><strong>Spectrum tradeoff (expected):</strong> export cache median patR² <strong>0.888</strong> vs <code>qc_peak4</code> test
+patR² <strong>0.922</strong>. Field fidelity was bought with deliberate spectrum score — consistent with
+§7.2 (patR² overstates deployment quality).</p>
+<h4 id="field-rell2-distribution-full-test-n-1994">Field relL2 distribution (full test, n = 1994)<a class="headerlink" href="#field-rell2-distribution-full-test-n-1994" title="Permanent link">&para;</a></h4>
+<p>Broken cases (relL2&gt;1) shift left under field‑loss training; p90 drops <strong>1.165 → 1.001</strong>.</p>
+<p><img alt="relL2 histogram peak4 vs fieldloss" src="assets/field_bench_relL2_hist_peak4_vs_fieldloss.png" /></p>
+<p>Pairwise wins on the same 1994 cases (lowest relL2 per case):</p>
+<p><img alt="pairwise wins fieldloss vs peak4" src="assets/field_bench_pairwise_wins_fieldloss.png" /></p>
+<h4 id="metric-reality-check-same-_qc-p2p98-cases">Metric reality check — same <code>_qc</code> p2…p98 cases<a class="headerlink" href="#metric-reality-check-same-_qc-p2p98-cases" title="Permanent link">&para;</a></h4>
+<p>Side‑by‑side on the <strong>identical</strong> test cases (ref‑cache = <code>_qc</code> percentiles). Left: previous
+production <code>qc_peak4</code>. Right: <code>qc_peak4_fieldloss</code> (epoch‑45 checkpoint). Note lower field
+relL2 in the Δ panels despite slightly lower patR² in the histogram headers.</p>
+<table>
+<thead>
+<tr>
+<th><code>qc_peak4</code> (prev prod.)</th>
+<th><code>qc_peak4_fieldloss</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="peak4 refqc combined" src="assets/metric_reality_check_qc_peak4_refqc_combined.png" /></td>
+<td><img alt="fieldloss refqc combined" src="assets/metric_reality_check_qc_peak4_fieldloss_refqc_combined.png" /></td>
+</tr>
+</tbody>
+</table>
+<p>Field‑only panels (same case ordering):</p>
+<p><img alt="fieldloss refqc field gallery" src="assets/metric_reality_check_qc_peak4_fieldloss_refqc_field.png" /></p>
+<h4 id="worst-median-best-test-cases-fieldloss-native-order-by-patr2">Worst / median / best test cases (fieldloss, native order by patR²)<a class="headerlink" href="#worst-median-best-test-cases-fieldloss-native-order-by-patr2" title="Permanent link">&para;</a></h4>
+<p>2×3 panels per case — spectrum row + RZ field row (GT / pred / Δ), from
+<a href="../../scripts/m3dc1/internal/plot_case_field_recon.py"><code>plot_case_field_recon.py</code></a>:</p>
+<p><em>Worst (patR² = −0.64) — ridge location roughly correct; residual is noise‑floor / amplitude:</em>
+<img alt="fieldloss worst" src="assets/rz_case_worst_fieldloss_test.png" /></p>
+<p><em>Median (patR² = 0.91) — edge mode envelope reproduced:</em>
+<img alt="fieldloss median" src="assets/rz_case_median_fieldloss_test.png" /></p>
+<p><em>Best (patR² = 0.99) — core crescent almost exact:</em>
+<img alt="fieldloss best" src="assets/rz_case_best_fieldloss_test.png" /></p>
+<p>3×3 eigenmode field panel (worst / median / best by patR², max-normalized), same style as
+§4 <a href="../../scripts/m3dc1/internal/field_recon_compare.py"><code>field_recon_compare.py</code></a>:</p>
+<p><img alt="field recon fieldloss" src="assets/field_recon_fieldloss.png" /></p>
+<p><em>worst <code>run21_sparc_1524</code> patR²=−0.51 relL2=2.16 · median <code>run96_sparc_1353</code> patR²=0.90
+relL2=0.45 · best <code>run91_sparc_1525</code> patR²=0.96 relL2=0.70</em></p>
+<p><strong>Production artifact:</strong> deploy <code>runs/.../fieldloss/ckpt_fno2d.pt</code> (<strong>epoch 45</strong>), <strong>not</strong>
+<code>ckpt_fno2d_last.pt</code> (epoch 400). Re‑export + <code>field_bench</code> if re‑ranking alternate epoch
+checkpoints (e.g. ep 30/60) on full test before changing the pin.</p>
+<p>Artifacts:
+<a href="../../field_bench/with_fieldloss/leaderboard.json"><code>field_bench/with_fieldloss/leaderboard.json</code></a>,
+<a href="../../field_bench/with_fieldloss/per_case.csv"><code>per_case.csv</code></a>,
+<a href="../../field_bench/with_fieldloss/per_family.csv"><code>per_family.csv</code></a>.</p>
+<h3 id="93-perfamily-spotcheck-incl-sparc_1530-regression">9.3 Per‑family spot‑check (incl. sparc_1530 regression)<a class="headerlink" href="#93-perfamily-spotcheck-incl-sparc_1530-regression" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>family</th>
+<th style="text-align: right;">n</th>
+<th>model</th>
+<th style="text-align: right;">mean relL2</th>
+<th style="text-align: right;">frac&gt;1</th>
+<th>notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sparc_1427</td>
+<td style="text-align: right;">22</td>
+<td>peak4</td>
+<td style="text-align: right;">0.880</td>
+<td style="text-align: right;">0.23</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td style="text-align: right;"></td>
+<td><strong>fieldloss</strong></td>
+<td style="text-align: right;"><strong>0.810</strong></td>
+<td style="text-align: right;"><strong>0.14</strong></td>
+<td>improved</td>
+</tr>
+<tr>
+<td>sparc_1430</td>
+<td style="text-align: right;">19</td>
+<td>peak4</td>
+<td style="text-align: right;">0.914</td>
+<td style="text-align: right;">0.26</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td style="text-align: right;"></td>
+<td>fieldloss</td>
+<td style="text-align: right;">0.894</td>
+<td style="text-align: right;">0.26</td>
+<td>slight mean gain</td>
+</tr>
+<tr>
+<td><strong>sparc_1530</strong></td>
+<td style="text-align: right;">20</td>
+<td>peak4</td>
+<td style="text-align: right;"><strong>0.735</strong></td>
+<td style="text-align: right;"><strong>0.05</strong></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td style="text-align: right;"></td>
+<td>fieldloss</td>
+<td style="text-align: right;">0.813</td>
+<td style="text-align: right;"><strong>0.25</strong></td>
+<td><strong>regressed</strong> — diagnose before next lever</td>
+</tr>
+</tbody>
+</table>
+<p>Aggregate: <strong>51</strong> equilibrium families improved frac&gt;1 by &gt;5 pp vs peak4; <strong>2</strong> regressed
+(<code>sparc_1530</code>, <code>sparc_1500</code>). The global win is real but not uniform — plot sparc_1530 cases
+(<code>plot_case_field_recon.py</code> / <code>metric_gallery.py --ref-cache</code>) to decide whether failures
+are edge/geometry (→ Run B) or high‑m truncation (→ Run A) before the next 4 h session.</p>
+<p><img alt="per-family frac relL2&gt;1 sparc families" src="assets/field_bench_frac_gt1_sparc_families.png" /></p>
+<p><strong>sparc_1530</strong> is the standout regression (frac&gt;1 <strong>0.05 → 0.25</strong>); <strong>sparc_1427</strong> improves
+(0.23 → 0.14). This bar chart is the diagnostic input for choosing Run A vs Run B.</p>
+<h3 id="94-oraclephase-caveat">9.4 Oracle‑phase caveat<a class="headerlink" href="#94-oraclephase-caveat" title="Permanent link">&para;</a></h3>
+<p>All field metrics — training loss, subset selection, and <code>field_bench</code> — inject <strong>true phase</strong>.
+We measure <strong>magnitude accuracy given perfect phase</strong>, not deployment accuracy without phase.
+Report both oracle‑phase field relL2 (current) and estimated‑phase relL2 (future) when phase
+is no longer oracle.</p>
+<h3 id="95-next-experiments-singlelever-discipline">9.5 Next experiments (single‑lever discipline)<a class="headerlink" href="#95-next-experiments-singlelever-discipline" title="Permanent link">&para;</a></h3>
+<p>Do <strong>not</strong> combine geom + wide m‑window + field‑loss in one run (same lesson as
+<code>mhi100_geom_peak4</code>). After sparc_1530 diagnosis:</p>
+<table>
+<thead>
+<tr>
+<th>Run</th>
+<th>Lever</th>
+<th>Question</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A</strong></td>
+<td>field‑loss + m ∈ [−80, <strong>100</strong>]</td>
+<td>Does field‑selection rescue the wide window that hurt <code>qc_mhi100</code>?</td>
+</tr>
+<tr>
+<td><strong>B</strong></td>
+<td>field‑loss + <code>--geom-channels</code></td>
+<td>Does geometry fix edge/sparc families?</td>
+</tr>
+<tr>
+<td><strong>C</strong></td>
+<td>A + B</td>
+<td>Only if A and B independently beat this baseline</td>
+</tr>
+</tbody>
+</table>
+<p>Lower priority: <code>--field-loss-weight</code> ablation {0.25, 0.5, 1.0}; <code>--coherence-loss-weight</code>
+(CRF already high at 0.907 — coherence surrogate may add little).</p>
+<hr>
+<p><small>Generated from <code>SURGE_M3DC1_RESULTS_REPORT.md</code>. Companion:
+<a href="SURGE_M3DC1_FACTS.html">Facts</a> ·
+<a href="SURGE_M3DC1_RESEARCH_NARRATIVE.html">Narrative</a> ·
+<a href="VIEW_DOCS_REMOTELY.md">Remote viewing</a></small></p>
+</body>
+</html>

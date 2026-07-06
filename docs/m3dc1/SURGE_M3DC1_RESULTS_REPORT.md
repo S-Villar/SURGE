@@ -19,6 +19,11 @@ loss curves, run comparisons, and per‑case eigenmode visuals.
 > _Prior headline (2026‑07‑01):_ the plateau was first broken by **per‑case max
 > normalization** (val R² 0.605 → 0.836; per‑case pattern R² median −0.9 → 0.74).
 
+> **Follow-up (2026‑07‑06):** Runs B (geom), D (σ=0.5), D′ (σ=0) — synthesis in
+> [`SURGE_M3DC1_RESEARCH_NARRATIVE.md`](SURGE_M3DC1_RESEARCH_NARRATIVE.md);
+> measured facts only in [`SURGE_M3DC1_FACTS.md`](SURGE_M3DC1_FACTS.md).
+> (This file is unchanged as the detailed lab notebook.)
+
 > **Figures.** All images are committed next to this file under
 > [`docs/m3dc1/assets/`](assets) and referenced with relative paths, so they render on
 > GitHub and in the Markdown preview.
@@ -584,7 +589,8 @@ not by spectrum pattern R². Full test split (**n = 1994**).
 
 **Production pick reversed:** `qc_mhi100` was the patR²-selected model (mean patR² **0.906**,
 median **0.932**) but ranks **worst** on field quality (highest frac broken, highest p90).
-**`qc_peak4`** is the field-selected production candidate.
+**`qc_peak4`** was the pre–field-loss field candidate; superseded by **`qc_peak4_fieldloss`**
+(§9) after full‑test `field_bench`.
 
 Pairwise wins (lowest relL2 per case): peak4 **1042**, `_qc` 722, mhi100 230.
 
@@ -632,12 +638,13 @@ checkpoints now store `no_improve`, `best_epoch`, `best_field_frac_gt1`, `best_f
 
 ---
 
-## 9. Field-loss experiment (qc_peak4 + oracle phase) — in progress
+## 9. Field-loss experiment (qc_peak4 + oracle phase) — 2026‑07‑04
 
-**Recipe:** m ∈ [−80, 20], `--peak-weight 4`, floor6, smooth1, quarantine, **no geom**.
-**New terms (additive, default off):** `--field-loss-weight 0.5` (IFFT-proxy relL2 on training
-grid with oracle true phase), `--select-by field` (frac relL2>1, then p90 on 64 stratified
-val cases every 5 epochs).
+**Recipe:** m ∈ [−80, 20], `--peak-weight 4`, floor6, smooth1, quarantine, **no geom**
+(identical base to `qc_peak4`). **New levers (this run only):**
+`--field-loss-weight 0.5` (differentiable IFFT-proxy relL2 with oracle true phase,
+warmup 20 epochs) and `--select-by field` (save `ckpt_fno2d.pt` when
+`frac(relL2>1)` on a 64‑case family‑stratified val subset improves, p90 tiebreak).
 
 **Launch (4 h interactive, restartable):**
 ```bash
@@ -646,7 +653,171 @@ bash scripts/m3dc1/internal/run_field_loss_4h.sh
 ```
 
 **Step 0 finding:** `PHASE AT TRAIN TIME: YES` — complex `spectrum/p/spec` in every
-`csdata_deltap_b_ver.h5` case; current loader uses `|spec|` only unless field-loss flags are set.
+`csdata_deltap_b_ver.h5` case; the loader uses `|spec|` only unless field-loss flags are set.
 
-Post-training: `export_predictions_cache.py` + `field_bench.py` vs qc_peak4 / qc / qc_mhi100.
-Results section to be appended when the run converges.
+### 9.1 Training mechanics (two roles)
+
+| Role | When | What | Effect |
+|---|---|---|---|
+| **Field loss (gradient)** | Every batch step | Un‑norm pred → inject true φ → torch IFFT on 128×128 grid → max‑norm relL2; added to composite loss (w=0.5, ramped over 20 epochs) | Backprop penalizes spectral errors **in proportion to field damage** |
+| **Field metrics (selection)** | Every 5 epochs | Native‑grid relL2 on 64 stratified val cases; `--select-by field` | Picks which epoch is saved as `ckpt_fno2d.pt` — **no gradients** |
+
+Both use oracle true phase. Role 1 changed what the weights learned; Role 2 changed which
+snapshot was kept. Logged `fld_frac>1` / `fld_p90` during training are Role 2 only.
+
+Training ran to epoch **400**; spectrum `val_r2` kept improving through the plateau, but
+field metrics on the 64‑case subset peaked early. **Saved checkpoint: epoch 45**
+(`fld_frac>1=0.0`, `fld_p90=0.664` on the subset; last subset improvement before early‑stop
+patience). Epoch 60 had lower subset p90 (0.656) but `fld_frac>1=0.016` — the selector
+correctly kept epoch 45 under the frac‑first rule.
+
+Training curves (`loss_fno2d.png` from the run directory): spectrum `val_r2` keeps climbing
+after epoch ~45 while `fld_frac>1` / `fld_p90` on the 64‑case subset plateau — the decoupling
+§7 warned about, now visible in the same plot once field metrics are logged.
+
+![fieldloss training curves](assets/loss_fieldloss_fno2d.png)
+
+### 9.2 Full‑test field benchmark (accuracy measure of record)
+
+Post‑training eval on GPU (same convention as §7):
+
+```bash
+OUT=runs/spectrum_fno48_floor6_smooth1_qc_peak4_fieldloss
+python scripts/m3dc1/internal/export_predictions_cache.py --run "$OUT" --device cuda
+python scripts/m3dc1/internal/metric_gallery.py \
+    --cache "$OUT/predictions_cache.npz" \
+    --ref-cache runs/spectrum_fno48_floor6_smooth1_qc/predictions_cache.npz \
+    --split test --metric r2_pattern \
+    --out docs/m3dc1/assets/metric_reality_check_qc_peak4_fieldloss_refqc_combined.png
+python scripts/m3dc1/internal/metric_gallery.py \
+    --cache "$OUT/predictions_cache.npz" \
+    --ref-cache runs/spectrum_fno48_floor6_smooth1_qc/predictions_cache.npz \
+    --split test --metric r2_pattern --field \
+    --out docs/m3dc1/assets/metric_reality_check_qc_peak4_fieldloss_refqc_field.png
+python scripts/m3dc1/internal/plot_case_field_recon.py \
+    --run "$OUT" --split test --out-dir docs/m3dc1/assets --tag fieldloss_test
+python scripts/m3dc1/internal/field_bench.py \
+  --runs runs/spectrum_fno48_floor6_smooth1_qc_peak4 \
+         runs/spectrum_fno48_floor6_smooth1_qc \
+         runs/spectrum_fno48_floor6_smooth1_qc_mhi100 \
+         "$OUT" \
+  --split test --device cuda --out field_bench/with_fieldloss
+```
+
+**Accuracy = field relL2 on the full held‑out test split (n = 1994)**, oracle phase injected,
+max‑normalized — **not** spectrum patR². The epoch‑45 checkpoint was **confirmed on this
+full population** (not the 64‑case subset alone).
+
+#### Leaderboard (test split, all cases)
+
+| Model | frac(relL2>1) ↓ | p90 relL2 ↓ | median | mean | mean α-opt | CRF ↑ |
+|---|---:|---:|---:|---:|---:|---:|
+| **`qc_peak4_fieldloss`** | **0.100** | **1.001** | **0.632** | **0.702** | **0.631** | **0.907** |
+| `qc_peak4` (prev prod.) | 0.180 | 1.165 | 0.730 | 0.808 | 0.696 | 0.825 |
+| `_qc` | 0.200 | 1.217 | 0.741 | 0.821 | 0.705 | 0.737 |
+| `qc_mhi100` | 0.267 | 1.350 | 0.825 | 0.921 | 0.774 | 0.788 |
+
+**Pairwise vs `qc_peak4` (full test):** fieldloss wins **1691**, peak4 wins **303** (85%).
+Overall lowest relL2 among all four models on **1502 / 1994** cases. Broken cases
+(relL2>1) dropped **358 → 200**.
+
+**Spectrum tradeoff (expected):** export cache median patR² **0.888** vs `qc_peak4` test
+patR² **0.922**. Field fidelity was bought with deliberate spectrum score — consistent with
+§7.2 (patR² overstates deployment quality).
+
+#### Field relL2 distribution (full test, n = 1994)
+
+Broken cases (relL2>1) shift left under field‑loss training; p90 drops **1.165 → 1.001**.
+
+![relL2 histogram peak4 vs fieldloss](assets/field_bench_relL2_hist_peak4_vs_fieldloss.png)
+
+Pairwise wins on the same 1994 cases (lowest relL2 per case):
+
+![pairwise wins fieldloss vs peak4](assets/field_bench_pairwise_wins_fieldloss.png)
+
+#### Metric reality check — same `_qc` p2…p98 cases
+
+Side‑by‑side on the **identical** test cases (ref‑cache = `_qc` percentiles). Left: previous
+production `qc_peak4`. Right: `qc_peak4_fieldloss` (epoch‑45 checkpoint). Note lower field
+relL2 in the Δ panels despite slightly lower patR² in the histogram headers.
+
+| `qc_peak4` (prev prod.) | `qc_peak4_fieldloss` |
+|---|---|
+| ![peak4 refqc combined](assets/metric_reality_check_qc_peak4_refqc_combined.png) | ![fieldloss refqc combined](assets/metric_reality_check_qc_peak4_fieldloss_refqc_combined.png) |
+
+Field‑only panels (same case ordering):
+
+![fieldloss refqc field gallery](assets/metric_reality_check_qc_peak4_fieldloss_refqc_field.png)
+
+#### Worst / median / best test cases (fieldloss, native order by patR²)
+
+2×3 panels per case — spectrum row + RZ field row (GT / pred / Δ), from
+[`plot_case_field_recon.py`](../../scripts/m3dc1/internal/plot_case_field_recon.py):
+
+_Worst (patR² = −0.64) — ridge location roughly correct; residual is noise‑floor / amplitude:_
+![fieldloss worst](assets/rz_case_worst_fieldloss_test.png)
+
+_Median (patR² = 0.91) — edge mode envelope reproduced:_
+![fieldloss median](assets/rz_case_median_fieldloss_test.png)
+
+_Best (patR² = 0.99) — core crescent almost exact:_
+![fieldloss best](assets/rz_case_best_fieldloss_test.png)
+
+3×3 eigenmode field panel (worst / median / best by patR², max-normalized), same style as
+§4 [`field_recon_compare.py`](../../scripts/m3dc1/internal/field_recon_compare.py):
+
+![field recon fieldloss](assets/field_recon_fieldloss.png)
+
+_worst `run21_sparc_1524` patR²=−0.51 relL2=2.16 · median `run96_sparc_1353` patR²=0.90
+relL2=0.45 · best `run91_sparc_1525` patR²=0.96 relL2=0.70_
+
+**Production artifact:** deploy `runs/.../fieldloss/ckpt_fno2d.pt` (**epoch 45**), **not**
+`ckpt_fno2d_last.pt` (epoch 400). Re‑export + `field_bench` if re‑ranking alternate epoch
+checkpoints (e.g. ep 30/60) on full test before changing the pin.
+
+Artifacts:
+[`field_bench/with_fieldloss/leaderboard.json`](../../field_bench/with_fieldloss/leaderboard.json),
+[`per_case.csv`](../../field_bench/with_fieldloss/per_case.csv),
+[`per_family.csv`](../../field_bench/with_fieldloss/per_family.csv).
+
+### 9.3 Per‑family spot‑check (incl. sparc_1530 regression)
+
+| family | n | model | mean relL2 | frac>1 | notes |
+|---|---:|---|---:|---:|---|
+| sparc_1427 | 22 | peak4 | 0.880 | 0.23 | |
+| | | **fieldloss** | **0.810** | **0.14** | improved |
+| sparc_1430 | 19 | peak4 | 0.914 | 0.26 | |
+| | | fieldloss | 0.894 | 0.26 | slight mean gain |
+| **sparc_1530** | 20 | peak4 | **0.735** | **0.05** | |
+| | | fieldloss | 0.813 | **0.25** | **regressed** — diagnose before next lever |
+
+Aggregate: **51** equilibrium families improved frac>1 by >5 pp vs peak4; **2** regressed
+(`sparc_1530`, `sparc_1500`). The global win is real but not uniform — plot sparc_1530 cases
+(`plot_case_field_recon.py` / `metric_gallery.py --ref-cache`) to decide whether failures
+are edge/geometry (→ Run B) or high‑m truncation (→ Run A) before the next 4 h session.
+
+![per-family frac relL2>1 sparc families](assets/field_bench_frac_gt1_sparc_families.png)
+
+**sparc_1530** is the standout regression (frac>1 **0.05 → 0.25**); **sparc_1427** improves
+(0.23 → 0.14). This bar chart is the diagnostic input for choosing Run A vs Run B.
+
+### 9.4 Oracle‑phase caveat
+
+All field metrics — training loss, subset selection, and `field_bench` — inject **true phase**.
+We measure **magnitude accuracy given perfect phase**, not deployment accuracy without phase.
+Report both oracle‑phase field relL2 (current) and estimated‑phase relL2 (future) when phase
+is no longer oracle.
+
+### 9.5 Next experiments (single‑lever discipline)
+
+Do **not** combine geom + wide m‑window + field‑loss in one run (same lesson as
+`mhi100_geom_peak4`). After sparc_1530 diagnosis:
+
+| Run | Lever | Question |
+|---|---|---|
+| **A** | field‑loss + m ∈ [−80, **100**] | Does field‑selection rescue the wide window that hurt `qc_mhi100`? |
+| **B** | field‑loss + `--geom-channels` | Does geometry fix edge/sparc families? |
+| **C** | A + B | Only if A and B independently beat this baseline |
+
+Lower priority: `--field-loss-weight` ablation {0.25, 0.5, 1.0}; `--coherence-loss-weight`
+(CRF already high at 0.907 — coherence surrogate may add little).

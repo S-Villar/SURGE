@@ -20,6 +20,9 @@ Usage
     python scripts/m3dc1/internal/plot_case_field_recon.py \
         --run runs/spectrum_image_full_maxnorm_log10 \
         --split val --out-dir docs/m3dc1/assets --tag maxnorm_log10
+
+Output filenames include the run directory name (model id), e.g.
+``rz_case_spectrum_fno48_floor6_smooth1_qc_peak4_worst_maxnorm_log10.png``.
 """
 from __future__ import annotations
 
@@ -150,12 +153,24 @@ def plot_case(i, z, out_path: Path):
     print(f"  wrote {out_path}")
 
 
+def _output_stem(run: Path, case_label: str, tag: str | None, model_label: str | None) -> str:
+    """Build ``rz_case_<model>_<case>[_<tag>]`` without extension."""
+    model = model_label or run.name
+    parts = ["rz_case", model, case_label]
+    if tag:
+        parts.append(tag)
+    return "_".join(parts)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", required=True)
     ap.add_argument("--split", default="val")
     ap.add_argument("--out-dir", default="docs/m3dc1/assets")
-    ap.add_argument("--tag", default="maxnorm_log10")
+    ap.add_argument("--tag", default="maxnorm_log10",
+                    help="optional suffix (e.g. sparc1530_diagnosis)")
+    ap.add_argument("--model-label", default=None,
+                    help="model id in output filename (default: run directory name)")
     ap.add_argument("--cases", type=int, nargs="*", default=None,
                     help="explicit cache indices instead of worst/median/best")
     args = ap.parse_args()
@@ -164,9 +179,10 @@ def main():
     out_dir = Path(args.out_dir); out_dir.mkdir(parents=True, exist_ok=True)
     z = _load_cache(run)
     split = z["split"]; r2p = z["r2_pattern"]
+    keys = z["keys"].astype(str)
 
     if args.cases:
-        picks = [("case%d" % i, i) for i in args.cases]
+        picks = [(str(keys[i]), i) for i in args.cases]
     else:
         idx = np.where(split == args.split)[0]
         rp = r2p[idx]
@@ -180,9 +196,10 @@ def main():
         ]
 
     print(f"run={run.name} split={args.split} picks:",
-          [(n, str(z['keys'][i]), round(float(r2p[i]), 3)) for n, i in picks])
+          [(n, str(keys[i]), round(float(r2p[i]), 3)) for n, i in picks])
     for name, i in picks:
-        plot_case(i, z, out_dir / f"rz_case_{name}_{args.tag}.png")
+        out_path = out_dir / f"{_output_stem(run, name, args.tag, args.model_label)}.png"
+        plot_case(i, z, out_path)
 
 
 if __name__ == "__main__":

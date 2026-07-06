@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html><head><meta charset='utf-8'>
+<title>SURGE M3DC1 Research Narrative</title>
+<style>
+body { font-family: Georgia, serif; max-width: 900px; margin: 2em auto; line-height: 1.5; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9em; }
+th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: right; }
+th:first-child, td:first-child { text-align: left; }
+img { max-width: 100%; height: auto; }
+code { background: #f4f4f4; padding: 2px 4px; }
+h1,h2,h3 { color: #222; }
+@media print { body { max-width: none; } }
+</style></head><body><h1>SURGE × M3DC1 δp̂ Spectrum Surrogate — Research Narrative</h1>
+<p><strong>Companion to</strong> <a href="SURGE_M3DC1_RESULTS_REPORT.md"><code>SURGE_M3DC1_RESULTS_REPORT.md</code></a> (full workflow, figures, and run logs — <strong>unchanged</strong>).</p>
+<p><strong>Status:</strong> 2026‑07‑06 · test split <strong>n = 1994</strong> · oracle‑phase field metrics unless noted.</p>
+<p>This document is a <strong>story-first synthesis</strong> of the eigenmode spectrum surrogate work: one
+thread from “high patR²” to “what actually reconstructs δp(R,Z)”, with <strong>factual tables</strong>
+and links to evidence. Use it for papers, Opus, or stakeholder briefings; use the main report
+for reproducibility commands and asset paths.</p>
+<hr />
+<h2>1. One-paragraph story</h2>
+<p>We train a 2D FNO on max-normalized log₁₀|δp̂|(m, ψ_N) with equilibrium inputs only.
+<strong>Pattern R² on the spectrum image is a misleading selection metric:</strong> <code>qc_mhi100</code> has the
+best patR² (median <strong>0.932</strong>, only <strong>18%</strong> of cases below 0.9) but the <strong>worst</strong> field quality
+(frac(relL2&gt;1) <strong>0.27</strong>). Adding a differentiable <strong>field-loss</strong> term and selecting checkpoints
+by field relL2—not patR²—cuts broken field cases from <strong>358 → 200</strong> vs production <code>qc_peak4</code>.
+A family-level regression on <strong>sparc_1530</strong> (edge-localized modes) led to targeted single-lever
+runs: <strong>geom channels</strong> fix that family but not the global leaderboard; <strong>reducing target
+smoothing</strong> (Runs <strong>D</strong> / <strong>D′</strong>) yields the largest global field gains. <strong>Run D′</strong> (<code>σ=0</code>) is
+the best <strong>field</strong> model on the full test set; <strong>Run D</strong> (<code>σ=0.5</code>) is slightly better on
+sparc_1530. Both pay a large <strong>patR²</strong> cost (~90–97% of cases below 0.9 vs ~40% for <code>_qc</code>).</p>
+<hr />
+<h2>2. What we measure (two different “accuracies”)</h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Definition</th>
+<th>Optimized by default training?</th>
+<th>Deployment meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Pattern R²</strong></td>
+<td>Correlation of mean-subtracted log spectrum on uniform 128×128 (m, ψ_N) grid</td>
+<td>Yes (val_r2 / patR²)</td>
+<td>“Does the ridge <em>shape</em> in log space match?”</td>
+</tr>
+<tr>
+<td><strong>Field relL2</strong></td>
+<td>IFFT predicted |δp̂| with <strong>true phase</strong> → Re(δp)(R,Z), max-normalized, relL2 vs GT</td>
+<td>Only with <code>--field-loss-weight</code> + <code>--select-by field</code></td>
+<td>“Does the <strong>physical field</strong> look right?” (oracle φ)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Critical caveat (§9.4 of main report):</strong> all field numbers below use <strong>oracle true phase</strong>.
+Magnitude is learned; phase is borrowed from GT. Estimated-phase field relL2 is future work.</p>
+<p><strong>Why the metric gallery can look “best” for D′ while patR² is terrible:</strong> the gallery rows are
+fixed test cases (same ordering as <code>_qc</code> p2…p98). Lower field relL2 in the Δ panels is the
+relevant signal for deployment; the histogram header patR² is computed on <strong>all 1994</strong> cases and
+penalizes sharp targets that are harder to fit in log-correlation space.</p>
+<p>Evidence — D′ combined gallery (spectrum + field, same cases as <code>_qc</code>):</p>
+<p><img alt="D′ metric reality check" src="assets/metric_reality_check_qc_peak4_fieldloss_smooth0_refqc_combined.png" /></p>
+<p>Field-only panels:</p>
+<p><img alt="D′ field gallery" src="assets/metric_reality_check_qc_peak4_fieldloss_smooth0_refqc_field.png" /></p>
+<p>Compare to production <code>qc_peak4</code> (same case order):</p>
+<p><img alt="peak4 metric reality check" src="assets/metric_reality_check_qc_peak4_refqc_combined.png" /></p>
+<hr />
+<h2>3. Experiment map (single-lever discipline)</h2>
+<p>All runs share: FNO2D, modes 48, hidden 32, m ∈ [−80, 20], grid 128, floor −6 dex,
+quarantine 2 bad cases, <code>--peak-weight 4</code>, seed 42, <strong>n = 9974</strong> cases (6983/997/1994 split).</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Run directory (short)</th>
+<th><strong>One lever changed</strong></th>
+<th>Checkpoint (field-selected)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>baseline</td>
+<td><code>…_qc_peak4</code></td>
+<td>peak-weight 4, σ=1</td>
+<td>patR² selection</td>
+</tr>
+<tr>
+<td><strong>fieldloss</strong></td>
+<td><code>…_fieldloss</code></td>
+<td>+ field loss w=0.5, select-by field</td>
+<td><strong>epoch 45</strong></td>
+</tr>
+<tr>
+<td><strong>Run B</strong></td>
+<td><code>…_fieldloss_geom</code></td>
+<td>+ <code>--geom-channels</code> (14 inputs)</td>
+<td>epoch ~140</td>
+</tr>
+<tr>
+<td><strong>Run D</strong></td>
+<td><code>…_fieldloss_smooth05</code></td>
+<td><code>--target-smooth 0.5</code> (was 1)</td>
+<td>epoch <strong>205</strong></td>
+</tr>
+<tr>
+<td><strong>Run D′</strong></td>
+<td><code>…_fieldloss_smooth0</code></td>
+<td><code>--target-smooth 0</code></td>
+<td>epoch <strong>50</strong></td>
+</tr>
+<tr>
+<td>counter</td>
+<td><code>…_qc_mhi100</code></td>
+<td>m ∈ [−80, <strong>100</strong>]</td>
+<td>patR² (wide m trap)</td>
+</tr>
+<tr>
+<td>ref</td>
+<td><code>…_qc</code></td>
+<td>no peak-weight</td>
+<td>patR²</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Not run (by design):</strong> Run A alone after sparc_1530 showed hi_m=0; Run C (geom + wide m).</p>
+<hr />
+<h2>4. Master results table (test split, n = 1994)</h2>
+<h3>4.1 Field quality (primary metric for deployment)</h3>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th style="text-align: right;">frac(relL2&gt;1) ↓</th>
+<th style="text-align: right;">p90 ↓</th>
+<th style="text-align: right;">median</th>
+<th style="text-align: right;">mean ↓</th>
+<th style="text-align: right;">CRF ↑</th>
+<th style="text-align: right;">broken cases</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>qc_mhi100</code></td>
+<td style="text-align: right;">0.267</td>
+<td style="text-align: right;">1.351</td>
+<td style="text-align: right;">0.825</td>
+<td style="text-align: right;">0.921</td>
+<td style="text-align: right;">0.788</td>
+<td style="text-align: right;">~532</td>
+</tr>
+<tr>
+<td><code>_qc</code></td>
+<td style="text-align: right;">0.200</td>
+<td style="text-align: right;">1.217</td>
+<td style="text-align: right;">0.741</td>
+<td style="text-align: right;">0.821</td>
+<td style="text-align: right;">0.738</td>
+<td style="text-align: right;">~399</td>
+</tr>
+<tr>
+<td><strong><code>qc_peak4</code></strong> (prev prod)</td>
+<td style="text-align: right;"><strong>0.180</strong></td>
+<td style="text-align: right;"><strong>1.165</strong></td>
+<td style="text-align: right;"><strong>0.730</strong></td>
+<td style="text-align: right;"><strong>0.808</strong></td>
+<td style="text-align: right;"><strong>0.825</strong></td>
+<td style="text-align: right;"><strong>358</strong></td>
+</tr>
+<tr>
+<td>fieldloss <strong>σ=1</strong></td>
+<td style="text-align: right;">0.100</td>
+<td style="text-align: right;">1.001</td>
+<td style="text-align: right;">0.632</td>
+<td style="text-align: right;">0.702</td>
+<td style="text-align: right;">0.907</td>
+<td style="text-align: right;">200</td>
+</tr>
+<tr>
+<td>Run B <strong>geom</strong></td>
+<td style="text-align: right;">0.122</td>
+<td style="text-align: right;">1.061</td>
+<td style="text-align: right;">0.642</td>
+<td style="text-align: right;">0.719</td>
+<td style="text-align: right;"><strong>0.929</strong></td>
+<td style="text-align: right;">244</td>
+</tr>
+<tr>
+<td><strong>Run D σ=0.5</strong></td>
+<td style="text-align: right;">0.051</td>
+<td style="text-align: right;">0.820</td>
+<td style="text-align: right;">0.455</td>
+<td style="text-align: right;">0.527</td>
+<td style="text-align: right;">0.711</td>
+<td style="text-align: right;">~102</td>
+</tr>
+<tr>
+<td><strong>Run D′ σ=0</strong></td>
+<td style="text-align: right;"><strong>0.048</strong></td>
+<td style="text-align: right;"><strong>0.803</strong></td>
+<td style="text-align: right;"><strong>0.421</strong></td>
+<td style="text-align: right;"><strong>0.491</strong></td>
+<td style="text-align: right;">0.605</td>
+<td style="text-align: right;"><strong>96</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Sources: <a href="../../field_bench/with_fieldloss/leaderboard.json"><code>field_bench/with_fieldloss/</code></a>,
+<a href="../../field_bench/with_fieldloss_geom/leaderboard.json"><code>with_fieldloss_geom/</code></a>,
+<a href="../../field_bench/with_fieldloss_smooth05/leaderboard.json"><code>with_fieldloss_smooth05/</code></a>,
+<a href="../../field_bench/with_fieldloss_smooth0/leaderboard.json"><code>with_fieldloss_smooth0/</code></a>,
+<a href="../../field_bench/leaderboard.json"><code>field_bench/leaderboard.json</code></a>.</p>
+<h3>4.2 Spectrum patR² (secondary — report if spectrum score matters)</h3>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th style="text-align: right;">median patR²</th>
+<th style="text-align: right;">mean patR²</th>
+<th style="text-align: right;"><strong>% cases patR² &lt; 0.9</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>qc_mhi100</code></td>
+<td style="text-align: right;"><strong>0.932</strong></td>
+<td style="text-align: right;"><strong>0.906</strong></td>
+<td style="text-align: right;"><strong>18.4%</strong></td>
+</tr>
+<tr>
+<td><code>_qc</code></td>
+<td style="text-align: right;">0.908</td>
+<td style="text-align: right;">0.892</td>
+<td style="text-align: right;">40.2%</td>
+</tr>
+<tr>
+<td><code>qc_peak4</code></td>
+<td style="text-align: right;">0.910</td>
+<td style="text-align: right;">0.895</td>
+<td style="text-align: right;">36.4%</td>
+</tr>
+<tr>
+<td>fieldloss σ=1</td>
+<td style="text-align: right;">0.908</td>
+<td style="text-align: right;">0.888</td>
+<td style="text-align: right;">39.3%</td>
+</tr>
+<tr>
+<td>Run B geom</td>
+<td style="text-align: right;">0.912</td>
+<td style="text-align: right;">0.898</td>
+<td style="text-align: right;">38.1%</td>
+</tr>
+<tr>
+<td>Run D σ=0.5</td>
+<td style="text-align: right;">0.826</td>
+<td style="text-align: right;">0.816</td>
+<td style="text-align: right;"><strong>90.3%</strong></td>
+</tr>
+<tr>
+<td><strong>Run D′ σ=0</strong></td>
+<td style="text-align: right;">0.750</td>
+<td style="text-align: right;">0.744</td>
+<td style="text-align: right;"><strong>96.8%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Source: <code>predictions_cache.npz</code> per run, test split.</p>
+<p><strong>Takeaway:</strong> fieldloss σ=1 improved field metrics vs peak4 <strong>without</strong> hurting patR² (~40%
+below 0.9, same as <code>_qc</code>). D/D′ improved field further at a <strong>deliberate</strong> patR² cost.</p>
+<hr />
+<h2>5. Why patR² and field relL2 diverge (mechanism)</h2>
+<ol>
+<li><strong>patR²</strong> is shape correlation after removing the mean on the training grid — relatively
+   blind to peak amplitude and IFFT leakage.</li>
+<li><strong>Field relL2</strong> penalizes what survives inverse transform with true phase.</li>
+<li><strong>Target smoothing σ=1</strong> blurs training targets → easier patR², softer peaks → worse fields.</li>
+<li><strong>Field-loss gradient</strong> aligns spectral errors with field damage; <strong>select-by field</strong> stops
+   early when patR² still climbs (epoch 45 vs 400 — see main report §9.1).</li>
+<li><strong>mhi100</strong> adds high‑m columns that help patR² but add noise in field reconstruction →
+   worst frac&gt;1 on the bench.</li>
+</ol>
+<p>Evidence — patR² is not field quality:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th style="text-align: right;">patR² median</th>
+<th style="text-align: right;">frac&gt;1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mhi100</td>
+<td style="text-align: right;"><strong>best (0.932)</strong></td>
+<td style="text-align: right;"><strong>worst (0.27)</strong></td>
+</tr>
+<tr>
+<td>D′</td>
+<td style="text-align: right;">worst among field-loss family (0.75)</td>
+<td style="text-align: right;"><strong>best (0.048)</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>6. Chapter: field-loss baseline (main report §7–§9)</h2>
+<p><strong>Question:</strong> Does training against field error beat patR²-selected models?</p>
+<p><strong>Answer:</strong> Yes. vs <code>qc_peak4</code>: pairwise <strong>1691–303</strong> (fieldloss σ=1 wins 85% of cases).</p>
+<p><img alt="Field relL2 histogram" src="assets/field_bench_relL2_hist_peak4_vs_fieldloss.png" /></p>
+<p><img alt="Pairwise wins fieldloss vs peak4" src="assets/field_bench_pairwise_wins_fieldloss.png" /></p>
+<p><strong>Production pin in main report:</strong> <code>runs/…_fieldloss/ckpt_fno2d.pt</code> epoch <strong>45</strong> (not <code>last.pt</code>).</p>
+<p><strong>Known blemish:</strong> sparc_1530 family regressed (frac&gt;1 <strong>0.05 → 0.25</strong>) — triggered §9.3 diagnosis.</p>
+<hr />
+<h2>7. Chapter: sparc_1530 diagnosis → Run B (not Run A)</h2>
+<p><strong>Question:</strong> Edge geometry or missing high‑m modes?</p>
+<p><strong>Evidence on worst regressions:</strong> frac_E(m&gt;20) = <strong>0</strong> for all top cases; peak ψ_N ≈ <strong>0.85–1.0</strong>
+(pedestal/LCFS). → <strong>Run B</strong> (geom), not Run A (wide m).</p>
+<p>Diagnosis plots: <a href="assets/sparc1530_diagnosis/"><code>assets/sparc1530_diagnosis/</code></a></p>
+<h3>Run B result (geom + fieldloss)</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th style="text-align: right;">global mean relL2</th>
+<th style="text-align: right;">frac&gt;1</th>
+<th style="text-align: right;">sparc_1530 mean</th>
+<th style="text-align: right;">sparc_1530 frac&gt;1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>fieldloss σ=1</td>
+<td style="text-align: right;">0.702</td>
+<td style="text-align: right;">0.10</td>
+<td style="text-align: right;">0.813</td>
+<td style="text-align: right;"><strong>0.25</strong></td>
+</tr>
+<tr>
+<td><strong>Run B geom</strong></td>
+<td style="text-align: right;">0.719</td>
+<td style="text-align: right;">0.12</td>
+<td style="text-align: right;"><strong>0.678</strong></td>
+<td style="text-align: right;"><strong>0.05</strong></td>
+</tr>
+<tr>
+<td>vs fieldloss pairwise</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">geom loses <strong>705–1289</strong> globally</td>
+<td style="text-align: right;"><strong>fixed family</strong></td>
+<td style="text-align: right;"></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Conclusion:</strong> geom channels are a <strong>family fix</strong>, not a global production upgrade. Keep for
+edge-heavy equilibria or ensemble; do not replace fieldloss σ=1 on global field rank alone.</p>
+<p>Gallery: <a href="assets/metric_reality_check_qc_peak4_fieldloss_geom_refqc_combined.png"><code>metric_reality_check_qc_peak4_fieldloss_geom_refqc_combined.png</code></a></p>
+<hr />
+<h2>8. Chapter: Runs D and D′ (target smoothing ablation)</h2>
+<p><strong>Question:</strong> Does unsmoothing the training target improve peak/field fidelity?</p>
+<p><strong>Setup:</strong> Same field-loss recipe as baseline; <strong>only</strong> <code>--target-smooth</code> changed (1 → 0.5 → 0).</p>
+<h3>8.1 D vs D′ head-to-head (full test)</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th style="text-align: right;">Run D (σ=0.5)</th>
+<th style="text-align: right;"><strong>Run D′ (σ=0)</strong></th>
+<th>Δ (better ↓ for relL2)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>frac&gt;1</td>
+<td style="text-align: right;">0.051</td>
+<td style="text-align: right;"><strong>0.048</strong></td>
+<td>D′</td>
+</tr>
+<tr>
+<td>p90</td>
+<td style="text-align: right;">0.820</td>
+<td style="text-align: right;"><strong>0.803</strong></td>
+<td>D′</td>
+</tr>
+<tr>
+<td>mean relL2</td>
+<td style="text-align: right;">0.527</td>
+<td style="text-align: right;"><strong>0.491</strong></td>
+<td>D′</td>
+</tr>
+<tr>
+<td>median relL2</td>
+<td style="text-align: right;">0.455</td>
+<td style="text-align: right;"><strong>0.421</strong></td>
+<td>D′</td>
+</tr>
+<tr>
+<td>broken cases</td>
+<td style="text-align: right;">~102</td>
+<td style="text-align: right;"><strong>96</strong></td>
+<td>D′</td>
+</tr>
+<tr>
+<td><strong>Pairwise</strong></td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;"><strong>1466 vs 528</strong></td>
+<td>D′ wins 74%</td>
+</tr>
+<tr>
+<td>vs fieldloss σ=1</td>
+<td style="text-align: right;">1828–166</td>
+<td style="text-align: right;"><strong>1837–157</strong></td>
+<td>both crush baseline</td>
+</tr>
+</tbody>
+</table>
+<h3>8.2 Where D beats D′</h3>
+<table>
+<thead>
+<tr>
+<th>sparc_1530 (n=20)</th>
+<th style="text-align: right;">mean relL2</th>
+<th style="text-align: right;">frac&gt;1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>peak4</td>
+<td style="text-align: right;">0.735</td>
+<td style="text-align: right;">0.05</td>
+</tr>
+<tr>
+<td>fieldloss σ=1</td>
+<td style="text-align: right;">0.813</td>
+<td style="text-align: right;">0.25</td>
+</tr>
+<tr>
+<td>Run B geom</td>
+<td style="text-align: right;">0.678</td>
+<td style="text-align: right;">0.05</td>
+</tr>
+<tr>
+<td><strong>Run D σ=0.5</strong></td>
+<td style="text-align: right;"><strong>0.616</strong></td>
+<td style="text-align: right;">0.05</td>
+</tr>
+<tr>
+<td>Run D′ σ=0</td>
+<td style="text-align: right;">0.689</td>
+<td style="text-align: right;">0.05</td>
+</tr>
+</tbody>
+</table>
+<p>D is the best field model on the diagnosed edge family; D′ is still much better than fieldloss σ=1 there.</p>
+<p>sparc_1530 panels: <a href="assets/sparc1530_smooth_ablation/"><code>assets/sparc1530_smooth_ablation/</code></a></p>
+<h3>8.3 patR² cost (why the gallery header looks “bad”)</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th style="text-align: right;">% patR² &lt; 0.9</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_qc</code> / fieldloss σ=1</td>
+<td style="text-align: right;">~<strong>40%</strong></td>
+</tr>
+<tr>
+<td>Run D</td>
+<td style="text-align: right;"><strong>90%</strong></td>
+</tr>
+<tr>
+<td>Run D′</td>
+<td style="text-align: right;"><strong>97%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Unsmoothing makes targets sharper → harder log-spectrum fit → lower patR² <strong>even when fields improve</strong>.</p>
+<h3>8.4 Visual evidence</h3>
+<table>
+<thead>
+<tr>
+<th>Asset</th>
+<th>Run</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="D′ field recon 3×3" src="assets/field_recon_fieldloss_smooth0.png" /></td>
+<td>D′ worst/median/best</td>
+</tr>
+<tr>
+<td><img alt="D field recon 3×3" src="assets/field_recon_fieldloss_smooth05.png" /></td>
+<td>D</td>
+</tr>
+<tr>
+<td><img alt="D′ relL2 hist" src="assets/field_bench_relL2_hist_peak4_vs_fieldloss_smooth0.png" /></td>
+<td>D′ vs peak4/baseline</td>
+</tr>
+<tr>
+<td><img alt="D relL2 hist" src="assets/field_bench_relL2_hist_peak4_vs_fieldloss_smooth05.png" /></td>
+<td>D</td>
+</tr>
+<tr>
+<td><img alt="D′ pairwise" src="assets/field_bench_pairwise_wins_fieldloss_smooth0.png" /></td>
+<td>D′ vs fieldloss</td>
+</tr>
+<tr>
+<td><img alt="D′ sparc frac&gt;1" src="assets/field_bench_frac_gt1_sparc_fieldloss_smooth0.png" /></td>
+<td>families</td>
+</tr>
+</tbody>
+</table>
+<p>Training curves: <a href="assets/loss_fieldloss_smooth0_fno2d.png"><code>loss_fieldloss_smooth0_fno2d.png</code></a>,
+<a href="assets/loss_fieldloss_smooth05_fno2d.png"><code>loss_fieldloss_smooth05_fno2d.png</code></a></p>
+<hr />
+<h2>9. Decision guide (which checkpoint when)</h2>
+<table>
+<thead>
+<tr>
+<th>Your priority</th>
+<th>Recommended model</th>
+<th>Checkpoint</th>
+<th>Caveat</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Best global field relL2</strong></td>
+<td><strong>Run D′</strong> <code>…_fieldloss_smooth0</code></td>
+<td><code>ckpt_fno2d.pt</code> ep <strong>50</strong></td>
+<td>patR² ~97% below 0.9; CRF drops to 0.61</td>
+</tr>
+<tr>
+<td><strong>Best sparc_1530 / edge family</strong></td>
+<td><strong>Run D</strong> <code>…_smooth05</code></td>
+<td>ep <strong>205</strong></td>
+<td>Slightly worse global than D′</td>
+</tr>
+<tr>
+<td><strong>Balance field win + patR² ~ <code>_qc</code></strong></td>
+<td><strong>fieldloss σ=1</strong></td>
+<td>ep <strong>45</strong></td>
+<td>Main report §9 production pin</td>
+</tr>
+<tr>
+<td><strong>Best patR² / spectrum leaderboard</strong></td>
+<td>peak4 or mhi100</td>
+<td>—</td>
+<td><strong>Not</strong> for field deployment</td>
+</tr>
+<tr>
+<td><strong>sparc_1530-only fix without smooth trade</strong></td>
+<td>Run B geom</td>
+<td>ep ~140</td>
+<td>Loses global field rank vs σ=1</td>
+</tr>
+</tbody>
+</table>
+<p><strong>If you liked the D′ metric gallery:</strong> that is consistent with <strong>field-first</strong> selection. It is
+<strong>not</strong> consistent with patR²-first selection — use fieldloss σ=1 or peak4 instead.</p>
+<hr />
+<h2>10. How this updates the main report (without replacing it)</h2>
+<p><a href="SURGE_M3DC1_RESULTS_REPORT.md"><code>SURGE_M3DC1_RESULTS_REPORT.md</code></a> remains the <strong>lab notebook</strong>:
+§4 target conditioning, §7 field bench introduction, §9 field-loss experiment through §9.5 planned
+Runs A/B/C.</p>
+<p><strong>This narrative adds (post‑§9 work, July 2026):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Main report section</th>
+<th>Still valid?</th>
+<th>New facts to append (or read here)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>§9.2 production = fieldloss ep 45</td>
+<td>Valid as <strong>balanced</strong> pick</td>
+<td>Superseded for <strong>max field</strong> by D′</td>
+</tr>
+<tr>
+<td>§9.3 sparc_1530 regression</td>
+<td>Valid trigger</td>
+<td><strong>Resolved</strong> by D (0.616), geom (0.678), D′ (0.689) — not by σ=1 alone</td>
+</tr>
+<tr>
+<td>§9.5 Runs A/B/C planned</td>
+<td>B, D, D′ <strong>done</strong>; A/C skipped</td>
+<td>Results in §7–8 above</td>
+</tr>
+<tr>
+<td>§7 mhi100 patR² vs field</td>
+<td>Core lesson</td>
+<td>Unchanged — anchor for “wrong metric”</td>
+</tr>
+</tbody>
+</table>
+<p>Suggested one-line addition to main report header (optional):</p>
+<blockquote>
+<p><strong>Follow-up (2026‑07‑06):</strong> Runs B, D, D′ — see
+<a href="SURGE_M3DC1_RESEARCH_NARRATIVE.md"><code>SURGE_M3DC1_RESEARCH_NARRATIVE.md</code></a>.</p>
+</blockquote>
+<hr />
+<h2>11. Suggested “paper outline” (for Opus / draft)</h2>
+<ol>
+<li><strong>Introduction</strong> — eigenmode δp̂ surrogate; shape vs amplitude gauge; deployment via field recon.</li>
+<li><strong>Methods</strong> — FNO on (m, ψ_N); max-norm log target; field-loss + oracle phase; <code>field_bench</code>.</li>
+<li><strong>Result 1</strong> — patR² mis-ranks models (mhi100 vs peak4 vs fieldloss).</li>
+<li><strong>Result 2</strong> — field-loss training + field checkpoint selection (1691–303 vs peak4).</li>
+<li><strong>Result 3</strong> — heterogeneous families (sparc_1530); diagnosis protocol (hi_m, peak ψ_N).</li>
+<li><strong>Result 4</strong> — single-lever follow-ups: geom (local), smoothing (global).</li>
+<li><strong>Discussion</strong> — two metrics; oracle phase limit; when to report patR² vs field relL2.</li>
+<li><strong>Conclusion</strong> — D′ for field deployment; fieldloss σ=1 if patR² must stay ~ <code>_qc</code>.</li>
+</ol>
+<hr />
+<h2>12. Artifact index (reproducibility)</h2>
+<table>
+<thead>
+<tr>
+<th>Artifact</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Field benches</td>
+<td><code>field_bench/with_fieldloss{,_geom,_smooth05,_smooth0}/</code></td>
+</tr>
+<tr>
+<td>Postprocess script</td>
+<td><code>scripts/m3dc1/internal/postprocess_smooth_runs.sh</code></td>
+</tr>
+<tr>
+<td>Comparison charts</td>
+<td><code>scripts/m3dc1/internal/postprocess_smooth_ablation_assets.py</code></td>
+</tr>
+<tr>
+<td>Leaderboard JSON (D′)</td>
+<td><a href="assets/field_bench_leaderboard_fieldloss_smooth0.json"><code>assets/field_bench_leaderboard_fieldloss_smooth0.json</code></a></td>
+</tr>
+<tr>
+<td>Eval log</td>
+<td><code>logs/eval_fieldloss_smooth_runs_*.log</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>13. Open questions (honest limits)</h2>
+<ol>
+<li><strong>Estimated phase</strong> — all field numbers are oracle-φ; deployment needs predicted phase or joint training.</li>
+<li><strong>CRF drop on D′</strong> (0.91 → 0.61) — coherent error structure changes; interpret with field panels, not CRF alone.</li>
+<li><strong>Run E/F</strong> (peak-weight ablation on D′ recipe) — not run; may recover patR² without losing field gains.</li>
+<li><strong>Run A</strong> — only justified if a family shows measurable m&gt;20 energy; sparc_1530 did not.</li>
+</ol>
+<hr />
+<p><em>Generated from measured <code>field_bench</code> outputs and <code>predictions_cache.npz</code> statistics on Perlmutter, July 2026.</em></p></body></html>
