@@ -379,6 +379,8 @@ def test_lenet5_fit_predict_synthetic():
 
 def test_resnet20_fit_predict_synthetic():
     """Verify ResNet-20 can fit tiny synthetic CIFAR-like data."""
+    pytest.importorskip("torch")
+    pytest.importorskip("torchvision")
     from surge.model.registry import MODEL_REGISTRY
 
     rng = np.random.default_rng(8)
