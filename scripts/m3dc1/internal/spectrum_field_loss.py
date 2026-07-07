@@ -205,6 +205,40 @@ def _dex_to_linear_torch(dex, target_floor: Optional[float]):
     return torch.pow(10.0, dex)
 
 
+def field_loss_honest_phase_torch(
+    pred_phase_std,
+    mag_pred_dex_batch,
+    true_phase_batch,
+    true_mag_dex_batch,
+    *,
+    y_mean: float,
+    y_std: float,
+    target_floor: Optional[float],
+):
+    """Field relL2: |δp̂|_pred × φ_pred  vs  |δp̂|_true × φ_true (training grid)."""
+    import torch
+
+    pred_phase = pred_phase_std.squeeze(1) * y_std + y_mean
+    true_phase = true_phase_batch.to(device=pred_phase.device, dtype=pred_phase.dtype)
+    mag_pred_lin = _dex_to_linear_torch(mag_pred_dex_batch, target_floor)
+    mag_true_lin = _dex_to_linear_torch(true_mag_dex_batch, target_floor)
+    pred_c = mag_pred_lin * torch.exp(1j * pred_phase)
+    true_c = mag_true_lin * torch.exp(1j * true_phase)
+    m_dim = -2
+    pred_f = torch.real(
+        torch.fft.ifft(torch.fft.ifftshift(pred_c, dim=m_dim), dim=m_dim) * pred_c.shape[m_dim]
+    )
+    true_f = torch.real(
+        torch.fft.ifft(torch.fft.ifftshift(true_c, dim=m_dim), dim=m_dim) * true_c.shape[m_dim]
+    )
+    pred_n = pred_f / (pred_f.abs().amax(dim=(-2, -1), keepdim=True) + 1e-30)
+    true_n = true_f / (true_f.abs().amax(dim=(-2, -1), keepdim=True) + 1e-30)
+    diff = pred_n - true_n
+    num = diff.flatten(1).norm(dim=1)
+    den = true_n.flatten(1).norm(dim=1) + 1e-30
+    return (num / den).mean()
+
+
 def field_loss_training_grid_torch(
     pred_std,
     target_std,

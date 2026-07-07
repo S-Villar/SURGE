@@ -36,7 +36,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -70,6 +70,15 @@ def _read_case(path: Path, spectrum_field: str) -> Optional[Dict]:
             out: Dict = {"run_id": _decode(rg.get("runID", rname)),
                          "eq_id": _decode(rg.get("eqID", "eq")),
                          "mag": mag.astype(np.float64), "m_modes": m_modes, "psi": psi}
+            if np.iscomplexobj(spec):
+                out["phase"] = np.angle(spec).astype(np.float64)
+                out["real"] = np.real(spec).astype(np.float64)
+                out["imag"] = np.imag(spec).astype(np.float64)
+            else:
+                z = np.zeros_like(mag, dtype=np.float64)
+                out["phase"] = z
+                out["real"] = np.asarray(spec, float) if not np.iscomplexobj(spec) else z
+                out["imag"] = z.copy()
             # shaping
             sh = {}
             if "miller" in rg:
@@ -171,6 +180,20 @@ def _geometry_profiles(c: Dict, psi_grid: np.ndarray) -> Dict[str, np.ndarray]:
             "lcfs_prox": lcfs_prox.astype(np.float32)}
 
 
+def _interp_field_to_grid(
+    field_2d: np.ndarray,
+    m_modes: np.ndarray,
+    psi: np.ndarray,
+    m_grid: np.ndarray,
+    psi_grid: np.ndarray,
+    grid: int,
+) -> np.ndarray:
+    """Interpolate native (m, psi) spectrum slice onto uniform training grid."""
+    m_vals = m_modes
+    tmp = np.vstack([_interp_to(psi_grid, psi, row) for row in field_2d])
+    return np.vstack([_interp_to(m_grid, m_vals, tmp[:, j]) for j in range(grid)]).T
+
+
 def build_dataset(
     batch_dir: str, filename: str, n_cases: Optional[int], grid: int,
     m_lo: float, m_hi: float, spectrum_field: str, eps: float,
@@ -178,25 +201,26 @@ def build_dataset(
     target_norm: str = "none", target_space: str = "log10",
     target_floor: Optional[float] = None,
     target_smooth: Optional[float] = None,
+    target_kind: str = "magnitude",
     exclude_keys: Optional[set] = None,
     geom_channels: bool = False,
     return_paths: bool = False,
+    return_mag_grid: bool = False,
 ):
     """Return X (N,C,H,W), Y (N,H,W) target, channel names, case keys.
 
-    target_norm : {"none", "max"}
-        "max" divides each case's magnitude spectrum by its own peak so the max
-        amplitude becomes 1 BEFORE any log -- this factors out the arbitrary
-        per-case eigenmode normalization and leaves the model to learn the shape.
-    target_space : {"log10", "raw"}
-        "log10" -> target is log10(mag[+norm] + eps); "raw" -> target is the
-        (optionally max-normalized) magnitude itself.
+    target_kind : {"magnitude", "phase", "real", "imag"}
+        magnitude — log10|δp̂| (default surrogate target)
+        phase     — angle(δp̂) in radians on the training grid
+        real/imag — Re/Im(δp̂) with optional per-case max scale from |δp̂| peak
+    return_mag_grid : when target_kind=phase, also return Y_mag (N,H,W) max-normalized
+        log10|δp̂| grids for ridge-weighting and honest field-loss magnitude arm.
     """
     paths = find_complex_v2_files(batch_dir, filename=filename)
     if n_cases:
         paths = paths[:n_cases]
     print(f"Building spectrum-image dataset from {len(paths)} cases "
-          f"(grid={grid}x{grid}, m in [{m_lo},{m_hi}])")
+          f"(grid={grid}x{grid}, m in [{m_lo},{m_hi}], target={target_kind})")
     psi_grid = np.linspace(0.0, 1.0, grid)
     m_grid = np.linspace(m_lo, m_hi, grid)
     M = np.repeat(m_grid[:, None], grid, axis=1)          # (H,W) m varies along rows
@@ -206,6 +230,7 @@ def build_dataset(
         chan_names.extend(["shear", "flux_exp", "lcfs_prox"])
     Xs: List[np.ndarray] = []
     Ys: List[np.ndarray] = []
+    Ymags: List[np.ndarray] = []
     keys: List[str] = []
     kept: List[str] = []
     t0 = time.time()
@@ -219,33 +244,43 @@ def build_dataset(
         sel = (m_modes >= m_lo) & (m_modes <= m_hi)
         if sel.sum() < 4:
             continue
-        field = mag[sel, :]                                # (nmc, npsi), >= 0
-        # Per-case magnitude normalization: peak -> 1 (before any log).
-        if target_norm == "max":
-            cmax = float(field.max())
-            if cmax > 0:
+        mag_sel = mag[sel, :]
+        cmax = float(mag_sel.max()) if mag_sel.size else 0.0
+        scale = cmax if (target_norm == "max" and cmax > 0) else 1.0
+
+        if target_kind == "magnitude":
+            field = mag_sel.copy()
+            if target_norm == "max" and cmax > 0:
                 field = field / cmax
-        if target_space == "log10":
-            field = np.log10(field + eps)
-            # Floor the log10 target N decades below the (max-normalized) peak.
-            # With target_norm="max" the peak is 1 -> log10=0, so target_floor=6
-            # clips everything below 1e-6*peak to a constant -6. This removes the
-            # ungradeable noise-floor texture so the model (and R2/RMSE) focus on
-            # the top ~N decades of amplitude that actually define the mode.
-            if target_floor is not None and target_floor > 0:
-                field = np.maximum(field, -float(target_floor))
-        # else: "raw" -> keep (optionally max-normalized) magnitude
+            if target_space == "log10":
+                field = np.log10(field + eps)
+                if target_floor is not None and target_floor > 0:
+                    field = np.maximum(field, -float(target_floor))
+        elif target_kind == "phase":
+            field = c["phase"][sel, :]
+        elif target_kind == "real":
+            field = c["real"][sel, :] / scale
+        elif target_kind == "imag":
+            field = c["imag"][sel, :] / scale
+        else:
+            raise ValueError(f"unknown target_kind={target_kind!r}")
+
         m_vals = m_modes[sel]
-        # interp along psi (cols) onto uniform psi_grid
-        tmp = np.vstack([_interp_to(psi_grid, psi, row) for row in field])  # (nmc,W)
-        # interp along m (rows) onto uniform m_grid
-        img = np.vstack([_interp_to(m_grid, m_vals, tmp[:, j]) for j in range(grid)]).T  # (H,W)
-        # Optional Gaussian denoise of the (log) target: removes high-frequency
-        # speckle while preserving the coherent ridge (the ~5% incompressible
-        # noise that caps R2). sigma is in grid pixels.
-        if target_smooth is not None and target_smooth > 0:
+        img = _interp_field_to_grid(field, m_vals, psi, m_grid, psi_grid, grid)
+        if target_kind == "magnitude" and target_smooth is not None and target_smooth > 0:
             from scipy.ndimage import gaussian_filter
             img = gaussian_filter(img, sigma=float(target_smooth))
+
+        mag_img = None
+        if return_mag_grid or target_kind == "phase":
+            mag_norm = mag_sel / scale if scale > 0 else mag_sel
+            mag_log = np.log10(mag_norm + eps)
+            if target_floor is not None and target_floor > 0:
+                mag_log = np.maximum(mag_log, -float(target_floor))
+            mag_img = _interp_field_to_grid(mag_log, m_vals, psi, m_grid, psi_grid, grid)
+            if target_smooth is not None and target_smooth > 0:
+                from scipy.ndimage import gaussian_filter
+                mag_img = gaussian_filter(mag_img, sigma=float(target_smooth))
         q_on = _interp_to(psi_grid, c["qpsin"], c["qprof"])
         p_on = _interp_to(psi_grid, c["ppsin"], c["pprof"])
         Q = np.repeat(q_on[None, :], grid, axis=0)        # (H,W) q(psi_j)
@@ -263,11 +298,18 @@ def build_dataset(
                 layers.append(np.repeat(g1[None, :], grid, axis=0))  # (H,W) psi-only
         X = np.stack(layers, axis=0).astype(np.float32)  # (C,H,W)
         Xs.append(X); Ys.append(img.astype(np.float32)); keys.append(f"{c['run_id']}_{c['eq_id']}")
+        if mag_img is not None:
+            Ymags.append(mag_img.astype(np.float32))
         kept.append(str(p))
         if (i + 1) % 500 == 0:
             print(f"  {i+1}/{len(paths)} ({time.time()-t0:.0f}s)")
     X = np.stack(Xs); Y = np.stack(Ys)
     print(f"  Built X={X.shape} Y={Y.shape} in {time.time()-t0:.0f}s")
+    if return_mag_grid or target_kind == "phase":
+        Y_mag = np.stack(Ymags)
+        if return_paths:
+            return X, Y, chan_names, keys, kept, Y_mag
+        return X, Y, chan_names, keys, Y_mag
     if return_paths:
         return X, Y, chan_names, keys, kept
     return X, Y, chan_names, keys
@@ -295,6 +337,79 @@ def _psi_balance_weights(Y: np.ndarray, n_bins: int = 10,
     w = inv[b]
     w *= len(w) / w.sum()                                 # mean weight -> 1
     return w.astype(np.float32), counts
+
+
+def load_mag_pred_dex_from_run(
+    mag_run: Path,
+    keys: Sequence[str],
+    X: np.ndarray,
+    tr: np.ndarray,
+    *,
+    device: str = "cuda",
+    batch_size: int = 16,
+    model: str = "fno2d",
+) -> np.ndarray:
+    """Predict log10|δp̂| dex grids from a trained magnitude run (frozen), aligned to keys."""
+    import torch
+
+    mag_run = Path(mag_run)
+    cfg = json.loads((mag_run / "run_config.json").read_text())
+    ckpt = mag_run / f"ckpt_{model}.pt"
+    if not ckpt.is_file():
+        raise FileNotFoundError(f"magnitude checkpoint not found: {ckpt}")
+
+    cache = mag_run / "predictions_cache.npz"
+    if cache.is_file():
+        z = np.load(cache, allow_pickle=True)
+        cache_keys = z["keys"].astype(str)
+        pred = z["pred"].astype(np.float32)
+        key_to_pred = {k: pred[i] for i, k in enumerate(cache_keys)}
+        missing = [k for k in keys if k not in key_to_pred]
+        if not missing:
+            print(f"  [mag-run] loaded frozen |δp̂| preds from {cache.name} ({len(keys)} cases)")
+            return np.stack([key_to_pred[k] for k in keys])
+        print(f"  [mag-run] cache missing {len(missing)} keys — running inference")
+
+    dev = torch.device(device if device == "cuda" and torch.cuda.is_available() else "cpu")
+    net = _build_net(
+        model,
+        X.shape[1],
+        fno_modes=int(cfg.get("fno_modes", 16)),
+        fno_hidden=int(cfg.get("fno_hidden", 32)),
+        grid=int(cfg.get("grid", X.shape[-1])),
+    )
+    state = torch.load(ckpt, map_location="cpu", weights_only=False)
+    net.load_state_dict(state["state_dict"])
+    net = net.to(dev).eval()
+
+    xm = X[tr].mean((0, 2, 3), keepdims=True)
+    xs = X[tr].std((0, 2, 3), keepdims=True) + 1e-8
+    Xn = (X - xm) / xs
+
+    ym_path = mag_run / "norm_stats.json"
+    if ym_path.is_file():
+        ns = json.loads(ym_path.read_text())
+        ym, ysd = float(ns["y_mean"]), float(ns["y_std"])
+    else:
+        print("  [mag-run] norm_stats.json missing — using train-split Y stats from magnitude rebuild")
+        _, Y_mag, _, _ = build_dataset(
+            cfg["batch_dir"], cfg["filename"], (cfg.get("n_cases") or None),
+            cfg["grid"], float(cfg["m_window"][0]), float(cfg["m_window"][1]),
+            cfg.get("spectrum_field", "p"), 1e-12,
+            target_norm=cfg.get("target_norm", "none"),
+            target_space=cfg.get("target_space", "log10"),
+            target_floor=cfg.get("target_floor"),
+            target_smooth=cfg.get("target_smooth"),
+            target_kind="magnitude",
+            exclude_keys=None,
+            geom_channels=cfg.get("geom_channels", False),
+        )
+        ym = float(Y_mag[tr].mean())
+        ysd = float(Y_mag[tr].std() + 1e-8)
+
+    pred_std = _predict_net(net, Xn, batch_size)
+    print(f"  [mag-run] inference from {ckpt.name} on {len(X)} cases ({dev})")
+    return (pred_std * ysd + ym).astype(np.float32)
 
 
 def _build_net(name: str, in_channels: int, fno_modes: int = 16,
@@ -392,13 +507,16 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
                coherence_loss_weight: float = 0.0, coherence_cutoff: float = 0.25,
                phase_tr: Optional[np.ndarray] = None,
                target_floor: Optional[float] = None, y_mean: float = 0.0,
-               field_select_n: int = 64, field_select_every: int = 5,
+               field_select_n: int = 64,                field_select_every: int = 5,
                val_field_subset: Optional[np.ndarray] = None,
                val_paths: Optional[List[str]] = None,
                Yva_dex: Optional[np.ndarray] = None,
                m_grid: Optional[np.ndarray] = None,
                psi_grid: Optional[np.ndarray] = None,
-               spectrum_field: str = "p"):
+               spectrum_field: str = "p",
+               target_kind: str = "magnitude",
+               Y_mag_train: Optional[np.ndarray] = None,
+               mag_pred_dex: Optional[np.ndarray] = None):
     """Custom loop: per-epoch train+val loss/R2 -> live JSONL, best-val checkpoint,
     val early-stop, live loss plot. Returns (best_net, n_params).
 
@@ -414,6 +532,7 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
     import torch
     from torch.utils.data import DataLoader, TensorDataset
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    cache = gpu_cache and dev.type == "cuda"
     net = net.to(dev)
     n_params = sum(p.numel() for p in net.parameters())
     opt = torch.optim.Adam(net.parameters(), lr=lr)
@@ -423,9 +542,32 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
     # the ground-truth amplitude (per-image min-max ranked, so the peak -> 1),
     # forcing the model to reproduce the peak/ridge accurately.
     _mse = torch.nn.MSELoss()
+    is_phase = target_kind == "phase"
+    Y_mag_t = None
+    mag_pred_t = None
+    if is_phase and Y_mag_train is not None:
+        Y_mag_t = torch.tensor(Y_mag_train, dtype=torch.float32, device=dev if cache else "cpu")
+    if is_phase and mag_pred_dex is not None:
+        mag_pred_t = torch.tensor(mag_pred_dex, dtype=torch.float32, device=dev if cache else "cpu")
 
     # --- pixel term (plain or amplitude-weighted MSE) ---------------------- #
-    def _pixel_loss(pred, target):
+    def _pixel_loss(pred, target, idx=None):
+        if is_phase:
+            diff = pred - target
+            circ = 1.0 - torch.cos(diff)
+            if peak_weight and peak_weight > 0 and Y_mag_t is not None and idx is not None:
+                mag = Y_mag_t[idx]
+                tmin = mag.amin(dim=(1, 2), keepdim=True)
+                tmax = mag.amax(dim=(1, 2), keepdim=True)
+                s = ((mag - tmin) / (tmax - tmin + 1e-8)).clamp_(0.0, 1.0)
+                w = 1.0 + peak_weight * s.pow(peak_pow)
+                return (w * circ).mean()
+            if Y_mag_t is not None and idx is not None:
+                mag = Y_mag_t[idx]
+                w = mag - mag.amin(dim=(1, 2), keepdim=True)
+                w = w / (w.amax(dim=(1, 2), keepdim=True) + 1e-8)
+                return ((0.25 + 0.75 * w) * circ).mean()
+            return circ.mean()
         if peak_weight and peak_weight > 0:
             with torch.no_grad():
                 tmin = target.amin(dim=(2, 3), keepdim=True)
@@ -479,9 +621,9 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
         p = torch.softmax(loc_beta * zf, dim=1)
         return (p * psi_flat).sum(dim=1)             # (B,) expected psi_N of peak
 
-    def lossf(pred, target):
+    def lossf(pred, target, idx=None):
         nonlocal _psi_map
-        loss = _pixel_loss(pred, target)
+        loss = _pixel_loss(pred, target, idx)
         if use_loc:
             if _psi_map is None:
                 W = target.shape[-1]; H = target.shape[-2]
@@ -519,7 +661,6 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
     if use_coh:
         _terms.append(f"coh(w={coherence_loss_weight},cut={coherence_cutoff})")
     print(f"  [loss] composite = {' + '.join(_terms)}", flush=True)
-    cache = gpu_cache and dev.type == "cuda"
     n_train = len(Xtr)
     # Optional core-mode class balancing: oversample rare peak-psi bins so the
     # model sees each ridge location ~equally (instead of the edge-dominated
@@ -551,6 +692,7 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
         phase_tr_t = torch.tensor(phase_tr, dtype=torch.float32, device=dev if cache else "cpu")
     from spectrum_field_loss import (  # noqa: E402
         field_loss_training_grid_torch,
+        field_loss_honest_phase_torch,
         coherence_loss_torch,
         eval_val_field_selection,
         field_metric_improved,
@@ -634,9 +776,17 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
         warm = _warm_scale(ep)
         aux = pred.new_tensor(0.0)
         if use_field:
-            ph = phase_tr_t[idx]
-            aux = aux + warm * field_loss_weight * field_loss_training_grid_torch(
-                pred, target, ph, y_mean=y_mean, y_std=y_std, target_floor=target_floor)
+            if is_phase and mag_pred_t is not None and phase_tr_t is not None and Y_mag_t is not None:
+                mag_p = mag_pred_t[idx]
+                mag_t = Y_mag_t[idx]
+                ph = phase_tr_t[idx]
+                aux = aux + warm * field_loss_weight * field_loss_honest_phase_torch(
+                    pred, mag_p, ph, mag_t,
+                    y_mean=y_mean, y_std=y_std, target_floor=target_floor)
+            elif phase_tr_t is not None:
+                ph = phase_tr_t[idx]
+                aux = aux + warm * field_loss_weight * field_loss_training_grid_torch(
+                    pred, target, ph, y_mean=y_mean, y_std=y_std, target_floor=target_floor)
         if use_coh:
             aux = aux + warm * coherence_loss_weight * coherence_loss_torch(
                 pred, target, y_mean=y_mean, y_std=y_std,
@@ -663,7 +813,7 @@ def _train_net(net, name, out: Path, Xtr, Ytr, Xva, Yva, *,
                 idx = perm[i:i + batch_size]
                 opt.zero_grad()
                 pt = net(Xg[idx])
-                loss = lossf(pt, Yg[idx]) + _aux_loss(pt, Yg[idx], idx, epoch)
+                loss = lossf(pt, Yg[idx], idx) + _aux_loss(pt, Yg[idx], idx, epoch)
                 loss.backward(); opt.step()
                 tl += loss.item() * len(idx)
         else:
@@ -830,6 +980,15 @@ def main() -> None:
                     help="Gaussian-denoise the log target with this sigma (grid px) "
                          "to remove high-frequency speckle while keeping the ridge. "
                          "Try 1. Combine with --target-floor.")
+    ap.add_argument("--target-kind", choices=["magnitude", "phase", "real", "imag"],
+                    default="magnitude",
+                    help="Surrogate target on the (m,psi) grid. Default: log10|δp̂|. "
+                         "'phase' trains φ(m,psi) with circular loss.")
+    ap.add_argument("--mag-run", default=None,
+                    help="For --target-kind phase: directory of frozen magnitude run "
+                         "(uses predictions_cache.npz or inference) for honest field loss.")
+    ap.add_argument("--init-from", default=None,
+                    help="Warm-start FNO weights from another checkpoint (e.g. magnitude ckpt).")
     ap.add_argument("--exclude-list", default=None,
                     help="Path to a quarantine JSON (from scan_quality.py) or a text "
                          "file of case keys to EXCLUDE from the dataset (bad data).")
@@ -951,21 +1110,29 @@ def main() -> None:
         args.field_loss_weight > 0
         or args.coherence_loss_weight > 0
         or args.select_by == "field"
+        or args.target_kind == "phase"
     )
-    if need_field:
-        X, Y, chan_names, keys, paths = build_dataset(
+    Y_mag = None
+    if need_field or args.target_kind == "phase":
+        built = build_dataset(
             args.batch_dir, args.filename, args.n_cases, args.grid,
             args.m_lo, args.m_hi, args.spectrum_field, args.eps,
             target_norm=args.target_norm, target_space=args.target_space,
             target_floor=args.target_floor, target_smooth=args.target_smooth,
+            target_kind=args.target_kind,
             exclude_keys=exclude_keys, geom_channels=args.geom_channels,
             return_paths=True)
+        if args.target_kind == "phase":
+            X, Y, chan_names, keys, paths, Y_mag = built
+        else:
+            X, Y, chan_names, keys, paths = built
     else:
         X, Y, chan_names, keys = build_dataset(
             args.batch_dir, args.filename, args.n_cases, args.grid,
             args.m_lo, args.m_hi, args.spectrum_field, args.eps,
             target_norm=args.target_norm, target_space=args.target_space,
             target_floor=args.target_floor, target_smooth=args.target_smooth,
+            target_kind=args.target_kind,
             exclude_keys=exclude_keys, geom_channels=args.geom_channels)
         paths = None
     N = X.shape[0]
@@ -974,10 +1141,11 @@ def main() -> None:
 
     # Persist the run configuration so `python -m surge.check_training` (and the
     # user) can see exactly what preprocessing/target this run used.
-    target_desc = (("max-normalized " if args.target_norm == "max" else "")
-                   + ("log10|dp|" if args.target_space == "log10" else "|dp|")
+    target_desc = (f"{args.target_kind} "
+                   + (("max-normalized " if args.target_norm == "max" else "")
+                   + ("log10|dp|" if args.target_space == "log10" and args.target_kind == "magnitude" else "")
                    + (f", floor -{args.target_floor:g}dex" if args.target_floor else "")
-                   + (f", smooth s={args.target_smooth:g}" if args.target_smooth else "")
+                   + (f", smooth s={args.target_smooth:g}" if args.target_smooth else ""))
                    + ", global z-score")
     (out / "run_config.json").write_text(json.dumps({
         "batch_dir": args.batch_dir, "filename": args.filename,
@@ -988,6 +1156,9 @@ def main() -> None:
         "seed": args.seed, "test_frac": args.test_frac, "val_frac": args.val_frac,
         "target_norm": args.target_norm, "target_space": args.target_space,
         "target_floor": args.target_floor, "target_smooth": args.target_smooth,
+        "target_kind": args.target_kind,
+        "mag_run": args.mag_run,
+        "init_from": args.init_from,
         "target": target_desc,
         "peak_weight": args.peak_weight, "peak_pow": args.peak_pow,
         "fno_modes": args.fno_modes, "fno_hidden": args.fno_hidden,
@@ -1034,6 +1205,21 @@ def main() -> None:
     Xn = (X - xm) / xs
     ym = float(Y[tr].mean()); ysd = float(Y[tr].std() + 1e-8)
     Yn = (Y - ym) / ysd
+    (out / "norm_stats.json").write_text(json.dumps({
+        "y_mean": ym, "y_std": ysd,
+        "input_mean": xm.squeeze().tolist(),
+        "input_std": xs.squeeze().tolist(),
+    }, indent=2))
+
+    mag_pred_dex = None
+    if args.target_kind == "phase":
+        if args.mag_run:
+            mag_pred_dex = load_mag_pred_dex_from_run(
+                Path(args.mag_run), keys, X, tr, device="cuda", batch_size=args.batch_size)
+        else:
+            print("WARNING: --target-kind phase without --mag-run uses GT |δp̂| for field loss",
+                  flush=True)
+            mag_pred_dex = Y_mag if Y_mag is not None else None
 
     # Optional core-mode balancing weights (computed on the raw training targets;
     # argmax is invariant to the monotone z-score so Y vs Yn is equivalent).
@@ -1067,6 +1253,12 @@ def main() -> None:
                          fno_hidden=args.fno_hidden, grid=args.grid)
         if net is None:
             print(f"  unknown model {name}, skipping"); continue
+        if args.init_from and not args.resume:
+            import torch
+            ck_init = torch.load(args.init_from, map_location="cpu", weights_only=False)
+            net.load_state_dict(ck_init["state_dict"])
+            print(f"  warm-started from {args.init_from} (epoch {ck_init.get('epoch')})",
+                  flush=True)
         net, n_params = _train_net(
             net, name, out, Xn[tr], Yn[tr], Xn[va], Yn[va],
             epochs=args.epochs, batch_size=args.batch_size, lr=args.lr, patience=args.patience,
@@ -1090,7 +1282,10 @@ def main() -> None:
             val_paths=val_paths_list,
             Yva_dex=Y[va],
             m_grid=m_grid, psi_grid=psi_grid,
-            spectrum_field=args.spectrum_field)
+            spectrum_field=args.spectrum_field,
+            target_kind=args.target_kind,
+            Y_mag_train=Y_mag[tr] if Y_mag is not None else None,
+            mag_pred_dex=mag_pred_dex[tr] if mag_pred_dex is not None else None)
         pred = _predict_net(net, Xn[te], args.batch_size)  # (n_test, H, W)
         yt = Yn[te]
         res = {"test_r2_global": r2(yt, pred),
