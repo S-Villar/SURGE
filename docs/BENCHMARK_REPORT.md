@@ -3,6 +3,9 @@
 > **SURGE** — Surrogate Unified Regression and Generalization Environment  
 > Report generated from the benchmark suite in `surge/benchmarks/`.
 
+> **Benchmark verification handoff** (definitions and citations only, no model
+> scores): [`BENCHMARK_VERIFICATION_BRIEF.md`](BENCHMARK_VERIFICATION_BRIEF.md)
+
 ---
 
 ## Table of Contents
