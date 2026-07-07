@@ -317,8 +317,10 @@ def test_yacht_benchmark_registered():
 
 
 def test_plasma_stability_registered():
-    from surge.benchmarks.registry import list_benchmarks
-    assert "classification.plasma_stability" in list_benchmarks()
+    from surge.benchmarks.registry import list_benchmarks, resolve_benchmark_key
+    assert "tabular.plasma_stability" in list_benchmarks()
+    # Legacy key still resolves after rename from classification.* to tabular.*
+    assert resolve_benchmark_key("classification.plasma_stability") == "tabular.plasma_stability"
 
 
 def test_m3dc1_benchmark_registered():
