@@ -821,3 +821,84 @@ Do **not** combine geom + wide m‑window + field‑loss in one run (same lesson
 
 Lower priority: `--field-loss-weight` ablation {0.25, 0.5, 1.0}; `--coherence-loss-weight`
 (CRF already high at 0.907 — coherence surrogate may add little).
+
+---
+
+## 10. RZ field difficulty study (2026-07-08)
+
+Branch: `feat/rz-difficulty-study`  
+Baseline run: `runs/rz_field_gaugefix_complex_g201` — gauge-fixed complex Re/Im, FNO2d modes=64,
+grid 201, best checkpoint epoch **688** (val aligned relL2 med **0.682**). Training saturated
+after ~818 epochs (4 h allocation limit); test aligned relL2 med **0.718** (gallery eval, ep 688).
+
+### 10.1 Step 1 — Difficulty diagnosis (zero-GPU gate)
+
+Script: [`analyze_rz_field_difficulty.py`](../../scripts/m3dc1/internal/analyze_rz_field_difficulty.py)  
+Artifacts: `runs/rz_field_gaugefix_complex_g201/difficulty_analysis/`
+
+![RZ difficulty scatter](runs/rz_field_gaugefix_complex_g201/difficulty_analysis/difficulty_scatter.png)
+
+**Confirmed**
+
+| Signal | Evidence | median aligned relL2 |
+|---|---|---|
+| High poloidal mode number | \|peak_m\| > 20 vs 5–10 | **0.750** vs **0.662** |
+| Spectrum hi-m tail energy | frac_hi ≥ 0.15 vs < 0.02 | **0.751** vs **0.680** |
+| Edge-localized spectrum peak | peak ψ_N ∈ [0.7, 0.9) vs core | **0.789** vs **0.677** |
+
+Pearson correlations with aligned relL2 are weak (|r| < 0.04) — error is heterogeneous within
+bins, but **stratified medians** match the gallery: fine-scale / edge / hi-m cases are harder.
+
+**Denied / revised**
+
+| Hypothesis | Result |
+|---|---|
+| Stable modes are harder targets | **Denied** — stable median **0.689** < unstable **0.735** |
+| FNO spectral truncation alone explains RZ error | **Unlikely** — dom_k_norm low for 97% of cases; prior spectrum task showed modes=96 diminishing returns |
+
+**Gate decision:** prioritize **architecture** (U-Net / FNO+U-Net hybrid for local HF structure)
+over unstable-only filtering. Still run `--stability-filter unstable` as a single-lever test.
+FNO modes=96 is a cheap confirmation only.
+
+### 10.2 Step 2 — Unstable-only dataset (pending GPU)
+
+Flag: `--stability-filter unstable` (default `none`) — excludes γ ≤ 0 + quarantine list.  
+Launcher: [`run_RZ_gaugefix_unstable.sh`](../../scripts/m3dc1/internal/run_RZ_gaugefix_unstable.sh)  
+Output: `runs/rz_field_gaugefix_unstable_only/`
+
+### 10.3 Step 3 — Architecture sweep (pending GPU)
+
+| Run | Single lever | Launcher | Output dir |
+|---|---|---|---|
+| 3a U-Net | `--models unet` | `run_RZ_gaugefix_unet.sh` | `runs/rz_field_gaugefix_unet/` |
+| 3b Hybrid | `--models fno_unet` | `run_RZ_gaugefix_fno_unet.sh` | `runs/rz_field_gaugefix_fno_unet/` |
+| 3c FNO96 | `--fno-modes 96` | `run_RZ_gaugefix_fno96.sh` | `runs/rz_field_gaugefix_fno96/` |
+
+Hybrid backend: [`rz_fno_unet_hybrid.py`](../../scripts/m3dc1/internal/rz_fno_unet_hybrid.py)
+(FNO branch + U-Net branch, summed).
+
+### 10.4 Step 4 — \|δp\|² target (pending GPU)
+
+Flag: `--target-mode mag2` (default `legacy`) — gauge-invariant magnitude fidelity study,
+**not** a phase-carrying surrogate.  
+Launcher: [`run_RZ_gaugefix_mag2.sh`](../../scripts/m3dc1/internal/run_RZ_gaugefix_mag2.sh)
+
+### 10.5 Comparison table (fill after GPU runs)
+
+| Run | Test align med | Test raw med | frac>1 | p90 | Notes |
+|---|---:|---:|---:|---:|---|
+| Baseline FNO64 ep688 | **0.718** | — | — | **1.069** | gauge-fix complex |
+| Unstable-only | — | — | — | — | pending |
+| U-Net | — | — | — | — | pending |
+| FNO+U-Net | — | — | — | — | pending |
+| FNO modes=96 | — | — | — | — | pending |
+| \|δp\|² mag2 | — | — | — | — | pending |
+
+### 10.6 Recommended next step
+
+1. **3b FNO+U-Net hybrid** or **3a U-Net** first (local HF / edge structure).
+2. Unstable-only filter second (hypothesis weakened by Step 1, but still tests training focus).
+3. FNO96 last (confirmation only; do not expect large gain per spectrum evidence).
+
+All new flags default OFF — baseline [`run_RZ_gaugefix_complex.sh`](../../scripts/m3dc1/internal/run_RZ_gaugefix_complex.sh)
+behavior unchanged. See [`RZ_FIELD_DIFFICULTY_STUDY.md`](RZ_FIELD_DIFFICULTY_STUDY.md) for launch commands.

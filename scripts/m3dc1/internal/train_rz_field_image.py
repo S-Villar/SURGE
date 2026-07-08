@@ -76,13 +76,17 @@ def _apply_target_floor(y: np.ndarray, floor_dex: Optional[float]) -> np.ndarray
 
 
 def _rz_loss_plot(hist_path: Path, name: str, out: Path) -> None:
-    """Loss / realistic val relL2 curves (safe when losses are NaN or non-positive)."""
+    """Loss (linear + semilogy decay), val relL2 / R2 (safe when losses are NaN)."""
     try:
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
     except Exception:
         return
+    try:
+        from fit_loss_decay import analyze_metric
+    except Exception:
+        analyze_metric = None  # type: ignore[assignment,misc]
     rows = [json.loads(l) for l in hist_path.read_text().splitlines() if l.strip()]
     rows = [r for r in rows if "train_loss" in r and "val_loss" in r]
     if not rows:
@@ -90,21 +94,25 @@ def _rz_loss_plot(hist_path: Path, name: str, out: Path) -> None:
     ep = [r["epoch"] for r in rows]
     tl = [r["train_loss"] for r in rows]
     vl = [r["val_loss"] for r in rows]
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4))
-    a1.plot(ep, tl, label="train")
-    a1.plot(ep, vl, label="val")
+    best_ep = None
     finite_vl = [v for v in vl if np.isfinite(v)]
     if finite_vl:
         best = min(rows, key=lambda r: r["val_loss"] if np.isfinite(r["val_loss"]) else float("inf"))
         if np.isfinite(best["val_loss"]):
-            a1.axvline(best["epoch"], color="k", ls=":", lw=1, label=f"best ep {best['epoch']}")
-    pos = [v for v in tl + vl if np.isfinite(v) and v > 0]
-    if pos:
-        a1.set_yscale("log")
+            best_ep = best["epoch"]
+
+    fig, (a1, a2, a3) = plt.subplots(1, 3, figsize=(15, 4))
+
+    a1.plot(ep, tl, label="train")
+    a1.plot(ep, vl, label="val")
+    if best_ep is not None:
+        a1.axvline(best_ep, color="k", ls=":", lw=1, label=f"best ep {best_ep}")
     a1.set_xlabel("epoch")
     a1.set_ylabel("MSE loss (z-scored target)")
-    a1.set_title(f"{name}: loss")
-    a1.legend()
+    a1.set_title(f"{name}: loss (linear)")
+    a1.legend(fontsize=8)
+    a1.grid(True, alpha=0.3)
+
     if any("val_relL2_median" in r for r in rows):
         rel = [r.get("val_relL2_median", np.nan) for r in rows]
         a2.plot(ep, rel, color="C3", label="val relL2 median")
@@ -118,7 +126,41 @@ def _rz_loss_plot(hist_path: Path, name: str, out: Path) -> None:
         a2.set_ylabel("val R2")
         a2.set_title(f"{name}: val R2")
     a2.set_xlabel("epoch")
-    a2.legend()
+    a2.legend(fontsize=8)
+    a2.grid(True, alpha=0.3)
+
+    ep_arr = np.asarray(ep, float)
+    fit_window = min(40, max(0, len(ep) - 5)) or None
+    for ys, color, label in ((tl, "C0", "train"), (vl, "C1", "val")):
+        y_arr = np.asarray(ys, float)
+        pos_mask = np.isfinite(y_arr) & (y_arr > 0)
+        if not pos_mask.any():
+            continue
+        a3.semilogy(ep_arr[pos_mask], y_arr[pos_mask], "o-", ms=3, lw=1, color=color, label=label)
+        if analyze_metric is not None:
+            res = analyze_metric(ep_arr, y_arr, window=fit_window)
+            fit = res.get("fit") if res else None
+            if fit and fit.get("lambda_per_epoch", 0) > 0:
+                lam = fit["lambda_per_epoch"]
+                l_inf = fit.get("offset_L_inf") or 0.0
+                a_fit = fit["amplitude_A"]
+                e0, e1 = float(ep_arr[pos_mask][0]), float(ep_arr[pos_mask][-1])
+                e_line = np.linspace(e0, e1, 80)
+                pred = l_inf + a_fit * np.exp(-lam * e_line)
+                r2 = fit.get("r2_log_space", float("nan"))
+                a3.semilogy(
+                    e_line, pred, "--", lw=1.4, color=color,
+                    label=f"{label} λ={lam:.4g}/ep R²={r2:.2f}",
+                )
+    if best_ep is not None:
+        a3.axvline(best_ep, color="k", ls=":", lw=1)
+    a3.set_xlabel("epoch")
+    a3.set_ylabel("MSE loss (log scale)")
+    win_lbl = f"last {fit_window} ep" if fit_window else "all"
+    a3.set_title(f"{name}: loss semilogy ({win_lbl})")
+    a3.legend(fontsize=7)
+    a3.grid(True, alpha=0.3, which="both")
+
     fig.tight_layout()
     try:
         fig.savefig(out / f"loss_{name}.png", dpi=110)
@@ -258,6 +300,10 @@ def _build_rz_net(name: str, in_channels: int, out_channels: int = 1, *,
     if name == "unet":
         from surge.model.backends.unet import _UNetNet
         return _UNetNet(in_channels, out_channels, base_channels=48, depth=4)
+    if name == "fno_unet":
+        from rz_fno_unet_hybrid import FNOUNetHybrid
+        return FNOUNetHybrid(in_channels, out_channels, fno_modes=fno_modes,
+                             fno_hidden=fno_hidden, unet_base=48)
     if name == "deeponet" and out_channels == 1:
         return _build_net(name, in_channels, fno_modes=fno_modes,
                           fno_hidden=fno_hidden, grid=grid)
@@ -373,6 +419,18 @@ def _read_rz_case(path: Path, *, pert_field: str = "p_phi0", time_idx: int = -1)
         return None
 
 
+def _gamma_from_path(path: Path) -> float:
+    try:
+        import h5py
+        with h5py.File(path, "r") as f:
+            rg = f["runs"][list(f["runs"].keys())[0]]
+            if "growth_rate" not in rg or "0" not in rg["growth_rate"]:
+                return float("nan")
+            return float(rg["growth_rate"]["0"][()])
+    except Exception:
+        return float("nan")
+
+
 def build_rz_dataset(
     batch_dir: str,
     filename: str,
@@ -389,6 +447,9 @@ def build_rz_dataset(
     midplane_z: str = "axis",
     gauge_ref: str = "peak",
     peak_window: int = 3,
+    key_allow: Optional[set] = None,
+    stability_filter: str = "none",
+    target_mode: str = "legacy",
     shaping_keys: Tuple[str, ...] = (
         "kappa", "delta", "epsilon", "pscale", "batemanscale", "ntor",
         "q0", "q95", "qmin", "p0",
@@ -399,8 +460,12 @@ def build_rz_dataset(
     if n_cases:
         paths = paths[:n_cases]
     mode = pert_field
-    if gauge_fix or complex_target:
+    if gauge_fix or complex_target or target_mode in ("mag2", "complex"):
         mode = "complex+gauge" if gauge_fix else "complex"
+    if target_mode == "mag2":
+        mode = f"mag2+gauge" if gauge_fix else "mag2"
+    if stability_filter and stability_filter != "none":
+        mode += f", γ-filter={stability_filter}"
     print(f"Building RZ-field dataset from {len(paths)} cases (grid={grid}x{grid}, "
           f"target={mode})")
     chan_names = [
@@ -414,7 +479,9 @@ def build_rz_dataset(
     keys: List[str] = []
     t0 = time.time()
     for i, p in enumerate(paths):
-        if gauge_fix or complex_target:
+        use_complex_read = (gauge_fix or complex_target
+                            or target_mode in ("mag2", "complex"))
+        if use_complex_read:
             c = _read_rz_case_complex(Path(p), time_idx=time_idx)
         else:
             c = _read_rz_case(Path(p), pert_field=pert_field, time_idx=time_idx)
@@ -423,8 +490,16 @@ def build_rz_dataset(
         key = f"{c['run_id']}_{c['eq_id']}"
         if exclude_keys and key in exclude_keys:
             continue
+        if key_allow is not None and key not in key_allow:
+            continue
+        if stability_filter and stability_filter != "none":
+            gamma = _gamma_from_path(Path(p))
+            if stability_filter == "unstable" and not (np.isfinite(gamma) and gamma > 0):
+                continue
+            if stability_filter == "stable" and not (np.isfinite(gamma) and gamma <= 0):
+                continue
 
-        if gauge_fix or complex_target:
+        if use_complex_read:
             fc = _sanitize_field(np.asarray(c["field_complex"], np.complex128))
             scale = float(np.nanmax(np.abs(fc))) or 1.0
             fn = fc / scale
@@ -434,11 +509,16 @@ def build_rz_dataset(
                     midplane_z=midplane_z, gauge_ref=gauge_ref, peak_window=peak_window,
                 )
                 fn = gf.field_gf
-            if complex_target:
+            if complex_target or target_mode == "complex":
                 y = np.stack([
                     _apply_target_floor(_resize_2d(np.real(fn).astype(np.float32), grid), target_floor),
                     _apply_target_floor(_resize_2d(np.imag(fn).astype(np.float32), grid), target_floor),
                 ], axis=0)
+            elif target_mode == "mag2":
+                mag2 = (np.abs(fn) ** 2).astype(np.float32)
+                mag2 = _resize_2d(mag2, grid)
+                s2 = float(np.nanmax(mag2)) or 1.0
+                y = _apply_target_floor(mag2 / s2, target_floor)
             else:
                 y = _max_norm_field(np.real(fn).astype(np.float32))
                 y = _resize_2d(y, grid)
@@ -819,12 +899,15 @@ def _train_rz_net(
 
         if epoch % 5 == 0 or improved or epoch == 1:
             _rz_loss_plot(hist_path, name, out)
-        if epoch % 10 == 0 or epoch == 1:
+        if epoch % 10 == 0 or improved or epoch == 1:
             tag = "  *best" if improved else ""
             rel_msg = ""
             if val_rel is not None:
                 rel_msg = (f" relL2_med={hist_row['val_relL2_median']:.3f}"
                            f" frac>1={hist_row['val_frac_relL2_gt_1']:.3f}")
+                if phase_align_eval and val_rel_aligned is not None:
+                    rel_msg += (f" align_med={hist_row['val_relL2_aligned_median']:.3f}"
+                                f" (select)")
             dpsi_msg = f" dpsi={vdpsi:.4f}" if vdpsi is not None else ""
             print(f"  [{name}] epoch {epoch}/{epochs} train={tl:.4f} val={vl:.4f} "
                   f"val_r2={vr2:.4f}{rel_msg}{dpsi_msg}{tag}", flush=True)
@@ -886,6 +969,10 @@ def main() -> None:
                     help="Train in max-norm space without global Y z-score (default OFF).")
     ap.add_argument("--phase-align-eval", action="store_true",
                     help="Report relL2 after optimal global phase alignment (default OFF).")
+    ap.add_argument("--stability-filter", choices=["none", "unstable", "stable"], default="none",
+                    help="Exclude cases by γ sign (default none = all cases).")
+    ap.add_argument("--target-mode", choices=["legacy", "mag2"], default="legacy",
+                    help="legacy=--complex-target behavior; mag2=|δp|² gauge-invariant (default legacy).")
     ap.add_argument("--select-by", choices=["mse", "composite", "field"], default="field",
                     help="Checkpoint criterion: z-scored MSE, composite loss, or val relL2.")
     ap.add_argument("--time-budget-min", type=float, default=210.0)
@@ -919,14 +1006,20 @@ def main() -> None:
         gauge_fix=args.gauge_fix, complex_target=args.complex_target,
         midplane_z=args.midplane_z, gauge_ref=args.gauge_ref,
         peak_window=args.peak_window,
+        stability_filter=args.stability_filter,
+        target_mode=args.target_mode,
     )
     N = X.shape[0]
     floor_s = f", floor -{args.target_floor:g}dex" if args.target_floor else ""
     smooth_s = f", smooth σ={args.target_smooth}" if args.target_smooth else ""
     gauge_s = ", gauge-fixed" if args.gauge_fix else ""
-    complex_s = ", complex Re/Im" if args.complex_target else ""
+    if args.target_mode == "mag2":
+        complex_s = ", |δp|² max-norm"
+    else:
+        complex_s = ", complex Re/Im" if args.complex_target else ""
+    stab_s = f", γ-filter={args.stability_filter}" if args.stability_filter != "none" else ""
     zscore_s = "" if args.no_target_zscore else ", global z-score"
-    target_desc = (f"max-normalized RZ δp ({args.pert_field}){gauge_s}{complex_s}"
+    target_desc = (f"max-normalized RZ δp ({args.pert_field}){gauge_s}{complex_s}{stab_s}"
                    f"{floor_s}{smooth_s}, per-case max-norm inputs{zscore_s}")
 
     (out / "run_config.json").write_text(json.dumps({
@@ -945,6 +1038,8 @@ def main() -> None:
         "peak_window": args.peak_window,
         "no_target_zscore": args.no_target_zscore,
         "phase_align_eval": args.phase_align_eval,
+        "stability_filter": args.stability_filter,
+        "target_mode": args.target_mode,
         "fno_modes": args.fno_modes,
         "fno_hidden": args.fno_hidden,
         "peak_weight": args.peak_weight,
@@ -1000,7 +1095,7 @@ def main() -> None:
     }, indent=2))
 
     results: Dict[str, Dict] = {}
-    out_channels = 2 if args.complex_target else 1
+    out_channels = 2 if (args.complex_target and args.target_mode != "mag2") else 1
     for name in args.models:
         print(f"\n=== Training {name} (RZ δp, out_ch={out_channels}) ===")
         t0 = time.time()
@@ -1094,6 +1189,8 @@ def main() -> None:
         "complex_target": args.complex_target,
         "no_target_zscore": args.no_target_zscore,
         "phase_align_eval": args.phase_align_eval,
+        "stability_filter": args.stability_filter,
+        "target_mode": args.target_mode,
         "select_by": args.select_by,
         "loc_weight": args.loc_weight, "marg_weight": args.marg_weight,
         "y_mean": ym, "y_std": ysd, "results": results,
