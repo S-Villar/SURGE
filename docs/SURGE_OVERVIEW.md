@@ -27,7 +27,7 @@ systems).
 |---------------------------------------------|---------------------------------------------------------------------------------|
 | `surge.dataset.SurrogateDataset`            | Load CSV/Parquet/Excel/HDF5/NetCDF/Pickle, auto-detect I/O columns, apply metadata |
 | `surge.engine.SurrogateEngine`              | Split + standardize data, train models from the registry, capture metrics/preds/timings |
-| `surge.registry.MODEL_REGISTRY`             | Register adapters (`sklearn.random_forest`, `torch.mlp`, `gpflow.gpr`, …)        |
+| `surge.model.MODEL_REGISTRY`             | Register adapters (`sklearn.random_forest`, `torch.mlp`, `gpflow.gpr`, …)        |
 | `surge.workflow.spec.SurrogateWorkflowSpec` | YAML/Python spec describing dataset, models, HPO, artifact layout                |
 | `surge.workflow.run.run_surrogate_workflow` | Orchestrate dataset load → engine prep → training → Optuna HPO → artifact save   |
 | `surge.io.artifacts.*`                      | Persist models, scalers, predictions, metrics, spec, env, git, HPO trials        |
@@ -244,7 +244,7 @@ input_scaler = joblib.load(run_dir / "scalers/inputs.joblib")
 output_scaler = joblib.load(run_dir / "scalers/outputs.joblib")
 
 # Load model: use the registry key that produced this artifact (e.g. sklearn.random_forest)
-adapter = surge.registry.MODEL_REGISTRY.create("sklearn.random_forest")
+adapter = surge.model.MODEL_REGISTRY.create("sklearn.random_forest")
 adapter.load(model_path)
 
 # Predict on new inputs (same columns as training; e.g. 13 inputs for M3DC1 gamma)
@@ -264,7 +264,7 @@ The run **`m3dc1_aug_r75`** was produced by the augmented M3DC1 workflow (full d
 |------------------------|--------------------------------------------------------------------------------|
 | Dataset auto-detection | `SurrogateDataset.from_path(...)` (metadata YAML overrides available)          |
 | Splitting/standardize  | `SurrogateEngine.prepare()` (train/val/test fractions, StandardScaler toggles) |
-| Model registry         | `surge.registry.MODEL_REGISTRY` adapters (`sklearn`, `torch`, `gpflow`)        |
+| Model registry         | `surge.model.MODEL_REGISTRY` adapters (`sklearn`, `torch`, `gpflow`)        |
 | Optuna HPO             | `HPOConfig` per model (`sampler=tpe` or `botorch`, search space dict)          |
 | Uncertainty estimates  | RFR tree variance, Torch MLP MC-Dropout, GPflow mean/variance                  |
 | Artifact management    | `surge.io.artifacts.*`, run summaries under `runs/<tag>/`                      |
