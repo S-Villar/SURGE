@@ -2,7 +2,7 @@
 
 Status: proposal, 2026-07. Companion to the repository audit
 (`audit/AUDIT_REPORT.md` on branch `audit/surge-2026-07`). Written to be
-implementable as small, independent PRs by any contributor or coding agent;
+implementable as small, independent PRs by any contributor;
 each section states the problem with file evidence, the proposed interface,
 and acceptance criteria.
 

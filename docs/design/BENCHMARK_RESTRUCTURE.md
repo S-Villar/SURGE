@@ -3,7 +3,7 @@
 Status: design proposal, 2026-07. Companion to
 `ARCHITECTURE_RECOMMENDATIONS.md` (R2/R6/R7); this document is the concrete
 implementation target for the benchmark consolidation. Written to be
-executed as a sequence of small PRs by any contributor or coding agent.
+executed as a sequence of small PRs by any contributor.
 
 ## Why the current system is hard to understand
 
