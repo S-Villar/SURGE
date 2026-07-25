@@ -342,3 +342,40 @@ author identities) as a single rewrite with collaborator re-clone notice.
 
 Ordering rationale: interfaces that only *add* (R1, R6, R7) go first so the
 disruptive consolidations (R2, R3) land against stable contracts.
+
+---
+
+## Addendum (found while building the visual system)
+
+**R11. Dataset characterization as a pipeline stage.** The audit sketch and
+past publications treat pre-training data analysis (input distributions,
+target distribution, SNR, input–target correlations, strongest
+relationship) as a standard step, but today it exists only as ad-hoc
+helpers in `surge/viz/analysis.py` plus one-off scripts. Make it a workflow
+stage: after validation, emit a `characterization` block in the run
+manifest (per-feature stats, correlations, class balance) and a themed
+characterization figure in the run report (reference implementation:
+`characterization` figure in `examples/viz_theme_gallery.py`). Acceptance:
+every workflow run contains the characterization artifact without extra
+config; reports render it.
+
+**R12. One dataset cache root.** Benchmark loaders redirect sklearn/OpenML
+caches into `data/datasets/benchmarks/**`, but at least one dataset
+(California housing) resolves against the default `~/scikit_learn_data`
+instead, so caches split across machines and "cached" checks disagree.
+Fold into R10: one `SURGE_DATA_HOME` used by *every* loader, with a
+`surge data status` command listing which benchmark caches are present.
+
+**R13. HPO study artifacts (sampler comparisons).** The published HPO
+figures compare samplers (Random vs Optuna TPE vs BoTorch) with running
+bests and starred optima. Neither HPO path records a study-level artifact
+that supports this — only per-model trial dumps. Add a `HPOStudy` manifest
+(sampler, seed, trials, running best, wall-clock per trial) so sampler
+comparisons and the starred-best figure are reproducible outputs, not
+notebook one-offs.
+
+**R14. Classifier probability contract.** Classification diagnostics
+(ROC/PR/calibration/ECE) require `predict_proba`, which some adapters
+expose informally and `BaseModelAdapter` does not declare. Add an optional
+`predict_proba` to the adapter contract (capability-flagged like
+`supports_uq`) so evaluation and viz can rely on it.
