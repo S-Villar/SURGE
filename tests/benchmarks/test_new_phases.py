@@ -7,30 +7,40 @@ the infrastructure is wired correctly.
 
 from __future__ import annotations
 
+import importlib.util
+
 import numpy as np
 import pytest
+
+requires_torch = pytest.mark.skipif(
+    importlib.util.find_spec("torch") is None,
+    reason="torch not installed (optional dependency)")
 
 # ---------------------------------------------------------------------------
 # Phase C — Temporal adapters
 # ---------------------------------------------------------------------------
 
 
+@requires_torch
 def test_pytorch_cnn1d_registered():
     from surge.model import list_models
     assert "pytorch.cnn1d" in list_models()
 
 
+@requires_torch
 def test_pytorch_lstm_registered():
     from surge.model import list_models
     assert "pytorch.lstm" in list_models()
 
 
+@requires_torch
 def test_pytorch_gru_registered():
     from surge.model import list_models
     assert "pytorch.gru" in list_models()
 
 
 @pytest.mark.parametrize("model_key", ["pytorch.lstm", "pytorch.gru"])
+@requires_torch
 def test_rnn_fit_predict(model_key):
     from surge.model.registry import MODEL_REGISTRY
 
@@ -46,6 +56,7 @@ def test_rnn_fit_predict(model_key):
     assert y_pred.shape == (10, T_out * n_state)
 
 
+@requires_torch
 def test_cnn1d_fit_predict():
     from surge.model.registry import MODEL_REGISTRY
 
@@ -89,16 +100,19 @@ def test_lorenz_rk4_integrator():
 # ---------------------------------------------------------------------------
 
 
+@requires_torch
 def test_pytorch_fno1d_registered():
     from surge.model import list_models
     assert "pytorch.fno1d" in list_models()
 
 
+@requires_torch
 def test_pytorch_deeponet_registered():
     from surge.model import list_models
     assert "pytorch.deeponet" in list_models()
 
 
+@requires_torch
 def test_fno1d_fit_predict():
     from surge.model.registry import MODEL_REGISTRY
 
@@ -114,6 +128,7 @@ def test_fno1d_fit_predict():
     assert y_pred.shape == (8, n_x)
 
 
+@requires_torch
 def test_deeponet_fit_predict():
     from surge.model.registry import MODEL_REGISTRY
 
@@ -345,21 +360,25 @@ def test_m3dc1_benchmark_runs_synthetic():
 # ---------------------------------------------------------------------------
 
 
+@requires_torch
 def test_lenet5_registered():
     from surge.model import list_models
     assert "pytorch.lenet5" in list_models()
 
 
+@requires_torch
 def test_resnet20_registered():
     from surge.model import list_models
     assert "pytorch.resnet20" in list_models()
 
 
+@requires_torch
 def test_resnet56_registered():
     from surge.model import list_models
     assert "pytorch.resnet56" in list_models()
 
 
+@requires_torch
 def test_lenet5_fit_predict_synthetic():
     """Verify LeNet-5 can fit tiny synthetic image data."""
     from surge.model.registry import MODEL_REGISTRY
@@ -377,6 +396,7 @@ def test_lenet5_fit_predict_synthetic():
     assert all(0 <= p < 10 for p in y_pred)
 
 
+@requires_torch
 def test_resnet20_fit_predict_synthetic():
     """Verify ResNet-20 can fit tiny synthetic CIFAR-like data."""
     pytest.importorskip("torch")
