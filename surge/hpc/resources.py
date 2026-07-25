@@ -116,4 +116,3 @@ def summarize_resources(resources: Optional[ComputeResources] = None) -> str:
     for key, value in resources.extras.items():
         lines.append(f"{key}: {value}")
     return "\n".join(lines)
-

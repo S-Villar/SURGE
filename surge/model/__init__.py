@@ -18,7 +18,7 @@ from .sklearn import (
     RidgeRegressorAdapter,
     SklearnClassifierAdapter,
 )
-from .pytorch import PYTORCH_AVAILABLE, PyTorchMLPAdapter
+from .pytorch import PYTORCH_AVAILABLE, PyTorchCNNAdapter, PyTorchMLPAdapter
 from .gpflow import GPflowGPRAdapter, GPflowMultiKernelAdapter
 from .ensembles import EnsemblePrediction, FNNEnsemble
 from .registry import MODEL_REGISTRY, create_model, list_models, register_model
@@ -31,6 +31,11 @@ register_model(
     PyTorchMLPAdapter,
     key='pytorch.mlp',
     aliases=['torch_mlp', 'torch.mlp'],
+)
+register_model(
+    PyTorchCNNAdapter,
+    key='pytorch.cnn',
+    aliases=['torch_cnn', 'torch.cnn', 'cnn'],
 )
 register_model(GPflowGPRAdapter, key='gpflow.gpr', aliases=['gp_gpr'])
 register_model(GPflowMultiKernelAdapter, key='gpflow.multi_kernel', aliases=['gpflow_mk'])
@@ -268,7 +273,6 @@ def __getattr__(name: str):  # PEP 562: avoid importing TensorFlow/GPflow at imp
         return gpflow_runtime_available()
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
-
 __all__ = [
     "BaseModelAdapter",
     "SklearnRegressorAdapter",
@@ -281,6 +285,7 @@ __all__ = [
     "GradientBoostingRegressorModel",
     "LogisticRegressionAdapter",
     "PyTorchMLPAdapter",
+    "PyTorchCNNAdapter",
     "GPflowGPRAdapter",
     "GPflowMultiKernelAdapter",
     "FNNEnsemble",
