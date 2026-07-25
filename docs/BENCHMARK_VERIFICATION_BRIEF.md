@@ -5,11 +5,16 @@ legitimate, correctly described scientific or ML task. This brief covers
 **benchmark definitions only** — not SURGE model scores or pass thresholds as
 performance claims.
 
+> **Note (2026-07):** the Cursor canvas dashboards
+> (`surge/viz/*.canvas.tsx`) referenced below were removed from the
+> repository. Benchmark citations, shapes, and tiers are being consolidated
+> into `surge/benchmarks/registry.py` and the artifact-driven leaderboard
+> report; where this brief says "canvas", read the registry metadata.
+
 **Primary sources**
 
 | Artifact | Path |
 |----------|------|
-| Leaderboard canvas (citations, shapes, tiers) | `surge/viz/leaderboard.canvas.tsx` |
 | Registry (keys, loaders, aliases) | `surge/benchmarks/registry.py` |
 | Task runners | `surge/benchmarks/tasks.py` |
 | Dataset loaders | `surge/benchmarks/leaderboard.py` |
