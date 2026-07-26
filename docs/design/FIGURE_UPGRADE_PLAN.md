@@ -1,6 +1,7 @@
 # Figure & benchmark upgrade plan
 
-Status: approved direction, not yet implemented (2026-07-26).
+Status: ALL SIX PHASES IMPLEMENTED (2026-07-26). Kept for design
+rationale; pending follow-ups now live in DEVELOPMENT_BACKLOG.md.
 Scope: six phases, ordered by effort/payoff. Everything lands via PRs to
 `main` under the PR-required ruleset.
 
