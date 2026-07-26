@@ -106,6 +106,10 @@ def build(assets: Path, mode: str = "light"):
                               "edgecolor": p["grid"], "linewidth": 0.7})
 
             thumb_path = assets / col["thumb"]
+            if mode == "dark":
+                dark = assets / col["thumb"].replace(".png", "_dark.png")
+                if dark.exists():
+                    thumb_path = dark
             if thumb_path.exists():
                 img = mpimg.imread(thumb_path)
                 ih, iw = img.shape[:2]
@@ -145,8 +149,9 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--assets", default=str(_REPO / "docs/assets/gallery"))
     ap.add_argument("--out", default=str(_REPO / "docs/assets/readme/architecture"))
+    ap.add_argument("--mode", default="light", choices=["light", "dark"])
     args = ap.parse_args()
-    fig = build(Path(args.assets))
+    fig = build(Path(args.assets), mode=args.mode)
     for path in save_figure(fig, Path(args.out), formats=("png",)):
         print("wrote", path)
 
