@@ -32,6 +32,15 @@ R1–R14, `RESOURCE_MANAGEMENT.md` R15–R18, `FIGURE_UPGRADE_PLAN.md`).
   bump, retag, Trusted Publishing on PyPI).
 - **Verify README publication titles** (user-side).
 
+- **PCA / POD training transforms (R3 slice)** — two distinct features:
+  (i) input PCA: `preprocessing: {pca: {n_components: k|0.99}}` fitted on
+  standardized train inputs, persisted with the scalers, applied to all
+  splits; (ii) target PCA (POD surrogates): `target_pca: k` learns modal
+  coefficients and inverse-transforms predictions before metrics and
+  artifacts — the classic reduced-order-model path for field outputs
+  (would let ANY tabular model attack the TheWell tasks via k modes).
+  Inverse-transform plumbing goes through scalers + inference module.
+
 ## P2 — medium term
 
 - **R16/R17 remaining** — spec-level `parallel_models` inside `surge
@@ -41,8 +50,14 @@ R1–R14, `RESOURCE_MANAGEMENT.md` R15–R18, `FIGURE_UPGRADE_PLAN.md`).
   (all neural operators beat persistence: U-Net 0.250 vs 0.355, MPS).
 - **Helmholtz staircase full study** — feasibility CONFIRMED (smoke:
   U-Net rel-L2 0.077 vs persistence 1.38 on a quarter-period phase
-  advance, 31 s on MPS; dataset wired as `helmholtz`, ~80 GB download).
-  Full persistence-anchored study + figure next.
+  advance, 31 s on MPS); `examples/thewell_helmholtz_study.py` written,
+  runs once the ~80 GB download completes.
+- ~~Squeeze protocol~~ — RESULTS: constellaration was undertrained
+  (60-epoch cap): wide [512,512,256] + 400 epochs lifts QI R2
+  0.937 -> 0.951 (figure updated). Turbulence is at its floor for this
+  budget: 4-channel input + 150 epochs changed nothing (FNO 0.254 vs
+  0.256; U-Net 0.254 vs 0.250) — remaining levers are full 128x384
+  resolution, more than 800 train samples, and rollout training (P2).
 - **DeepONet CNN branch** — the residual target halved its error but a
   convolutional branch is the real fix for field inputs.
 - **Leaderboard preview special-cases** — constellaration benchmarks
