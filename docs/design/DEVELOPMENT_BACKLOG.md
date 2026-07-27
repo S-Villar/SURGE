@@ -15,8 +15,12 @@ R1–R14, `RESOURCE_MANAGEMENT.md` R15–R18, `FIGURE_UPGRADE_PLAN.md`).
 
 ## P1 — near term
 
-- **R15 device resolution (GPU/MPS)** — see RESOURCE_MANAGEMENT.md.
-  19 torch backends ignore Apple-Silicon MPS today; studies train on CPU.
+- ~~R15 device resolution (GPU/MPS)~~ — DONE: `resolve_device` in all 19
+  backends; MPS opt-in via `SURGE_DEVICE=auto` (LSTM unsafe on MPS).
+  Follow-up: per-architecture MPS allow-list; record resolved device in
+  run artifacts.
+- ~~Parallel benchmark fan-out~~ — DONE: `surge bench --parallel N`
+  (subprocess jobs, thread splitting, collision-safe result dirs).
 - **`surge init` interactive wizard** — usability gap: new users must
   hand-copy a YAML spec. A stdlib-prompt wizard that inspects the data
   file (schema inference already exists), asks task-shape questions,
@@ -30,9 +34,9 @@ R1–R14, `RESOURCE_MANAGEMENT.md` R15–R18, `FIGURE_UPGRADE_PLAN.md`).
 
 ## P2 — medium term
 
-- **R16/R17 parallel training + resource caps** — parallel models in a
-  workflow, Optuna `n_jobs`, memory-tier enforcement, `--dry-run`
-  placement report.
+- **R16/R17 remaining** — spec-level `parallel_models` inside `surge
+  run`, Optuna `n_jobs`, memory-tier enforcement, `--dry-run` placement
+  report.
 - **TheWell second dataset** — `turbulence_2d`
   (turbulent_radiative_layer_2D, 128×384×4) study with the same
   persistence-anchored protocol; loader already wired.
