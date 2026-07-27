@@ -42,6 +42,7 @@ CURATED = {
     "ensemble": "ensemble",
     "leaderboard": "leaderboard",
     "thewell_grayscott": "thewell_grayscott",
+    "thewell_grayscott_h1": "thewell_grayscott_h1",
     "parity": "parity",
     "trio": "trio",
     "field2d": "field2d",
@@ -57,6 +58,7 @@ GALLERY_SET = {
     "parity", "hpo_convergence", "training_curves", "classification",
     "field_operator", "field2d", "trio", "ensemble", "uncertainty",
     "characterization", "leaderboard", "thewell_grayscott",
+    "thewell_grayscott_h1",
     "mission_control", "constellaration",
 }
 
