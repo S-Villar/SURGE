@@ -1,6 +1,7 @@
 # Resource management & accelerated training — design plan (R15–R18)
 
-Status: proposed (2026-07-26). Continues the numbering of
+Status: R15 IMPLEMENTED + bench --parallel shipped (2026-07-26); R16 spec-level
+parallelism, R17, R18 remain proposed. Continues the numbering of
 `ARCHITECTURE_RECOMMENDATIONS.md` (R1–R14).
 
 Motivation from real use: the TheWell Gray-Scott study trained FNO-2D and
@@ -20,8 +21,14 @@ def resolve_device(requested: str | None = None) -> torch.device:
     """auto -> SURGE_DEVICE env -> cuda:N -> mps -> cpu."""
 ```
 
-- Order: explicit arg > `SURGE_DEVICE` env > `cuda` (if available) >
-  `mps` (if available) > `cpu`.
+- IMPLEMENTED (`surge/utils.py::resolve_device`, all 19 backends migrated):
+  explicit arg > `SURGE_DEVICE` env > default (`cuda` else `cpu`). MPS is
+  OPT-IN via `"auto"` or explicit `"mps"` — measured on this workstation:
+  FNO-2D 3.9× and U-Net 1.9× faster on MPS with identical accuracy
+  (R² 0.9998 both devices), BUT LSTM on MPS collapses (lorenz63 R²
+  0.99 → 0.32), so auto-MPS as a silent default would corrupt results.
+  Per-architecture MPS allow-listing is the follow-up if we ever want
+  mps-by-default for conv/spectral models only.
 - Spec-level override: `device: mps` at workflow top level, inherited by
   every model unless the model block overrides it.
 - MPS caveats to encode in the helper + docs:
@@ -36,6 +43,13 @@ def resolve_device(requested: str | None = None) -> torch.device:
   helper; keyword `device="auto"` becomes the documented default.
 
 ## R16 — Parallel model training within a workflow (medium)
+
+SHIPPED (first slice): `surge bench --parallel N` fans (benchmark, model)
+jobs out as subprocesses with BLAS/OpenMP threads split evenly, and
+results aggregate from the per-job result.json files (whose directory
+names now include the model slug — second-resolution timestamps collided
+under parallel writers). Remaining: spec-level `parallel_models` inside
+`surge run`, below.
 
 A workflow spec with N models currently trains them sequentially.
 
