@@ -54,6 +54,7 @@ CURATED = {
     "scale": "scale",
     "thewell_turbulence": "thewell_turbulence",
     "thewell_helmholtz": "thewell_helmholtz",
+    "simformer_sbi": "simformer_sbi",
 }
 
 # gallery.md embeds this subset (light only — RTD theme is light)
@@ -62,7 +63,7 @@ GALLERY_SET = {
     "field_operator", "field2d", "trio", "ensemble", "uncertainty",
     "characterization", "leaderboard", "thewell_grayscott",
     "thewell_grayscott_h1",
-    "mission_control", "constellaration", "scale", "thewell_turbulence", "thewell_helmholtz",
+    "mission_control", "constellaration", "scale", "thewell_turbulence", "thewell_helmholtz", "simformer_sbi",
 }
 
 

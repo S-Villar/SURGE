@@ -15,6 +15,15 @@ R1–R14, `RESOURCE_MANAGEMENT.md` R15–R18, `FIGURE_UPGRADE_PLAN.md`).
 
 ## P1 — near term
 
+- **Simformer follow-ups** (adapter `pytorch.simformer` SHIPPED and
+  validated against the analytic linear-Gaussian posterior; private
+  NSTX-U amortized-reconstruction demo lives in ../TokaMakerGen):
+  (i) richer NSTX-U campaign with the full 273-probe EFIT set +
+  profile parameters (ffp/pp alphas) for true KINETIC reconstruction;
+  (ii) attention masks encoding dependency graphs (paper §3.2);
+  (iii) function-valued θ via Fourier index embeddings (profiles);
+  (iv) spec-level SBI task type so `surge run` can drive it from YAML.
+
 - ~~R15 device resolution (GPU/MPS)~~ — DONE: `resolve_device` in all 19
   backends; MPS opt-in via `SURGE_DEVICE=auto` (LSTM unsafe on MPS).
   Follow-up: per-architecture MPS allow-list; record resolved device in
