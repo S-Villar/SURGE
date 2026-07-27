@@ -54,10 +54,13 @@ R1–R14, `RESOURCE_MANAGEMENT.md` R15–R18, `FIGURE_UPGRADE_PLAN.md`).
   runs once the ~80 GB download completes.
 - ~~Squeeze protocol~~ — RESULTS: constellaration was undertrained
   (60-epoch cap): wide [512,512,256] + 400 epochs lifts QI R2
-  0.937 -> 0.951 (figure updated). Turbulence is at its floor for this
-  budget: 4-channel input + 150 epochs changed nothing (FNO 0.254 vs
-  0.256; U-Net 0.254 vs 0.250) — remaining levers are full 128x384
-  resolution, more than 800 train samples, and rollout training (P2).
+  0.937 -> 0.951 (figure updated). Turbulence is CHAOS-LIMITED, not
+  undertrained: 4-channel physics input, 2.5x epochs, and a 5x data
+  scan (800/2000/4000 -> 0.250/0.258/0.254) all leave median rel-L2
+  flat at ~0.25. At dt=8 the small scales decorrelate; pointwise rel-L2
+  has a predictability floor. The right next steps are probabilistic
+  forecasting (mlp_ensemble/CRPS), spectral or statistical evaluation
+  metrics, and rollout-trained models — not bigger fits (P2).
 - **DeepONet CNN branch** — the residual target halved its error but a
   convolutional branch is the real fix for field inputs.
 - **Leaderboard preview special-cases** — constellaration benchmarks
