@@ -52,6 +52,7 @@ CURATED = {
     "mission_control": "mission_control",
     "constellaration": "constellaration",
     "scale": "scale",
+    "thewell_turbulence": "thewell_turbulence",
 }
 
 # gallery.md embeds this subset (light only — RTD theme is light)
@@ -60,7 +61,7 @@ GALLERY_SET = {
     "field_operator", "field2d", "trio", "ensemble", "uncertainty",
     "characterization", "leaderboard", "thewell_grayscott",
     "thewell_grayscott_h1",
-    "mission_control", "constellaration", "scale",
+    "mission_control", "constellaration", "scale", "thewell_turbulence",
 }
 
 

@@ -37,9 +37,12 @@ R1–R14, `RESOURCE_MANAGEMENT.md` R15–R18, `FIGURE_UPGRADE_PLAN.md`).
 - **R16/R17 remaining** — spec-level `parallel_models` inside `surge
   run`, Optuna `n_jobs`, memory-tier enforcement, `--dry-run` placement
   report.
-- **TheWell second dataset** — `turbulence_2d`
-  (turbulent_radiative_layer_2D, 128×384×4) study with the same
-  persistence-anchored protocol; loader already wired.
+- ~~TheWell second dataset~~ — DONE: `turbulence_2d` study shipped
+  (all neural operators beat persistence: U-Net 0.250 vs 0.355, MPS).
+- **Helmholtz staircase full study** — feasibility CONFIRMED (smoke:
+  U-Net rel-L2 0.077 vs persistence 1.38 on a quarter-period phase
+  advance, 31 s on MPS; dataset wired as `helmholtz`, ~80 GB download).
+  Full persistence-anchored study + figure next.
 - **DeepONet CNN branch** — the residual target halved its error but a
   convolutional branch is the real fix for field inputs.
 - **Leaderboard preview special-cases** — constellaration benchmarks
