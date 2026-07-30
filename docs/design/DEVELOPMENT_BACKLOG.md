@@ -58,6 +58,15 @@ R1–R14, `RESOURCE_MANAGEMENT.md` R15–R18, `FIGURE_UPGRADE_PLAN.md`).
   U-Net rel-L2 0.077 vs persistence 1.38 on a quarter-period phase
   advance, 31 s on MPS); `examples/thewell_helmholtz_study.py` written,
   runs once the ~80 GB download completes.
+- ~~Turbulence improvement battery~~ — SEVEN levers now tested at the
+  800-sample budget (examples/thewell_turbulence_improve.py), skill
+  ratio = rel-L2/persistence: published U-Net 0.71; POD+ridge 0.66;
+  POD-U-Net blend 0.65 (only real gain, +2%); 4-frame temporal context
+  0.72; full 128x384 resolution 0.78 (worse — same data over 4x
+  pixels); h=2 composed x4 0.79 (compounding); data 5x flat. Verdict:
+  intrinsic predictability floor at dt=8 — further gains require
+  changing the question (probabilistic forecasts + CRPS, spectral
+  metrics, shorter horizons), not bigger fits.
 - ~~Squeeze protocol~~ — RESULTS: constellaration was undertrained
   (60-epoch cap): wide [512,512,256] + 400 epochs lifts QI R2
   0.937 -> 0.951 (figure updated). Turbulence is CHAOS-LIMITED, not
