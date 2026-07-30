@@ -30,13 +30,11 @@ R1–R14, `RESOURCE_MANAGEMENT.md` R15–R18, `FIGURE_UPGRADE_PLAN.md`).
   run artifacts.
 - ~~Parallel benchmark fan-out~~ — DONE: `surge bench --parallel N`
   (subprocess jobs, thread splitting, collision-safe result dirs).
-- **`surge init` interactive wizard** — usability gap: new users must
-  hand-copy a YAML spec. A stdlib-prompt wizard that inspects the data
-  file (schema inference already exists), asks task-shape questions,
-  suggests models, and writes a commented spec.yaml. YAML stays the
-  source of truth; the wizard only *generates* it.
-- **`surge validate <spec>`** — schema-check a spec without running it;
-  publish a JSON Schema for editor autocomplete.
+- ~~`surge init` wizard~~ / ~~`surge validate`~~ / ~~spec JSON Schema~~ —
+  DONE: interactive + non-interactive wizard (goal/budget-aware model
+  slates), offline validation with did-you-mean suggestions (exit 0/2),
+  schema generated from the dataclasses and shipped in package-data
+  (editor autocomplete documented in GETTING_STARTED).
 - **Publish 0.1.0rc1 → 0.1.0** (user-side: `uv publish`; then version
   bump, retag, Trusted Publishing on PyPI).
 - **Verify README publication titles** (user-side).
