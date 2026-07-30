@@ -39,14 +39,13 @@ R1–R14, `RESOURCE_MANAGEMENT.md` R15–R18, `FIGURE_UPGRADE_PLAN.md`).
   bump, retag, Trusted Publishing on PyPI).
 - **Verify README publication titles** (user-side).
 
-- **PCA / POD training transforms (R3 slice)** — two distinct features:
-  (i) input PCA: `preprocessing: {pca: {n_components: k|0.99}}` fitted on
-  standardized train inputs, persisted with the scalers, applied to all
-  splits; (ii) target PCA (POD surrogates): `target_pca: k` learns modal
-  coefficients and inverse-transforms predictions before metrics and
-  artifacts — the classic reduced-order-model path for field outputs
-  (would let ANY tabular model attack the TheWell tasks via k modes).
-  Inverse-transform plumbing goes through scalers + inference module.
+- **PCA / POD training transforms (R3 slice)** — library slice DONE:
+  `pod_fit/pod_transform/pod_inverse` in surge.preprocessing (unit-tested)
+  + examples/thewell_pod_study.py (POD+ridge beats FNO-2D 11x on
+  Helmholtz, edges U-Net on turbulence). REMAINING: spec-level wiring —
+  `preprocessing: {pca: ...}` for inputs and `target_pca: k` with
+  inverse-transform plumbing through scalers + inference so `surge run`
+  drives it declaratively.
 
 ## P2 — medium term
 
