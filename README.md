@@ -37,7 +37,8 @@ real SURGE output, regenerated from run artifacts
   **scikit-learn** (RF, GBM, ridge, logistic, GPR), boosted trees
   (**XGBoost / LightGBM / CatBoost**), **PyTorch** (MLP families,
   FNO / DeepONet / U-Net operator learners, LSTM/GRU,
-  CNN/ResNet/ViT vision, KAN, FT-Transformer, VAE/DDPM/CGAN),
+  CNN/ResNet/ViT vision, KAN, FT-Transformer, VAE/DDPM/CGAN,
+  **Simformer** all-in-one simulation-based inference),
   **TensorFlow/Keras** (`keras.mlp`, or **bring your own compiled
   `tf.keras` model** via `build_fn`), and Gaussian processes with
   predictive uncertainty (sklearn GPR, BoTorch exact/sparse, GPflow).
@@ -114,8 +115,72 @@ DeepONet's global low-rank basis can't localize (0.554):
        alt="TheWell Gray-Scott study: input, truth, FNO-2D / U-Net / Ridge / DeepONet predictions, FNO error map, and model comparison bars"/></picture>
 </p>
 
+**A second Well system — turbulent radiative layer (2D)** shows the
+portfolio matters: on this fast-mixing task (non-square 64×192 grid,
+log-density, Δt = 8) **every neural operator beats persistence** — U-Net
+0.250, FNO-2D 0.256 vs persistence 0.355 — trained on the Apple GPU in
+~4 min each via `SURGE_DEVICE=auto`
+([`examples/thewell_turbulence_study.py`](examples/thewell_turbulence_study.py)):
+
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/dark/thewell_turbulence.png"><img src="docs/assets/readme/thewell_turbulence.png"
+       alt="Turbulent radiative layer forecast: input, truth, U-Net / FNO-2D predictions of the mixing interface, and model comparison with persistence gate"/></picture>
+</p>
+
+**A third system — Helmholtz staircase** (harmonic acoustics, ~80 GB):
+advancing the standing-wave pressure field by ¼ of its cycle from the
+(Re, Im) quadratures. Persistence fails catastrophically here (rel-L2
+1.38) while **FNO-2D nails it at 0.0195** — wave physics is the spectral
+model's home turf, completing the three-system story that no single
+architecture wins everywhere
+([`examples/thewell_helmholtz_study.py`](examples/thewell_helmholtz_study.py)):
+
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/dark/thewell_helmholtz.png"><img src="docs/assets/readme/thewell_helmholtz.png"
+       alt="Helmholtz staircase phase advance: standing-wave pressure field, FNO-2D prediction indistinguishable from truth at rel-L2 0.019, persistence fails at 1.38"/></picture>
+</p>
+
+And it holds up **autoregressively**: a 2-in/2-out FNO advancing the
+(Re, Im) quadratures 2/50 of a cycle per step, rolled out over the full
+harmonic cycle — 24 recursive applications, rolling rel-L2 in the title
+([`examples/make_helmholtz_gif.py`](examples/make_helmholtz_gif.py)):
+
+<p align="center">
+  <img src="docs/assets/readme/helmholtz_rollout.gif" width="560"
+       alt="Animated rollout: truth vs FNO-2D recursive prediction of the Helmholtz standing wave over one full cycle, with the error panel staying dark"/>
+</p>
+
+**And the honest baseline neural operators must beat — POD reduced-order
+models.** SURGE's new `pod_fit/pod_transform/pod_inverse` helpers project
+fields onto k proper-orthogonal-decomposition modes so *any* tabular model
+becomes a field surrogate. The lesson cuts both ways: on the low-rank
+Helmholtz wave, **ridge regression through 64 modes reaches rel-L2 0.0017
+— 11× better than FNO-2D — in 0.03 s of training**; on the chaotic
+turbulent layer, POD+ridge (0.236) still edges the U-Net (0.250). Always
+run the ROM baseline before reaching for an operator network
+([`examples/thewell_pod_study.py`](examples/thewell_pod_study.py)):
+
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/dark/thewell_pod.png"><img src="docs/assets/readme/thewell_pod.png"
+       alt="POD reduced-order surrogates: rel-L2 vs number of modes with neural-operator baselines as reference lines; POD+ridge beats FNO-2D 11x on Helmholtz and edges U-Net on turbulence"/></picture>
+</p>
+
+**When chaos caps pointwise accuracy, change the question — probabilistic
+forecasting.** A 7-lever study showed TRL-2D deterministic error is
+predictability-limited at Δt = 8, so SURGE forecasts a *distribution*
+instead: an 8-member deep ensemble on 64 POD modes, scored with CRPS. The
+calibrated ensemble (spread inflation tuned on held-out data) reaches
+**CRPS 0.095 — 18% better than the best deterministic forecast** — with
+spread–skill correlation 0.88: the forecast knows when it is uncertain
+([`examples/thewell_probabilistic_study.py`](examples/thewell_probabilistic_study.py)):
+
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/dark/thewell_crps.png"><img src="docs/assets/readme/thewell_crps.png"
+       alt="Probabilistic turbulence forecasting: calibrated ensemble CRPS beats deterministic forecasts; spread-skill correlation 0.88; ensemble members fan out at the uncertain mixing interface"/></picture>
+</p>
+
 <details>
-<summary><b>The single-step task also exists</b> (<code>--horizon 1</code>) — and shows why the forecast horizon matters: every model, even residual DeepONet at 0.020, loses to persistence at 0.002. Click to see it.</summary>
+<summary><b>The single-step Gray-Scott task also exists</b> (<code>--horizon 1</code>) — and shows why the forecast horizon matters: every model, even residual DeepONet at 0.020, loses to persistence at 0.002. Click to see it.</summary>
 <p align="center">
   <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/dark/thewell_grayscott_h1.png"><img src="docs/assets/readme/thewell_grayscott_h1.png"
        alt="Next-step Gray-Scott task: persistence baseline beats all seven models; residual-target variants dominate the model ranking"/></picture>
@@ -129,12 +194,27 @@ MLP, log-density parity in the style of the ICRF surrogate papers:
 |:---:|:---:|:---:|
 | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/dark/parity_train.png"><img src="docs/assets/readme/parity_train.png" alt="Training parity density, R² 0.98"/></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/dark/parity_test.png"><img src="docs/assets/readme/parity_test.png" alt="Test parity density, R² 0.96"/></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/dark/parity_residuals.png"><img src="docs/assets/readme/parity_residuals.png" alt="Test residual distribution with KDE"/></picture> |
 
+**Reproducing QLKNN from its own public training data** — the
+`plasma.qlknn10d` benchmark trains directly on the 290M QuaLiKiz
+gyrokinetic flux calculations behind QLKNN ([Zenodo, CC-BY 4.0](https://zenodo.org/records/3497066)):
+a SURGE residual MLP reaches **R² 0.989** on 200k held-out fluxes (ITG
+leading flux) after 15 minutes of laptop training on a 2.2M-row
+subsample — above the paper-quality 0.95 gate, fully reproducible
+end-to-end from public data
+([`examples/qlknn10d_study.py`](examples/qlknn10d_study.py)):
+
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/dark/qlknn10d.png"><img src="docs/assets/readme/qlknn10d.png"
+       alt="QLKNN10D reproduction: residual MLP R2 0.989 on held-out QuaLiKiz ITG fluxes, parity density plot"/></picture>
+</p>
+
 **Stellarator design surrogate — ConStellaration** (Proxima Fusion ×
-Hugging Face; Goodman et al. 2025, [arXiv:2506.19583](https://arxiv.org/abs/2506.19583)).
+Hugging Face; Cadena et al. 2025, [arXiv:2506.19583](https://arxiv.org/abs/2506.19583)).
 One residual MLP maps the plasma boundary Fourier coefficients
 $(R_{mn}, Z_{mn})$ to **12 equilibrium figures of merit** for 26,897
-QI-like configurations — quasi-isodynamic quality at R² **0.93**, and real
-rotating boundary cross-sections, not toy shapes:
+QI-like configurations — quasi-isodynamic quality at R² **0.95** (trained
+to saturation: the earlier 60-epoch cap left ~0.015 R² on the table), with
+the last closed flux surface rendered in 3D:
 
 <p align="center">
   <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/dark/constellaration.png"><img src="docs/assets/readme/constellaration.png"
@@ -209,6 +289,18 @@ pip install -e ".[torch,dev]"`.
 
 All runs write artifacts to `runs/<tag>/` (`metrics.json`, trained models,
 scalers, predictions, spec snapshot).
+
+### 0 · Don't write YAML — generate it (`surge init`)
+
+The wizard inspects your data file, asks three questions (target, goal,
+time budget), and writes a fully commented spec; `surge validate` checks
+any spec offline with did-you-mean error messages:
+
+```bash
+surge init --data my_data.csv            # interactive (or --goal/--budget/--yes)
+surge validate spec.yaml                 # unknown keys? typos? bad types?
+surge run spec.yaml
+```
 
 ### 1 · Smoke test (~5 s) — tabular regression
 
@@ -337,6 +429,30 @@ Gallery of every figure type: `python examples/viz_theme_gallery.py`.
 
 ---
 
+## Simulation-based inference (Simformer)
+
+`pytorch.simformer` is an independent PyTorch implementation of the
+Simformer ([Gloeckler et al., ICML 2024](https://arxiv.org/abs/2404.09636)):
+one score-based transformer trained on the **joint** p(θ, x) of
+simulation parameters and observables. Because the condition mask is a
+model input, the same trained network samples the posterior p(θ|x), the
+likelihood p(x|θ), or **any conditional** — including inference with
+missing observables. Validated against the one SBI problem with a known
+closed-form posterior:
+
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/dark/simformer_sbi.png"><img src="docs/assets/readme/simformer_sbi.png"
+       alt="Simformer validation: sampled posterior matches the analytic 1-and-2-sigma ellipses; the same network samples the likelihood and the joint"/></picture>
+</p>
+
+```python
+model = MODEL_REGISTRY.create("pytorch.simformer")
+model.fit(x, theta)                        # learns the joint p(theta, x)
+model.sample_posterior(x_obs, 1000)        # amortized Bayesian inversion
+model.sample_likelihood(theta_0, 1000)     # forward surrogate, same net
+model.predict_with_uncertainty(X)          # registry contract: mean, std
+```
+
 ## Run monitoring — mission control
 
 Every HPO campaign leaves machine-readable artifacts (per-trial training
@@ -388,6 +504,47 @@ so the MLflow chart view plots live loss curves per trial:
   <img src="docs/assets/readme/mlflow_hpo_trials.png" width="820"
        alt="MLflow UI showing one HPO trial's per-epoch train and validation loss curves and its val_r2 score"/>
 </p>
+
+## Training at scale
+
+Two levers, both measured on a stock Apple-Silicon workstation
+([`scripts/benchmark_scale.py`](scripts/benchmark_scale.py) regenerates
+the numbers on your hardware):
+
+```bash
+SURGE_DEVICE=auto surge run spec.yaml                    # cuda > mps > cpu
+surge bench -b plasma.qlknn_transport -m all --seeds 3 --parallel 4
+```
+
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/dark/scale.png"><img src="docs/assets/readme/scale.png"
+       alt="Left: FNO-2D and U-Net fit times on cpu vs Apple-GPU (7.6x and 7.4x speedups). Right: benchmark wall time vs surge bench --parallel workers, measured against ideal 1/N"/></picture>
+</p>
+
+Device selection is deliberately conservative: the default stays
+cuda→cpu, and the Apple GPU is **opt-in** (`SURGE_DEVICE=auto`) because
+not every architecture is MPS-safe — convolutional and spectral models
+are (identical R² to CPU), recurrent models are not. The safety table
+lives in [`docs/design/RESOURCE_MANAGEMENT.md`](docs/design/RESOURCE_MANAGEMENT.md),
+with the roadmap for in-workflow model parallelism and multi-GPU (DDP).
+
+## Agentic workflows (Claude Code skills)
+
+The repo ships seven skills under [`.claude/skills/`](.claude/skills) that
+teach an AI assistant to drive SURGE correctly — spec conventions, the
+figure system, benchmark protocols:
+
+| Skill | What it does |
+|---|---|
+| `surge-wizard` | Q&A → generates a commented `spec.yaml` from your data file and runs it — no YAML by hand |
+| `surge-scale` | device selection (MPS safety table), `--parallel` budgeting, long-run monitoring |
+| `surge-build-surrogate` | end-to-end playbook: characterize → pick models by task shape → HPO → report |
+| `surge-run` / `surge-benchmark` | run workflows / reproduce leaderboard numbers |
+| `surge-viz` / `surge-add-model` | figure-system rules / add a new model adapter end-to-end |
+
+Example: point Claude Code at this repo, type `/surge-wizard` with any
+CSV, answer three questions (target column, goal, time budget), and it
+writes the spec, trains, and reports test metrics against a baseline.
 
 ## Documentation
 

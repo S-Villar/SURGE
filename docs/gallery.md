@@ -86,11 +86,82 @@ nothing.
 
 ![Next-step Gray-Scott task with persistence winning](assets/gallery/thewell_grayscott_h1.png)
 
+## External PDE benchmark — TheWell turbulent radiative layer
+
+A second Well system, with the opposite verdict to Gray-Scott: on this
+fast-mixing task (64×192 non-square grid, log density, Δt = 8 stored
+steps) every neural operator beats persistence — U-Net 0.250 and FNO-2D
+0.256 vs 0.355 — each trained in ~4 min on the Apple GPU
+(`SURGE_DEVICE=auto`).
+
+```bash
+python -c "from surge.benchmarks.loaders.thewell import download_thewell; download_thewell('turbulence_2d')"  # ~6 GB
+SURGE_DEVICE=auto python examples/thewell_turbulence_study.py
+```
+
+![TheWell turbulent radiative layer study](assets/gallery/thewell_turbulence.png)
+
+## External PDE benchmark — TheWell Helmholtz staircase
+
+Harmonic phase advance from the (Re, Im) pressure quadratures: a ¼-cycle
+shift decorrelates the standing wave, so persistence fails at rel-L2
+1.38 while FNO-2D reaches 0.0195 — smooth wave physics is the spectral
+model's home turf. Together the three Well systems (Gray-Scott,
+turbulence, Helmholtz) show no single operator architecture wins
+everywhere.
+
+```bash
+python -c "from surge.benchmarks.loaders.thewell import download_thewell; download_thewell('helmholtz')"  # ~46 GB
+SURGE_DEVICE=auto python examples/thewell_helmholtz_study.py
+```
+
+![TheWell Helmholtz staircase study](assets/gallery/thewell_helmholtz.png)
+
+## POD reduced-order surrogates
+
+`pod_fit/pod_transform/pod_inverse` (surge.preprocessing) turn any
+tabular model into a field surrogate through k POD modes. On the
+low-rank Helmholtz wave, ridge through 64 modes reaches rel-L2 0.0017 —
+11× better than FNO-2D at ~10,000× less training compute; on the
+chaotic turbulent layer POD+ridge still edges the U-Net. The dotted
+line is the POD reconstruction ceiling (representation limit at each k).
+
+![POD reduced-order surrogates vs neural operators](assets/gallery/thewell_pod.png)
+
+## Probabilistic turbulence forecasting (CRPS)
+
+Pointwise error on the turbulent layer is chaos-limited (7-lever study),
+so the honest forecast is a distribution: an 8-member deep ensemble on
+64 POD modes. Calibrated CRPS 0.095 beats the best point forecast by
+18%, with spread–skill correlation 0.88.
+
+![Probabilistic turbulence forecasting](assets/gallery/thewell_crps.png)
+
+## Simulation-based inference — Simformer
+
+One score-based transformer over the joint p(θ, x) samples every
+conditional: posterior, likelihood, joint, or inference with missing
+observables (`pytorch.simformer`, Gloeckler et al. ICML 2024).
+Validated against the linear-Gaussian benchmark's closed-form posterior.
+
+![Simformer SBI validation](assets/gallery/simformer_sbi.png)
+
+## Reproducing QLKNN from source data (QLKNN10D)
+
+Trains directly on the public 290M-row QuaLiKiz table behind QLKNN
+(Zenodo 10.5281/zenodo.3497066): residual MLP R² 0.989 on 200k held-out
+ITG leading fluxes from a 2.2M-row subsample, 15 min on a laptop —
+above the paper-quality 0.95 gate. The shipped QLKNN_7_11 network
+evaluated cross-generation scores 0.45 here (different data generation
+and flux normalisation — convention, not necessarily quality).
+
+![QLKNN10D reproduction study](assets/gallery/qlknn10d.png)
+
 ## Stellarator design — ConStellaration
 
 One residual MLP maps stellarator plasma-boundary Fourier coefficients
 (R_mn, Z_mn; n_fp = 3) to 12 equilibrium figures of merit across 26,897
-QI-like configurations (Goodman et al. 2025, arXiv:2506.19583): real
+QI-like configurations (Cadena et al. 2025, arXiv:2506.19583): real
 rotating boundary cross-sections, log₁₀(QI) parity at R² 0.93, and
 per-metric learnability.
 
@@ -136,6 +207,15 @@ correlations, the strongest single relationship, and the PCA variance
 spectrum with effective dimensionality.
 
 ![Dataset characterization panel](assets/gallery/characterization.png)
+
+## Training at scale
+
+Measured on a stock Apple-Silicon workstation
+(`scripts/benchmark_scale.py` regenerates on your hardware): opt-in GPU
+via `SURGE_DEVICE=auto` (7–8× for the 2D operator models, identical R²)
+and the `surge bench --parallel N` subprocess fan-out against ideal 1/N.
+
+![Training at scale: device speedups and parallel fan-out](assets/gallery/scale.png)
 
 ## Benchmark leaderboards
 
