@@ -15,6 +15,15 @@ R1–R14, `RESOURCE_MANAGEMENT.md` R15–R18, `FIGURE_UPGRADE_PLAN.md`).
 
 ## P1 — near term
 
+- ~~QLKNN10D benchmark~~ — DONE: plasma.qlknn10d trains on the public
+  290M-row QuaLiKiz table; residual MLP R2 0.989 held-out (gate 0.95).
+  Follow-ups: multi-output (efe+pfe channels, TEM/ETG modes), full-table
+  chunked training, QLKNN11D (1B rows).
+- ~~Streaming training path~~ — DONE (fit_from_loader + lazy Well
+  pairs); NOTE: TRL-2D train split physically caps at 6,984 four-frame
+  pairs — the published 12h-H100 baselines' data advantage is bounded;
+  overnight all-pairs x14-epoch run in flight.
+
 - **Simformer follow-ups** (adapter `pytorch.simformer` SHIPPED and
   validated against the analytic linear-Gaussian posterior; private
   NSTX-U amortized-reconstruction demo lives in ../TokaMakerGen):
